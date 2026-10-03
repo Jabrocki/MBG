@@ -1,0 +1,19 @@
+{
+  "problem_id": 12,
+  "total_matches": 2,
+  "matches": [
+    {
+      "solution_id": 1,
+      "title": "Bawita - Międzypokoleniowa Bawialnia i Przestrzeń Wsparcia",
+      "description": "Przestrzeń spotkań i opieki wytchnieniowej integrująca seniorów oraz rodziny z małymi dziećmi.",
+      "rank": 1,
+      "score": 0.92,
+      "explanation": "Innowacja zapewnia bezpieczną przestrzeń aktywizującą i wspiera mobilność seniorów.",
+      "limitations": "Wymaga zaangażowania animatora lokalnego i przystosowanego lokalu bez barier.",
+      "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/bawita",
+      "coord_x": 1.2,
+      "coord_y": -0.5,
+      "coord_z": 0.8
+    }
+  ]
+}

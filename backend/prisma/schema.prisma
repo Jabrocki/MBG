@@ -11,3 +11,44 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model EmbeddingDocument {
+  id          String           @id @db.Text
+  collection  String           @db.VarChar(32)
+  sourcePath  String           @map("source_path") @db.Text
+  title       String           @db.Text
+  contentHash String           @map("content_hash") @db.Char(64)
+  model       String           @db.Text
+  taskPrefix  String           @map("task_prefix") @db.VarChar(64)
+  dimensions  Int
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  chunks      EmbeddingChunk[]
+
+  @@unique([collection, sourcePath, contentHash])
+  @@index([collection])
+  @@map("embedding_documents")
+}
+
+model EmbeddingChunk {
+  id          String            @id @db.Text
+  documentId  String            @map("document_id") @db.Text
+  chunkIndex  Int               @map("chunk_index")
+  content     String            @db.Text
+  contentHash String            @map("content_hash") @db.Char(64)
+  embedding   Unsupported("vector(512)")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  document    EmbeddingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex, contentHash])
+  @@index([documentId])
+  @@map("embedding_chunks")
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  surname String
+  email String @unique
+  admin Boolean
+}
