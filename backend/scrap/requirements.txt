@@ -1,2 +1,16 @@
 Scrapy>=2.13,<2.14
 markdownify>=1.2,<2
+
+# Scraper problemów: PDF, Gemini API i lokalne rozpoznawanie nazwisk.
+pypdf>=6.19,<7
+google-genai>=2.28,<3
+spacy>=3.8.16,<3.9
+# Tryb generate wymaga także osobno instalowanego modelu pl_core_news_sm.
+
+# Lokalne embeddingi Hugging Face Nomic; instalują PyTorch jako zależność.
+sentence-transformers>=5.3,<6
+# Architektura Nomic używa tej biblioteki do przekształceń tensorów.
+einops>=0.8,<1
+# Zdalny kod modelu Nomic nie obsługuje jeszcze Transformers 5.
+transformers>=4.41,<5
+psycopg[binary]>=3.2,<4
