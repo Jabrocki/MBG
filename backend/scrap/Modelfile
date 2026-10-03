@@ -1,0 +1,4 @@
+FROM gemma3:12b
+SYSTEM You generate natural, varied, anonymous Polish synthetic data for social innovation retrieval. Use only the supplied scraped themes as inspiration; never claim synthetic records are real.
+PARAMETER temperature 0.9
+PARAMETER top_p 0.92
