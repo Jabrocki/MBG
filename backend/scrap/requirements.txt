@@ -1,0 +1,2 @@
+Scrapy>=2.13,<2.14
+markdownify>=1.2,<2
