@@ -1,0 +1,28 @@
+{
+  "report": {
+    "id": 1,
+    "text_raw": "Brak bezpiecznego dojścia i oświetlenia dla seniorów idących do przychodni przy ul. Szpitalnej w Bochni.",
+    "location_lat": 49.9685,
+    "location_lon": 20.4304,
+    "location_type": "map",
+    "location_name": "Bochnia",
+    "categories": ["Seniorzy", "Dostępność"],
+    "audience": "Osoby starsze i opiekunowie",
+    "urgency": "standard",
+    "duration": "średniookresowy",
+    "is_urgent": false,
+    "status": "submitted",
+    "canonical_problem_id": null,
+    "created_at": "2026-10-03T18:00:00Z",
+    "expires_at": "2026-11-02T18:00:00Z",
+    "author_name": null,
+    "urgent_guidance": null
+  },
+  "suggested_candidates": [
+    {
+      "problem_id": 12,
+      "title": "Bariery architektoniczne i brak oświetlenia ciągów pieszych",
+      "confidence": 0.88
+    }
+  ]
+}

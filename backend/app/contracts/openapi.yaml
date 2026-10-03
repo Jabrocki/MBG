@@ -1,0 +1,2146 @@
+openapi: 3.1.0
+info:
+  title: HUBMI API — Małopolska Social Innovation Hub
+  description: 'Backend aplikacyjny: matchmaking potrzeb społecznych, innowacje, przepływy
+    pracy, głosowanie i piloty.'
+  version: 0.1.0
+paths:
+  /api/v1/auth/demo:
+    post:
+      tags:
+      - Uwierzytelnianie
+      summary: Wybór syntetycznego konta demo (user/admin)
+      operationId: login_demo_api_v1_auth_demo_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoLoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoTokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Uwierzytelnianie
+      summary: Dane aktualnie zalogowanego użytkownika
+      operationId: get_me_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/reports:
+    post:
+      tags:
+      - Zgłoszenia problemów
+      summary: Zgłoszenie problemu społecznego
+      operationId: submit_report_api_v1_reports_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportCreateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSubmissionResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/reports/{report_id}/categories:
+    patch:
+      tags:
+      - Zgłoszenia problemów
+      summary: Korekta kategorii przez użytkownika
+      operationId: update_categories_api_v1_reports__report_id__categories_patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Report Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCorrectionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/{report_id}/confirm-grouping:
+    post:
+      tags:
+      - Zgłoszenia problemów
+      summary: Potwierdzenie przypisania do problemu lub utworzenie nowego
+      operationId: confirm_grouping_api_v1_reports__report_id__confirm_grouping_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Report Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmGroupingRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanonicalProblemResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/problems/nearby:
+    get:
+      tags:
+      - Problemy kanoniczne i Matchmaking
+      summary: Odkrywanie problemów w wybranym promieniu geograficznym
+      operationId: get_nearby_problems_api_v1_problems_nearby_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: lat
+        in: query
+        required: true
+        schema:
+          type: number
+          description: Szerokość geograficzna użytkownika
+          title: Lat
+        description: Szerokość geograficzna użytkownika
+      - name: lon
+        in: query
+        required: true
+        schema:
+          type: number
+          description: Długość geograficzna użytkownika
+          title: Lon
+        description: Długość geograficzna użytkownika
+      - name: radius_km
+        in: query
+        required: false
+        schema:
+          type: number
+          description: Promień odkrywania w kilometrach
+          default: 15.0
+          title: Radius Km
+        description: Promień odkrywania w kilometrach
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CanonicalProblemResponse'
+                title: Response Get Nearby Problems Api V1 Problems Nearby Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/problems/{problem_id}/matches:
+    get:
+      tags:
+      - Problemy kanoniczne i Matchmaking
+      summary: Dopasowane innowacje społeczne (do 10 wyników)
+      operationId: get_problem_matches_api_v1_problems__problem_id__matches_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: problem_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Problem Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/problems/{problem_id}/coordinates:
+    get:
+      tags:
+      - Problemy kanoniczne i Matchmaking
+      summary: Współrzędne 3D dla wizualizacji semantycznej
+      operationId: get_problem_coordinates_api_v1_problems__problem_id__coordinates_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: problem_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Problem Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoordinatesResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/catalogue:
+    get:
+      tags:
+      - Katalog innowacji
+      summary: Przeglądanie i wyszukiwanie w katalogu innowacji
+      operationId: search_catalogue_api_v1_catalogue_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Fraza wyszukiwania
+          title: Q
+        description: Fraza wyszukiwania
+      - name: category
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Kategoria tematyczna
+          title: Category
+        description: Kategoria tematyczna
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/ideas:
+    post:
+      tags:
+      - Kreator pomysłów
+      summary: Utworzenie wersji roboczej pomysłu
+      operationId: create_idea_draft_api_v1_ideas_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdeaCreateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/ideas/{idea_id}/submit:
+    post:
+      tags:
+      - Kreator pomysłów
+      summary: Przekazanie pomysłu do kolejki przetwarzania AI
+      operationId: submit_idea_to_ai_api_v1_ideas__idea_id__submit_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: idea_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Idea Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIJobStatusResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/ideas/{idea_id}/author-confirm:
+    post:
+      tags:
+      - Kreator pomysłów
+      summary: Potwierdzenie ustrukturyzowanego pomysłu przez autora
+      operationId: author_confirm_idea_api_v1_ideas__idea_id__author_confirm_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: idea_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Idea Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdeaAuthorConfirmRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/ideas/{idea_id}/admin-approve:
+    post:
+      tags:
+      - Kreator pomysłów
+      summary: Zatwierdzenie publikacji pomysłu przez administratora
+      operationId: admin_approve_idea_api_v1_ideas__idea_id__admin_approve_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: idea_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Idea Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/ideas/public:
+    get:
+      tags:
+      - Kreator pomysłów
+      summary: Lista opublikowanych pomysłów poddanych dyskusji
+      operationId: get_public_ideas_api_v1_ideas_public_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/IdeaResponse'
+                type: array
+                title: Response Get Public Ideas Api V1 Ideas Public Get
+      security:
+      - HTTPBearer: []
+  /api/v1/votes/cards:
+    get:
+      tags:
+      - Głosowanie społecznościowe (Swipe cards)
+      summary: Karty rozwiązań do głosowania dla danego problemu
+      operationId: get_cards_for_problem_api_v1_votes_cards_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: problem_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          description: ID problemu lokalnego
+          title: Problem Id
+        description: ID problemu lokalnego
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SwipeCardResponse'
+                title: Response Get Cards For Problem Api V1 Votes Cards Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/votes:
+    post:
+      tags:
+      - Głosowanie społecznościowe (Swipe cards)
+      summary: Oddanie lub zmiana głosu (Popieram / Pomijam)
+      operationId: cast_vote_api_v1_votes_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoteCreateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/votes/{vote_id}:
+    delete:
+      tags:
+      - Głosowanie społecznościowe (Swipe cards)
+      summary: Cofnięcie oddanego głosu
+      operationId: undo_vote_api_v1_votes__vote_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: vote_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Vote Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/pilots:
+    post:
+      tags:
+      - Pilotaże i Wolontariat
+      summary: Utworzenie inicjatywy pilotażowej (tylko administrator)
+      operationId: create_pilot_api_v1_pilots_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PilotCreateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PilotResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/pilots/{pilot_id}/transition:
+    post:
+      tags:
+      - Pilotaże i Wolontariat
+      summary: Zmiana statusu cyklu życia pilota (tylko administrator)
+      operationId: transition_pilot_status_api_v1_pilots__pilot_id__transition_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: pilot_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Pilot Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PilotTransitionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PilotResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/pilots/{pilot_id}/volunteer:
+    post:
+      tags:
+      - Pilotaże i Wolontariat
+      summary: Zgłoszenie się jako wolontariusz do projektu
+      operationId: register_volunteer_api_v1_pilots__pilot_id__volunteer_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: pilot_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Pilot Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolunteerResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Pilotaże i Wolontariat
+      summary: Rezygnacja z wolontariatu
+      operationId: cancel_volunteer_api_v1_pilots__pilot_id__volunteer_delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: pilot_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Pilot Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/pilots/{pilot_id}/accept-offer:
+    post:
+      tags:
+      - Pilotaże i Wolontariat
+      summary: Akceptacja zaoferowanego miejsca z listy oczekujących
+      operationId: accept_place_offer_api_v1_pilots__pilot_id__accept_offer_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: pilot_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Pilot Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolunteerResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/pilots/{pilot_id}/feedback:
+    post:
+      tags:
+      - Pilotaże i Wolontariat
+      summary: Ocena satysfakcji beneficjenta lub wolontariusza
+      operationId: submit_feedback_api_v1_pilots__pilot_id__feedback_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: pilot_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Pilot Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SatisfactionFeedbackRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatisfactionFeedbackResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/problems/merge:
+    post:
+      tags:
+      - Panel Administratora
+      summary: Scalenie problemów kanonicznych z przeliczeniem unikalnych zgłaszających
+        i głosów
+      operationId: merge_problems_api_v1_admin_problems_merge_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeProblemsRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanonicalProblemResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/admin/problems/split:
+    post:
+      tags:
+      - Panel Administratora
+      summary: Wydzielenie części zgłoszeń do nowego problemu kanonicznego
+      operationId: split_problem_api_v1_admin_problems_split_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SplitProblemRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanonicalProblemResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/admin/solutions/merge:
+    post:
+      tags:
+      - Panel Administratora
+      summary: Scalenie zduplikowanych rozwiązań
+      operationId: merge_solutions_api_v1_admin_solutions_merge_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeSolutionsRequest'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/admin/pilots/{pilot_id}/promote-volunteer:
+    post:
+      tags:
+      - Panel Administratora
+      summary: Ręczna promocja wolontariusza z listy oczekujących
+      operationId: promote_volunteer_api_v1_admin_pilots__pilot_id__promote_volunteer_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: pilot_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Pilot Id
+      - name: user_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolunteerResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/retention/purge:
+    post:
+      tags:
+      - Panel Administratora
+      summary: Uruchomienie procedury wygaszania surowych raportów po 30 dniach
+      operationId: purge_retention_api_v1_admin_retention_purge_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/v1/ideas/{idea_id}/thread:
+    get:
+      tags:
+      - Dyskusje, Powiadomienia i Adaptacje instytucjonalne
+      summary: Wątek dyskusyjny przypisany do pomysłu
+      operationId: get_idea_thread_api_v1_ideas__idea_id__thread_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: idea_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Idea Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscussionThreadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/threads/{thread_id}/messages:
+    post:
+      tags:
+      - Dyskusje, Powiadomienia i Adaptacje instytucjonalne
+      summary: Wysłanie wiadomości w wątku dyskusyjnym
+      operationId: post_thread_message_api_v1_threads__thread_id__messages_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: thread_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Thread Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreadMessageCreateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadMessageResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications:
+    get:
+      tags:
+      - Dyskusje, Powiadomienia i Adaptacje instytucjonalne
+      summary: In-app powiadomienia dla bieżącego użytkownika
+      operationId: get_notifications_api_v1_notifications_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/NotificationResponse'
+                type: array
+                title: Response Get Notifications Api V1 Notifications Get
+      security:
+      - HTTPBearer: []
+  /api/v1/notifications/{notif_id}/read:
+    post:
+      tags:
+      - Dyskusje, Powiadomienia i Adaptacje instytucjonalne
+      summary: Oznaczenie powiadomienia jako przeczytane
+      operationId: mark_notification_read_api_v1_notifications__notif_id__read_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notif_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Notif Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/adaptations:
+    post:
+      tags:
+      - Dyskusje, Powiadomienia i Adaptacje instytucjonalne
+      summary: Formularz adaptacji innowacji przez instytucję
+      operationId: create_adaptation_api_v1_adaptations_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstitutionAdaptationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstitutionAdaptationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /healthz:
+    get:
+      tags:
+      - System
+      summary: Healthcheck
+      operationId: healthcheck_healthz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    AIJobStatusResponse:
+      properties:
+        job_id:
+          type: integer
+          title: Job Id
+        entity_type:
+          type: string
+          title: Entity Type
+        entity_id:
+          type: integer
+          title: Entity Id
+        job_type:
+          type: string
+          title: Job Type
+        status:
+          type: string
+          title: Status
+        attempt_count:
+          type: integer
+          title: Attempt Count
+        last_error:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Error
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        processed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Processed At
+      type: object
+      required:
+      - job_id
+      - entity_type
+      - entity_id
+      - job_type
+      - status
+      - attempt_count
+      - created_at
+      title: AIJobStatusResponse
+    CanonicalProblemResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        title:
+          type: string
+          title: Title
+        generated_description:
+          type: string
+          title: Generated Description
+        reporter_count:
+          type: integer
+          title: Reporter Count
+        location_centroid_lat:
+          type: number
+          title: Location Centroid Lat
+        location_centroid_lon:
+          type: number
+          title: Location Centroid Lon
+        status:
+          type: string
+          title: Status
+        recurrence_recommended:
+          type: boolean
+          title: Recurrence Recommended
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - title
+      - generated_description
+      - reporter_count
+      - location_centroid_lat
+      - location_centroid_lon
+      - status
+      - recurrence_recommended
+      - created_at
+      title: CanonicalProblemResponse
+    CategoryCorrectionRequest:
+      properties:
+        categories:
+          items:
+            type: string
+          type: array
+          minItems: 1
+          title: Categories
+      type: object
+      required:
+      - categories
+      title: CategoryCorrectionRequest
+    ConfirmGroupingRequest:
+      properties:
+        confirmed_problem_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Confirmed Problem Id
+          description: ID istniejącego problemu lub null jeśli tworzymy nowy
+        create_new:
+          type: boolean
+          title: Create New
+          description: Ustaw True aby utworzyć nowy problem kanoniczny
+          default: false
+      type: object
+      title: ConfirmGroupingRequest
+    Coordinate3D:
+      properties:
+        id:
+          type: integer
+          title: Id
+        entity_type:
+          type: string
+          title: Entity Type
+        title:
+          type: string
+          title: Title
+        x:
+          type: number
+          title: X
+        y:
+          type: number
+          title: Y
+        z:
+          type: number
+          title: Z
+      type: object
+      required:
+      - id
+      - entity_type
+      - title
+      - x
+      - y
+      - z
+      title: Coordinate3D
+    CoordinatesResponse:
+      properties:
+        problem_id:
+          type: integer
+          title: Problem Id
+        problem_coords:
+          $ref: '#/components/schemas/Coordinate3D'
+        solution_coords:
+          items:
+            $ref: '#/components/schemas/Coordinate3D'
+          type: array
+          title: Solution Coords
+      type: object
+      required:
+      - problem_id
+      - problem_coords
+      - solution_coords
+      title: CoordinatesResponse
+    DemoLoginRequest:
+      properties:
+        role:
+          type: string
+          title: Role
+          description: 'Target demo role: ''user'' or ''admin'''
+      type: object
+      required:
+      - role
+      title: DemoLoginRequest
+    DemoTokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+        role:
+          type: string
+          title: Role
+        user_id:
+          type: integer
+          title: User Id
+        user_name:
+          type: string
+          title: User Name
+      type: object
+      required:
+      - access_token
+      - role
+      - user_id
+      - user_name
+      title: DemoTokenResponse
+    DiscussionThreadResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        idea_id:
+          type: integer
+          title: Idea Id
+        title:
+          type: string
+          title: Title
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        messages:
+          items:
+            $ref: '#/components/schemas/ThreadMessageResponse'
+          type: array
+          title: Messages
+          default: []
+      type: object
+      required:
+      - id
+      - idea_id
+      - title
+      - created_at
+      title: DiscussionThreadResponse
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    IdeaAuthorConfirmRequest:
+      properties:
+        text_refined:
+          type: string
+          title: Text Refined
+        need:
+          type: string
+          title: Need
+        beneficiaries:
+          type: string
+          title: Beneficiaries
+        solution:
+          type: string
+          title: Solution
+        partners:
+          type: string
+          title: Partners
+        costs:
+          type: string
+          title: Costs
+        resources:
+          type: string
+          title: Resources
+        stages:
+          type: string
+          title: Stages
+      type: object
+      required:
+      - text_refined
+      - need
+      - beneficiaries
+      - solution
+      - partners
+      - costs
+      - resources
+      - stages
+      title: IdeaAuthorConfirmRequest
+    IdeaCreateRequest:
+      properties:
+        text_raw:
+          type: string
+          minLength: 10
+          title: Text Raw
+        need:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Need
+        beneficiaries:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Beneficiaries
+        solution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Solution
+        partners:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Partners
+        costs:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Costs
+        resources:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resources
+        stages:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Stages
+      type: object
+      required:
+      - text_raw
+      title: IdeaCreateRequest
+    IdeaResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        author_id:
+          type: integer
+          title: Author Id
+        text_raw:
+          type: string
+          title: Text Raw
+        text_refined:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Text Refined
+        need:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Need
+        beneficiaries:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Beneficiaries
+        solution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Solution
+        partners:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Partners
+        costs:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Costs
+        resources:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resources
+        stages:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Stages
+        status:
+          type: string
+          title: Status
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        author_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Author Name
+      type: object
+      required:
+      - id
+      - author_id
+      - text_raw
+      - status
+      - created_at
+      title: IdeaResponse
+    InnovationMatchResponse:
+      properties:
+        solution_id:
+          type: integer
+          title: Solution Id
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        rank:
+          type: integer
+          title: Rank
+        score:
+          type: number
+          title: Score
+        explanation:
+          type: string
+          title: Explanation
+        limitations:
+          type: string
+          title: Limitations
+        source_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Url
+        coord_x:
+          type: number
+          title: Coord X
+        coord_y:
+          type: number
+          title: Coord Y
+        coord_z:
+          type: number
+          title: Coord Z
+      type: object
+      required:
+      - solution_id
+      - title
+      - description
+      - rank
+      - score
+      - explanation
+      - limitations
+      - coord_x
+      - coord_y
+      - coord_z
+      title: InnovationMatchResponse
+    InstitutionAdaptationRequest:
+      properties:
+        solution_id:
+          type: integer
+          title: Solution Id
+        beneficiaries:
+          type: string
+          title: Beneficiaries
+        location:
+          type: string
+          title: Location
+        resources:
+          type: string
+          title: Resources
+        budget:
+          type: string
+          title: Budget
+        constraints:
+          type: string
+          title: Constraints
+      type: object
+      required:
+      - solution_id
+      - beneficiaries
+      - location
+      - resources
+      - budget
+      - constraints
+      title: InstitutionAdaptationRequest
+    InstitutionAdaptationResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        user_id:
+          type: integer
+          title: User Id
+        solution_id:
+          type: integer
+          title: Solution Id
+        beneficiaries:
+          type: string
+          title: Beneficiaries
+        location:
+          type: string
+          title: Location
+        resources:
+          type: string
+          title: Resources
+        budget:
+          type: string
+          title: Budget
+        constraints:
+          type: string
+          title: Constraints
+        draft_adaptation:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Draft Adaptation
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - user_id
+      - solution_id
+      - beneficiaries
+      - location
+      - resources
+      - budget
+      - constraints
+      - created_at
+      title: InstitutionAdaptationResponse
+    MatchListResponse:
+      properties:
+        problem_id:
+          type: integer
+          title: Problem Id
+        total_matches:
+          type: integer
+          title: Total Matches
+        matches:
+          items:
+            $ref: '#/components/schemas/InnovationMatchResponse'
+          type: array
+          title: Matches
+      type: object
+      required:
+      - problem_id
+      - total_matches
+      - matches
+      title: MatchListResponse
+    MergeProblemsRequest:
+      properties:
+        target_problem_id:
+          type: integer
+          title: Target Problem Id
+        source_problem_ids:
+          items:
+            type: integer
+          type: array
+          minItems: 1
+          title: Source Problem Ids
+      type: object
+      required:
+      - target_problem_id
+      - source_problem_ids
+      title: MergeProblemsRequest
+    MergeSolutionsRequest:
+      properties:
+        target_solution_id:
+          type: integer
+          title: Target Solution Id
+        duplicate_solution_ids:
+          items:
+            type: integer
+          type: array
+          minItems: 1
+          title: Duplicate Solution Ids
+      type: object
+      required:
+      - target_solution_id
+      - duplicate_solution_ids
+      title: MergeSolutionsRequest
+    NotificationResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        title:
+          type: string
+          title: Title
+        message:
+          type: string
+          title: Message
+        link:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Link
+        is_read:
+          type: boolean
+          title: Is Read
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - title
+      - message
+      - is_read
+      - created_at
+      title: NotificationResponse
+    PilotCreateRequest:
+      properties:
+        solution_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Solution Id
+        idea_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Idea Id
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+          default: ''
+        budget_declared:
+          type: number
+          title: Budget Declared
+          default: 0.0
+        partners:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Partners
+        test_plan:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Test Plan
+        max_volunteers:
+          type: integer
+          title: Max Volunteers
+          default: 10
+      type: object
+      required:
+      - title
+      title: PilotCreateRequest
+    PilotResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        status:
+          type: string
+          title: Status
+        budget_declared:
+          type: number
+          title: Budget Declared
+        budget_approved:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Budget Approved
+        accountable_owner:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Accountable Owner
+        partners:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Partners
+        test_plan:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Test Plan
+        max_volunteers:
+          type: integer
+          title: Max Volunteers
+        registered_volunteers_count:
+          type: integer
+          title: Registered Volunteers Count
+        waiting_list_count:
+          type: integer
+          title: Waiting List Count
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - status
+      - budget_declared
+      - max_volunteers
+      - registered_volunteers_count
+      - waiting_list_count
+      - created_at
+      title: PilotResponse
+    PilotTransitionRequest:
+      properties:
+        target_status:
+          type: string
+          pattern: ^(review|recruitment_funding|pilot|evaluation|dissemination|unavailable)$
+          title: Target Status
+        budget_approved:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Budget Approved
+        accountable_owner:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Accountable Owner
+      type: object
+      required:
+      - target_status
+      title: PilotTransitionRequest
+    ProblemCandidateResponse:
+      properties:
+        problem_id:
+          type: integer
+          title: Problem Id
+        title:
+          type: string
+          title: Title
+        confidence:
+          type: number
+          title: Confidence
+      type: object
+      required:
+      - problem_id
+      - title
+      - confidence
+      title: ProblemCandidateResponse
+    ReportCreateRequest:
+      properties:
+        text:
+          type: string
+          minLength: 5
+          title: Text
+          description: Opis problemu społecznego
+        location_lat:
+          type: number
+          title: Location Lat
+          description: Szerokość geograficzna (WGS84)
+        location_lon:
+          type: number
+          title: Location Lon
+          description: Długość geograficzna (WGS84)
+        location_type:
+          type: string
+          title: Location Type
+          description: 'Źródło lokalizacji: map | manual | gps'
+          default: map
+        location_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Location Name
+          description: Nazwa miejscowości / dzielnicy
+          default: Małopolska
+      type: object
+      required:
+      - text
+      - location_lat
+      - location_lon
+      title: ReportCreateRequest
+    ReportResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        text_raw:
+          type: string
+          title: Text Raw
+        location_lat:
+          type: number
+          title: Location Lat
+        location_lon:
+          type: number
+          title: Location Lon
+        location_type:
+          type: string
+          title: Location Type
+        location_name:
+          type: string
+          title: Location Name
+        categories:
+          items:
+            type: string
+          type: array
+          title: Categories
+        audience:
+          type: string
+          title: Audience
+        urgency:
+          type: string
+          title: Urgency
+        duration:
+          type: string
+          title: Duration
+        is_urgent:
+          type: boolean
+          title: Is Urgent
+        status:
+          type: string
+          title: Status
+        canonical_problem_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Canonical Problem Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        expires_at:
+          type: string
+          format: date-time
+          title: Expires At
+        author_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Author Name
+        urgent_guidance:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Urgent Guidance
+      type: object
+      required:
+      - id
+      - text_raw
+      - location_lat
+      - location_lon
+      - location_type
+      - location_name
+      - categories
+      - audience
+      - urgency
+      - duration
+      - is_urgent
+      - status
+      - canonical_problem_id
+      - created_at
+      - expires_at
+      title: ReportResponse
+    ReportSubmissionResult:
+      properties:
+        report:
+          $ref: '#/components/schemas/ReportResponse'
+        suggested_candidates:
+          items:
+            $ref: '#/components/schemas/ProblemCandidateResponse'
+          type: array
+          title: Suggested Candidates
+      type: object
+      required:
+      - report
+      - suggested_candidates
+      title: ReportSubmissionResult
+    SatisfactionFeedbackRequest:
+      properties:
+        role:
+          type: string
+          pattern: ^(beneficiary|volunteer)$
+          title: Role
+        rating:
+          type: integer
+          maximum: 5.0
+          minimum: 1.0
+          title: Rating
+        comment:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Comment
+        improvements:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Improvements
+      type: object
+      required:
+      - role
+      - rating
+      title: SatisfactionFeedbackRequest
+    SatisfactionFeedbackResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        pilot_id:
+          type: integer
+          title: Pilot Id
+        user_id:
+          type: integer
+          title: User Id
+        role:
+          type: string
+          title: Role
+        rating:
+          type: integer
+          title: Rating
+        comment:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Comment
+        improvements:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Improvements
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - pilot_id
+      - user_id
+      - role
+      - rating
+      - created_at
+      title: SatisfactionFeedbackResponse
+    SplitProblemRequest:
+      properties:
+        problem_id:
+          type: integer
+          title: Problem Id
+        report_ids_to_detach:
+          items:
+            type: integer
+          type: array
+          minItems: 1
+          title: Report Ids To Detach
+        new_problem_title:
+          type: string
+          title: New Problem Title
+      type: object
+      required:
+      - problem_id
+      - report_ids_to_detach
+      - new_problem_title
+      title: SplitProblemRequest
+    SwipeCardResponse:
+      properties:
+        solution_id:
+          type: integer
+          title: Solution Id
+        problem_id:
+          type: integer
+          title: Problem Id
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        badge:
+          type: string
+          title: Badge
+        support_count:
+          type: integer
+          title: Support Count
+        my_vote:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: My Vote
+      type: object
+      required:
+      - solution_id
+      - problem_id
+      - title
+      - description
+      - badge
+      - support_count
+      title: SwipeCardResponse
+    ThreadMessageCreateRequest:
+      properties:
+        content:
+          type: string
+          minLength: 1
+          title: Content
+      type: object
+      required:
+      - content
+      title: ThreadMessageCreateRequest
+    ThreadMessageResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        thread_id:
+          type: integer
+          title: Thread Id
+        author_id:
+          type: integer
+          title: Author Id
+        author_name:
+          type: string
+          title: Author Name
+        content:
+          type: string
+          title: Content
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - thread_id
+      - author_id
+      - author_name
+      - content
+      - created_at
+      title: ThreadMessageResponse
+    UserResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        name:
+          type: string
+          title: Name
+        surname:
+          type: string
+          title: Surname
+        email:
+          type: string
+          title: Email
+        role:
+          type: string
+          title: Role
+        is_anonymous_by_default:
+          type: boolean
+          title: Is Anonymous By Default
+      type: object
+      required:
+      - id
+      - name
+      - surname
+      - email
+      - role
+      - is_anonymous_by_default
+      title: UserResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VolunteerResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        pilot_id:
+          type: integer
+          title: Pilot Id
+        user_id:
+          type: integer
+          title: User Id
+        user_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: User Name
+        status:
+          type: string
+          title: Status
+        skills_confirmed:
+          type: boolean
+          title: Skills Confirmed
+        position:
+          type: integer
+          title: Position
+        offered_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Offered At
+        accepted_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Accepted At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - pilot_id
+      - user_id
+      - status
+      - skills_confirmed
+      - position
+      - created_at
+      title: VolunteerResponse
+    VoteCreateRequest:
+      properties:
+        solution_id:
+          type: integer
+          title: Solution Id
+        local_problem_id:
+          type: integer
+          title: Local Problem Id
+        vote_type:
+          type: string
+          pattern: ^(support|skip)$
+          title: Vote Type
+        rejection_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rejection Reason
+      type: object
+      required:
+      - solution_id
+      - local_problem_id
+      - vote_type
+      title: VoteCreateRequest
+    VoteResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        user_id:
+          type: integer
+          title: User Id
+        solution_id:
+          type: integer
+          title: Solution Id
+        local_problem_id:
+          type: integer
+          title: Local Problem Id
+        vote_type:
+          type: string
+          title: Vote Type
+        rejection_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rejection Reason
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - user_id
+      - solution_id
+      - local_problem_id
+      - vote_type
+      - created_at
+      title: VoteResponse
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer
