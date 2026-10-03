@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-03T21:51:12.183Z",
+  "checks": [
+    "private draft excluded from public fixture",
+    "adaptation preserves edited inputs",
+    "map and list use same radius filter",
+    "report error connected and focused",
+    "out of region prevents continuation",
+    "load error does not promise preserved form",
+    "negative budget row blocks approval",
+    "preview tools remain in reserved header",
+    "mobile menu opens after routing extraction"
+  ]
+}

@@ -1,5 +1,25 @@
 # HUBMI — Tasks for Three Contributors
 
+> **Plan revision: 2026-10-03.** Read [PLAN_IMPLEMENTACJI.md](PLAN_IMPLEMENTACJI.md) before implementation. It contains the document-conflict analysis, revised delivery sequence, page/subpage specifications, mockup workflow, and dependencies. [README.md](README.md) remains the product authority. [FRONTEND_KIERUNEK.md](frontend/front/FRONTEND_KIERUNEK.md) supplies visual direction; its conflicting roles, access rules, municipal workflow, and crowdfunding proposals are superseded by the README. These documents describe intended work, not completed functionality.
+
+## Revised Implementation Sequence
+
+All accepted modules remain in scope. The phases below order delivery; they do not redefine the final prototype as a smaller MVP. Route names and technical defaults in the detailed plan are proposals, not existing interfaces.
+
+| Phase | Deliverable | Frontend | Application backend | AI/data |
+| --- | --- | --- | --- | --- |
+| E0 | Agree contracts and screen behavior | Screen/state inventory, tokens, first flow mockups | Session, IDs, permissions, error/job schemas | DTOs, provenance, corpus/model requirements |
+| E1 | Submit a problem and receive real solutions | Demo login, report, grouping confirmation, list, innovation detail, 3D view | Persist reports/problems; explicit association; matching and anonymous projections | Local sanitization, compatible embeddings, retrieval, explanations, projection |
+| E2 | Explore knowledge and nearby needs | Independent catalogue, geographic discovery, need detail, frequent problems | Search/filter/count endpoints | Taxonomy, relevant source refresh and ingestion |
+| E3 | Create and approve an idea | Assistant/form, private draft, processing, author confirmation, admin review | Persistent queue, retries, publication gates | Structured refinement, duplicate suggestions |
+| E4 | Support and discuss proposals; adapt an innovation | Swipe/buttons/undo, idea threads, institution form and draft, in-app notifications | Vote uniqueness, discussions, adaptation storage, notifications | Source-grounded institution adaptation |
+| E5 | Recruit, fund by declarations, run and evaluate pilots | Pilot tabs, resource declarations, volunteer waiting-list offers, evaluation | Readiness gates, capacity concurrency, approved budgets, lifecycle | Suggestions and recurrence recommendations only |
+| E6 | Complete administration and integration | Merge/split previews, knowledge editing, approval views, responsive/a11y checks | Merge reconciliation, retention, source removal, integration checks | Ingestion resilience, sanitization and retrieval-quality checks |
+
+Administrator actions needed by E1/E3/E5 ship in those phases. E6 completes their breadth; it does not defer authorization or essential approval controls.
+
+**Frontend adaptations:** use exactly two demo accounts (`user`, `administrator`); all application views require login; the institution journey uses the user role; matching must not wait for an official's decision; funding represents declared resources, without payment UI; swipe labels are `Popieram` / `Pomijam`; do not build municipality/partner account management, mentor assignment, file uploads, or automated municipal escalation unless separately scoped. Keep the user-visible statistics accepted in the README.
+
 This is a work allocation, not an implementation status report. Product behavior and scope come from [README.md](README.md). All checklist items are initially pending. The interface must be in Polish.
 
 **Highest priority: a user describes a problem and receives relevant existing solutions.** Complete this integrated path before expanding the remaining modules. All agreed features remain in scope; the order below is a proposed implementation sequence.
@@ -62,8 +82,11 @@ integration/                   Person 2 only
 
 Own the entire React/TypeScript/Vite frontend, including the administrator panel. Other contributors provide APIs and data, not separate frontend implementations.
 
+Frontend progress (2026-10-03): the MBG visual prototype covers 44 planned routes plus the brand screen, desktop/mobile mockups, local interaction examples, and the review atlas. See [mockups/mbg-v4](frontend/front/mockups/mbg-v4/README.md) and [DESIGN.md](DESIGN.md). API integration, authentication, actual AI, geocoding, and backend enforcement remain pending; the implementation checklist below still describes the complete application.
+
 ### First: the complete matchmaking interface
 
+- [ ] Follow the revised screen/state specifications in [PLAN_IMPLEMENTACJI.md](PLAN_IMPLEMENTACJI.md), starting with the E1 journey. Use the future mockup instructions in [frontend/front/AGENTS.md](frontend/front/AGENTS.md).
 - [ ] Build the application shell, navigation, Polish copy, and responsive layouts.
 - [ ] Add selection of the synthetic user/admin demo account and connect it to the backend session mechanism.
 - [ ] Build problem submission with text, anonymous presentation, and problem location from a map, manual selection, or confirmed phone location.
@@ -72,6 +95,7 @@ Own the entire React/TypeScript/Vite frontend, including the administrator panel
 - [ ] Present suggested canonical problems; support confirmation, rejection, and creation of a new problem when no match is suitable.
 - [ ] Display up to ten matching innovations with sources, explanations, limitations, and relevant metadata.
 - [ ] Implement the semantic 3D visualization using coordinates returned by the backend, with an equivalent conventional result list.
+- [ ] Link a persisted report to its canonical problem and recommendations; support direct detail URLs, safe refresh, and navigation back without losing context.
 - [ ] Handle loading, processing, empty results, API failures, and retries without pretending pending work has completed.
 
 ### Then: all remaining user and administrator views
@@ -84,6 +108,7 @@ Own the entire React/TypeScript/Vite frontend, including the administrator panel
 - [ ] Build idea discussion threads and in-app notifications.
 - [ ] Build pilot details, resource declarations, volunteer registration/cancellation, waiting-list offers, and acceptance controls.
 - [ ] Build beneficiary/volunteer satisfaction and improvement forms, distinct from support voting.
+- [ ] Keep report classification, idea publication, and pilot lifecycle states separate. Display original source data, AI estimates, declared resources, and administrator-approved values distinctly.
 - [ ] Build the administrator panel: knowledge editing, report review, problem merge/split, duplicate-solution review/merge, idea approval, budget approval, lifecycle changes, volunteer qualification review, manual waiting-list promotion, and dissemination approval.
 - [ ] Show administrator-only author identity while preserving anonymous presentation to other users.
 - [ ] Apply accessible labels, focus behavior, keyboard navigation, readable contrast, and text alternatives throughout.
@@ -121,6 +146,7 @@ Own public HTTP endpoints, application authorization, all application database m
 - [ ] Implement discussion threads, institution-adaptation request storage, and in-app notifications.
 - [ ] Implement pilot lifecycle transitions, resource declarations, approved budgets, unavailable status, and administrator-only pilot start/dissemination.
 - [ ] Require the agreed budget, accountable owner, partners, test plan, and participants before pilot start.
+- [ ] Expose readiness checks and unmet conditions to the UI; no frontend progress indicator or funding declaration can authorize a pilot start.
 - [ ] Implement volunteer capacity, cancellation, qualification review, waiting lists, place offers, acceptance, and manual promotion. Prevent oversubscription during simultaneous acceptance.
 - [ ] Implement satisfaction feedback for beneficiaries/volunteers separately from support voting.
 - [ ] Implement recurrence as a recommendation, never automatic deployment.
@@ -172,6 +198,7 @@ Own retrieval quality and AI processing. Use local Nomic embeddings through Olla
 The following coordination belongs to the three tasks above; it is not a fourth task.
 
 1. **Agree interfaces first.** Person 2 owns public API schemas in `backend/app/contracts`; Person 3 owns AI result types and persistence/provider interfaces in `backend/ai/contracts`; Person 1 validates that they cover the screens. Include stable IDs, lifecycle states, nullable estimates, source references, candidate scores, job states, structured errors, and 3D coordinates.
+   Include capability/readiness information, safe mutation retry behavior, privacy-specific response projections, and explicit distinctions between unknown values and zero. Endpoint names in the revised plan are illustrative contract needs, not a frozen API.
 2. **Use one migration owner.** Person 2 writes all migrations in `backend/app/migrations`; Person 3 supplies vector/source requirements through the agreed interfaces. No migrations or application ORM models belong in `backend/ai`.
 3. **Integrate the highest-priority journey early.** Person 3 returns real matches from the existing corpus; Person 2 persists the report and serves results; Person 1 submits text and renders the real recommendations. Add grouping confirmation and 3D presentation to that same path.
 4. **Complete the remaining modules against shared contracts.** Frontend fixtures and fake AI responses are temporary development aids, not final functionality.

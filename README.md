@@ -1,6 +1,6 @@
-# HUBMI
+# Małopolska bez granic (MBG)
 
-HUBMI is a working name for a Polish-language hackathon prototype supporting the Małopolska Social Innovation Hub. It connects reported social needs with existing innovations, helps people develop new ideas, and supports community feedback and administrator-led pilots.
+Małopolska bez granic (MBG), previously known by the working name HUBMI, is a Polish-language hackathon prototype supporting the Małopolska Social Innovation Hub. It connects reported social needs with existing innovations, helps people develop new ideas, and supports community feedback and administrator-led pilots.
 
 This README records the intended application behavior, accepted decisions, and unresolved questions. It is a product context document, not a claim that these features are implemented. The application interface is in Polish; this document is in English.
 
@@ -14,7 +14,7 @@ Do not include team details, a delivery roadmap, cost-of-operation estimates, ac
 
 ## Current repository
 
-- `frontend/front`: React, TypeScript, and Vite frontend.
+- `frontend/front`: React, TypeScript, and Vite frontend with 45 interactive MBG mockup screens and a review atlas; see [mockup documentation](frontend/front/mockups/mbg-v4/README.md). These use local fixtures and do not implement backend sessions or AI.
 - `backend/scrap`: Python/Scrapy innovation-library scraper; see its README for usage.
 - `backend/data`: scraped innovation descriptions in Markdown.
 
@@ -22,7 +22,7 @@ The scraper documentation describes extracting descriptions, categories, metadat
 
 ## Users and access
 
-There are two application roles: user and administrator. All application features require login. Prototype accounts, reports, and locations are synthetic. There is no mObywatel integration, PESEL-based authorization, or real identity verification in the prototype; this supersedes earlier identity-integration ideas.
+There are two application roles: user and administrator. All application features require login. An informational public landing presents the initiative before login; the catalogue and application data remain behind the intended session boundary. Prototype accounts, reports, and locations are synthetic. There is no mObywatel integration, PESEL-based authorization, or real identity verification in the prototype; this supersedes earlier identity-integration ideas.
 
 Users may report issues affecting themselves, other people, organizations, or communities. An institution-oriented journey is available under the user role rather than a separate verified institutional role.
 

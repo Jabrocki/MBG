@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-03T21:59:39.836Z",
+  "checks": [
+    "React Bits entrance settles and counters reach fixture values",
+    "report intent survives demo account selection",
+    "catalogue intent survives demo account selection",
+    "reduced motion retains visible hero and final numbers without transforms",
+    "mobile navigation preserves map destination",
+    "dashboard has distinct background; no external image requests or runtime errors"
+  ],
+  "errors": [],
+  "externalImages": []
+}
