@@ -46,8 +46,10 @@ class FakeAIGateway:
             raise RuntimeError("AI Service unavailable")
         
         gen_desc = f"[HyDE Synthesized Solution]: Zorganizowany system wsparcia dla wyzwania: {text[:100]}..."
-        # Deterministic 8-dim mock embedding
-        embedding = [0.1 * (i + 1) for i in range(8)]
+        # Deterministic normalized embedding compatible with Nomic's 512 dimensions.
+        raw_embedding = [float((i % 17) + 1) for i in range(512)]
+        norm = sum(value * value for value in raw_embedding) ** 0.5
+        embedding = [value / norm for value in raw_embedding]
         return HyDEResult(
             generated_description=gen_desc,
             embedding=embedding

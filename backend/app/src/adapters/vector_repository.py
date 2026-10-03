@@ -1,8 +1,20 @@
 import math
+from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
-from src.models.source import ProblemVectorRecord
+from src.models.source import ProblemVectorRecord, Solution
+from src.models.problem import CanonicalProblem
+
+
+@dataclass(frozen=True)
+class VectorCandidate:
+    id: str
+    score: float
+    title: str
+    source_url: Optional[str]
+    explanation: str
+    limitations: tuple[str, ...] = ()
 
 class VectorRepositoryAdapter:
     """PostgreSQL adapter for problem and solution vector embeddings and coordinates.
@@ -90,6 +102,58 @@ class VectorRepositoryAdapter:
 
         scored.sort(key=lambda x: x["similarity"], reverse=True)
         return scored[:top_k]
+
+    def search(
+        self,
+        collection: str,
+        vector: List[float],
+        limit: int,
+    ) -> List[VectorCandidate]:
+        """Expose the AI package repository contract over application records."""
+        entity_type = {
+            "problems": "problem",
+            "innovations": "solution",
+        }.get(collection)
+        if entity_type is None:
+            raise ValueError(f"Unsupported vector collection: {collection}")
+
+        candidates = self.search_similar_entities(
+            target_embedding=vector,
+            entity_type=entity_type,
+            top_k=limit,
+        )
+        results: List[VectorCandidate] = []
+        for candidate in candidates:
+            entity_id = candidate["entity_id"]
+            if entity_type == "problem":
+                entity = self.db.get(CanonicalProblem, entity_id)
+                title = entity.title if entity else f"Problem #{entity_id}"
+                source_url = None
+                limitations: tuple[str, ...] = ()
+            else:
+                entity = self.db.get(Solution, entity_id)
+                title = entity.title if entity else f"Innowacja #{entity_id}"
+                source_url = (
+                    entity.source_knowledge.source_url
+                    if entity and entity.source_knowledge
+                    else None
+                )
+                limitations = (
+                    (entity.limitations,)
+                    if entity and entity.limitations
+                    else ()
+                )
+            results.append(
+                VectorCandidate(
+                    id=str(entity_id),
+                    score=candidate["similarity"],
+                    title=title,
+                    source_url=source_url,
+                    explanation="Dopasowanie na podstawie podobieństwa embeddingów.",
+                    limitations=limitations,
+                )
+            )
+        return results
 
     @staticmethod
     def _cosine_similarity(v1: List[float], v2: List[float]) -> float:

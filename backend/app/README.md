@@ -76,3 +76,17 @@ Zgodnie z `tasks.md`, testy backendu uruchamia się w pełni offline z wykorzyst
 ```bash
 python -m pytest tests
 ```
+
+## 6. Integracja embeddingów
+
+`VectorRepositoryAdapter` udostępnia kontrakt `search(collection, vector, limit)` używany
+przez `backend/ai`. Kolekcje `problems` i `innovations` są mapowane odpowiednio na
+rekordy problemów i rozwiązań w `problem_vector_records`. Produkcyjny model Nomic
+używa znormalizowanych wektorów 512-wymiarowych; fake gateway zachowuje ten sam
+wymiar, dzięki czemu przepływ można testować bez pobierania modelu.
+
+Weryfikacja lokalnych embeddingów i ich wymiarów:
+
+```bash
+../scrap/.venv/bin/python ../scrap/load_embeddings_postgres.py --dry-run
+```

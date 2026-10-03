@@ -66,6 +66,16 @@ def _make_client():
     app.dependency_overrides[get_db] = override_get_db
     return TestClient(app, base_url="http://test")
 
+
+@pytest.fixture
+def db_session() -> Generator[Session, None, None]:
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
 @pytest.fixture
 def client() -> Generator[TestClient, None, None]:
     c = _make_client()
