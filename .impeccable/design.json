@@ -1,0 +1,1248 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-03T22:00:56Z",
+  "title": "Design System: Małopolska bez granic — MBG",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Biel tła",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--paper"
+        },
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26.43% 0 0)",
+          "oklch(37.86% 0 0)",
+          "oklch(49.29% 0 0)",
+          "oklch(60.71% 0 0)",
+          "oklch(72.14% 0 0)",
+          "oklch(83.57% 0 0)",
+          "oklch(95% 0 0)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Biała powierzchnia",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--surface"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0000 0.00)",
+          "oklch(26.43% 0.0000 0.00)",
+          "oklch(37.86% 0.0000 0.00)",
+          "oklch(49.29% 0.0000 0.00)",
+          "oklch(60.71% 0.0000 0.00)",
+          "oklch(72.14% 0.0000 0.00)",
+          "oklch(83.57% 0.0000 0.00)",
+          "oklch(95% 0.0000 0.00)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Granatowy atrament",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--ink"
+        },
+        "tonalRamp": [
+          "oklch(15.00% 0.0564 246.89)",
+          "oklch(26.43% 0.0564 246.89)",
+          "oklch(37.86% 0.0564 246.89)",
+          "oklch(49.29% 0.0564 246.89)",
+          "oklch(60.71% 0.0564 246.89)",
+          "oklch(72.14% 0.0564 246.89)",
+          "oklch(83.57% 0.0564 246.89)",
+          "oklch(95.00% 0.0564 246.89)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Przygaszony tekst",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--muted"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0251 157.92)",
+          "oklch(26.43% 0.0251 157.92)",
+          "oklch(37.86% 0.0251 157.92)",
+          "oklch(49.29% 0.0251 157.92)",
+          "oklch(60.71% 0.0251 157.92)",
+          "oklch(72.14% 0.0251 157.92)",
+          "oklch(83.57% 0.0251 157.92)",
+          "oklch(95% 0.0251 157.92)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "green": {
+        "role": "primary",
+        "displayName": "Zieleń działania",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--green"
+        },
+        "tonalRamp": [
+          "oklch(15.00% 0.1321 155.14)",
+          "oklch(26.43% 0.1321 155.14)",
+          "oklch(37.86% 0.1321 155.14)",
+          "oklch(49.29% 0.1321 155.14)",
+          "oklch(60.71% 0.1321 155.14)",
+          "oklch(72.14% 0.1321 155.14)",
+          "oklch(83.57% 0.1321 155.14)",
+          "oklch(95.00% 0.1321 155.14)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "green-hover": {
+        "role": "primary",
+        "displayName": "Zieleń interakcji",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--green-hover"
+        },
+        "tonalRamp": [
+          "oklch(15.00% 0.1054 156.21)",
+          "oklch(26.43% 0.1054 156.21)",
+          "oklch(37.86% 0.1054 156.21)",
+          "oklch(49.29% 0.1054 156.21)",
+          "oklch(60.71% 0.1054 156.21)",
+          "oklch(72.14% 0.1054 156.21)",
+          "oklch(83.57% 0.1054 156.21)",
+          "oklch(95.00% 0.1054 156.21)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "sage": {
+        "role": "primary",
+        "displayName": "Szałwia",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--sage"
+        },
+        "tonalRamp": [
+          "oklch(15.00% 0.0333 143.92)",
+          "oklch(26.43% 0.0333 143.92)",
+          "oklch(37.86% 0.0333 143.92)",
+          "oklch(49.29% 0.0333 143.92)",
+          "oklch(60.71% 0.0333 143.92)",
+          "oklch(72.14% 0.0333 143.92)",
+          "oklch(83.57% 0.0333 143.92)",
+          "oklch(95.00% 0.0333 143.92)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "rust": {
+        "role": "secondary",
+        "displayName": "Cegła",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--rust"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.1317 36.21)",
+          "oklch(26.43% 0.1317 36.21)",
+          "oklch(37.86% 0.1317 36.21)",
+          "oklch(49.29% 0.1317 36.21)",
+          "oklch(60.71% 0.1317 36.21)",
+          "oklch(72.14% 0.1317 36.21)",
+          "oklch(83.57% 0.1317 36.21)",
+          "oklch(95% 0.1317 36.21)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Linia podziału",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--line"
+        },
+        "tonalRamp": [
+          "oklch(15.00% 0.0291 151.84)",
+          "oklch(26.43% 0.0291 151.84)",
+          "oklch(37.86% 0.0291 151.84)",
+          "oklch(49.29% 0.0291 151.84)",
+          "oklch(60.71% 0.0291 151.84)",
+          "oklch(72.14% 0.0291 151.84)",
+          "oklch(83.57% 0.0291 151.84)",
+          "oklch(95.00% 0.0291 151.84)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "input": {
+        "role": "neutral",
+        "displayName": "Obrys pola",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--input"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0240 153.81)",
+          "oklch(26.43% 0.0240 153.81)",
+          "oklch(37.86% 0.0240 153.81)",
+          "oklch(49.29% 0.0240 153.81)",
+          "oklch(60.71% 0.0240 153.81)",
+          "oklch(72.14% 0.0240 153.81)",
+          "oklch(83.57% 0.0240 153.81)",
+          "oklch(95% 0.0240 153.81)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "focus": {
+        "role": "functional",
+        "displayName": "Niebieski fokus",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--focus"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.1809 265.64)",
+          "oklch(26.43% 0.1809 265.64)",
+          "oklch(37.86% 0.1809 265.64)",
+          "oklch(49.29% 0.1809 265.64)",
+          "oklch(60.71% 0.1809 265.64)",
+          "oklch(72.14% 0.1809 265.64)",
+          "oklch(83.57% 0.1809 265.64)",
+          "oklch(95% 0.1809 265.64)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "badge-green-ink": {
+        "role": "functional",
+        "displayName": "Tekst statusu zielonego",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0652 163.47)",
+          "oklch(26.43% 0.0652 163.47)",
+          "oklch(37.86% 0.0652 163.47)",
+          "oklch(49.29% 0.0652 163.47)",
+          "oklch(60.71% 0.0652 163.47)",
+          "oklch(72.14% 0.0652 163.47)",
+          "oklch(83.57% 0.0652 163.47)",
+          "oklch(95% 0.0652 163.47)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "badge-yellow": {
+        "role": "functional",
+        "displayName": "Status żółty",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge.yellow"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0444 93.10)",
+          "oklch(26.43% 0.0444 93.10)",
+          "oklch(37.86% 0.0444 93.10)",
+          "oklch(49.29% 0.0444 93.10)",
+          "oklch(60.71% 0.0444 93.10)",
+          "oklch(72.14% 0.0444 93.10)",
+          "oklch(83.57% 0.0444 93.10)",
+          "oklch(95% 0.0444 93.10)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "badge-yellow-ink": {
+        "role": "functional",
+        "displayName": "Tekst statusu żółtego",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge.yellow"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0927 77.75)",
+          "oklch(26.43% 0.0927 77.75)",
+          "oklch(37.86% 0.0927 77.75)",
+          "oklch(49.29% 0.0927 77.75)",
+          "oklch(60.71% 0.0927 77.75)",
+          "oklch(72.14% 0.0927 77.75)",
+          "oklch(83.57% 0.0927 77.75)",
+          "oklch(95% 0.0927 77.75)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "badge-blue": {
+        "role": "functional",
+        "displayName": "Status niebieski",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge.blue"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0121 247.95)",
+          "oklch(26.43% 0.0121 247.95)",
+          "oklch(37.86% 0.0121 247.95)",
+          "oklch(49.29% 0.0121 247.95)",
+          "oklch(60.71% 0.0121 247.95)",
+          "oklch(72.14% 0.0121 247.95)",
+          "oklch(83.57% 0.0121 247.95)",
+          "oklch(95% 0.0121 247.95)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "badge-blue-ink": {
+        "role": "functional",
+        "displayName": "Tekst statusu niebieskiego",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge.blue"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0663 243.14)",
+          "oklch(26.43% 0.0663 243.14)",
+          "oklch(37.86% 0.0663 243.14)",
+          "oklch(49.29% 0.0663 243.14)",
+          "oklch(60.71% 0.0663 243.14)",
+          "oklch(72.14% 0.0663 243.14)",
+          "oklch(83.57% 0.0663 243.14)",
+          "oklch(95% 0.0663 243.14)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "badge-lavender": {
+        "role": "functional",
+        "displayName": "Status lawendowy",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge.lavender"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0210 304.03)",
+          "oklch(26.43% 0.0210 304.03)",
+          "oklch(37.86% 0.0210 304.03)",
+          "oklch(49.29% 0.0210 304.03)",
+          "oklch(60.71% 0.0210 304.03)",
+          "oklch(72.14% 0.0210 304.03)",
+          "oklch(83.57% 0.0210 304.03)",
+          "oklch(95% 0.0210 304.03)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "badge-lavender-ink": {
+        "role": "functional",
+        "displayName": "Tekst statusu lawendowego",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge.lavender"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0796 310.41)",
+          "oklch(26.43% 0.0796 310.41)",
+          "oklch(37.86% 0.0796 310.41)",
+          "oklch(49.29% 0.0796 310.41)",
+          "oklch(60.71% 0.0796 310.41)",
+          "oklch(72.14% 0.0796 310.41)",
+          "oklch(83.57% 0.0796 310.41)",
+          "oklch(95% 0.0796 310.41)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "badge-neutral": {
+        "role": "functional",
+        "displayName": "Status neutralny",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge.neutral"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0067 115.71)",
+          "oklch(26.43% 0.0067 115.71)",
+          "oklch(37.86% 0.0067 115.71)",
+          "oklch(49.29% 0.0067 115.71)",
+          "oklch(60.71% 0.0067 115.71)",
+          "oklch(72.14% 0.0067 115.71)",
+          "oklch(83.57% 0.0067 115.71)",
+          "oklch(95% 0.0067 115.71)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "notice-info": {
+        "role": "functional",
+        "displayName": "Komunikat informacyjny",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".notice"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0075 164.93)",
+          "oklch(26.43% 0.0075 164.93)",
+          "oklch(37.86% 0.0075 164.93)",
+          "oklch(49.29% 0.0075 164.93)",
+          "oklch(60.71% 0.0075 164.93)",
+          "oklch(72.14% 0.0075 164.93)",
+          "oklch(83.57% 0.0075 164.93)",
+          "oklch(95% 0.0075 164.93)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "notice-warning": {
+        "role": "functional",
+        "displayName": "Komunikat ostrzegawczy",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".notice.warning"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0345 88.78)",
+          "oklch(26.43% 0.0345 88.78)",
+          "oklch(37.86% 0.0345 88.78)",
+          "oklch(49.29% 0.0345 88.78)",
+          "oklch(60.71% 0.0345 88.78)",
+          "oklch(72.14% 0.0345 88.78)",
+          "oklch(83.57% 0.0345 88.78)",
+          "oklch(95% 0.0345 88.78)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "notice-warning-ink": {
+        "role": "functional",
+        "displayName": "Tekst ostrzeżenia",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".notice.warning"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0816 76.42)",
+          "oklch(26.43% 0.0816 76.42)",
+          "oklch(37.86% 0.0816 76.42)",
+          "oklch(49.29% 0.0816 76.42)",
+          "oklch(60.71% 0.0816 76.42)",
+          "oklch(72.14% 0.0816 76.42)",
+          "oklch(83.57% 0.0816 76.42)",
+          "oklch(95% 0.0816 76.42)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "notice-success": {
+        "role": "functional",
+        "displayName": "Komunikat powodzenia",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".notice.success"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0170 145.44)",
+          "oklch(26.43% 0.0170 145.44)",
+          "oklch(37.86% 0.0170 145.44)",
+          "oklch(49.29% 0.0170 145.44)",
+          "oklch(60.71% 0.0170 145.44)",
+          "oklch(72.14% 0.0170 145.44)",
+          "oklch(83.57% 0.0170 145.44)",
+          "oklch(95% 0.0170 145.44)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "notice-success-ink": {
+        "role": "functional",
+        "displayName": "Tekst powodzenia",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".notice.success"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0658 163.33)",
+          "oklch(26.43% 0.0658 163.33)",
+          "oklch(37.86% 0.0658 163.33)",
+          "oklch(49.29% 0.0658 163.33)",
+          "oklch(60.71% 0.0658 163.33)",
+          "oklch(72.14% 0.0658 163.33)",
+          "oklch(83.57% 0.0658 163.33)",
+          "oklch(95% 0.0658 163.33)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "notice-error": {
+        "role": "functional",
+        "displayName": "Komunikat błędu",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".notice.error"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0180 30.27)",
+          "oklch(26.43% 0.0180 30.27)",
+          "oklch(37.86% 0.0180 30.27)",
+          "oklch(49.29% 0.0180 30.27)",
+          "oklch(60.71% 0.0180 30.27)",
+          "oklch(72.14% 0.0180 30.27)",
+          "oklch(83.57% 0.0180 30.27)",
+          "oklch(95% 0.0180 30.27)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "notice-error-ink": {
+        "role": "functional",
+        "displayName": "Tekst błędu",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".notice.error"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.1287 28.73)",
+          "oklch(26.43% 0.1287 28.73)",
+          "oklch(37.86% 0.1287 28.73)",
+          "oklch(49.29% 0.1287 28.73)",
+          "oklch(60.71% 0.1287 28.73)",
+          "oklch(72.14% 0.1287 28.73)",
+          "oklch(83.57% 0.1287 28.73)",
+          "oklch(95% 0.1287 28.73)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "quick-blue": {
+        "role": "secondary",
+        "displayName": "Błękit skrótu",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".quick-action.blue"
+        },
+        "tonalRamp": [
+          "oklch(15.00% 0.0298 251.28)",
+          "oklch(26.43% 0.0298 251.28)",
+          "oklch(37.86% 0.0298 251.28)",
+          "oklch(49.29% 0.0298 251.28)",
+          "oklch(60.71% 0.0298 251.28)",
+          "oklch(72.14% 0.0298 251.28)",
+          "oklch(83.57% 0.0298 251.28)",
+          "oklch(95.00% 0.0298 251.28)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "quick-blue-ink": {
+        "role": "secondary",
+        "displayName": "Błękit ikony",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".blue .quick-icon"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0674 239.90)",
+          "oklch(26.43% 0.0674 239.90)",
+          "oklch(37.86% 0.0674 239.90)",
+          "oklch(49.29% 0.0674 239.90)",
+          "oklch(60.71% 0.0674 239.90)",
+          "oklch(72.14% 0.0674 239.90)",
+          "oklch(83.57% 0.0674 239.90)",
+          "oklch(95% 0.0674 239.90)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "quick-lavender": {
+        "role": "secondary",
+        "displayName": "Lawenda skrótu",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".quick-action.lavender"
+        },
+        "tonalRamp": [
+          "oklch(15.00% 0.0378 309.59)",
+          "oklch(26.43% 0.0378 309.59)",
+          "oklch(37.86% 0.0378 309.59)",
+          "oklch(49.29% 0.0378 309.59)",
+          "oklch(60.71% 0.0378 309.59)",
+          "oklch(72.14% 0.0378 309.59)",
+          "oklch(83.57% 0.0378 309.59)",
+          "oklch(95.00% 0.0378 309.59)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "quick-lavender-ink": {
+        "role": "secondary",
+        "displayName": "Lawenda ikony",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".lavender .quick-icon"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0865 313.64)",
+          "oklch(26.43% 0.0865 313.64)",
+          "oklch(37.86% 0.0865 313.64)",
+          "oklch(49.29% 0.0865 313.64)",
+          "oklch(60.71% 0.0865 313.64)",
+          "oklch(72.14% 0.0865 313.64)",
+          "oklch(83.57% 0.0865 313.64)",
+          "oklch(95% 0.0865 313.64)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "quick-yellow": {
+        "role": "secondary",
+        "displayName": "Żółć skrótu",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".quick-action.yellow"
+        },
+        "tonalRamp": [
+          "oklch(15.00% 0.0650 93.06)",
+          "oklch(26.43% 0.0650 93.06)",
+          "oklch(37.86% 0.0650 93.06)",
+          "oklch(49.29% 0.0650 93.06)",
+          "oklch(60.71% 0.0650 93.06)",
+          "oklch(72.14% 0.0650 93.06)",
+          "oklch(83.57% 0.0650 93.06)",
+          "oklch(95.00% 0.0650 93.06)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "quick-yellow-ink": {
+        "role": "secondary",
+        "displayName": "Żółć ikony",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".yellow .quick-icon"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.1042 81.45)",
+          "oklch(26.43% 0.1042 81.45)",
+          "oklch(37.86% 0.1042 81.45)",
+          "oklch(49.29% 0.1042 81.45)",
+          "oklch(60.71% 0.1042 81.45)",
+          "oklch(72.14% 0.1042 81.45)",
+          "oklch(83.57% 0.1042 81.45)",
+          "oklch(95% 0.1042 81.45)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "nav-hover": {
+        "role": "neutral",
+        "displayName": "Hover nawigacji",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".app-sidebar a:hover"
+        },
+        "tonalRamp": [
+          "oklch(15% 0.0110 123.46)",
+          "oklch(26.43% 0.0110 123.46)",
+          "oklch(37.86% 0.0110 123.46)",
+          "oklch(49.29% 0.0110 123.46)",
+          "oklch(60.71% 0.0110 123.46)",
+          "oklch(72.14% 0.0110 123.46)",
+          "oklch(83.57% 0.0110 123.46)",
+          "oklch(95% 0.0110 123.46)"
+        ],
+        "tonalRampPurpose": "Pochodny podgląd tonalny panelu; nie są to tokeny używane w aplikacji."
+      },
+      "dashboard": {
+        "role": "neutral",
+        "displayName": "Białe płótno dashboardu",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--dashboard"
+        }
+      },
+      "landing-paper": {
+        "role": "neutral",
+        "displayName": "Papier landingu",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".landing"
+        }
+      },
+      "sidebar-surface": {
+        "role": "neutral",
+        "displayName": "Powierzchnia nawigacji",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".app-sidebar"
+        }
+      },
+      "sidebar-active": {
+        "role": "primary",
+        "displayName": "Aktywna nawigacja",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".app-sidebar a.active"
+        }
+      },
+      "sidebar-active-ink": {
+        "role": "primary",
+        "displayName": "Tekst aktywnej nawigacji",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".app-sidebar a.active"
+        }
+      },
+      "quick-green": {
+        "role": "secondary",
+        "displayName": "Zieleń skrótu",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".quick-action.green"
+        }
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Duży tytuł landingu",
+        "purpose": "Obietnica w hero.",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".cartoon-hero-copy h1"
+        }
+      },
+      "headline": {
+        "displayName": "Nagłówek strony",
+        "purpose": "Bazowy h1 aplikacji; lokalne warianty zależą od ekranu.",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "selector": "h1"
+        }
+      },
+      "title": {
+        "displayName": "Tytuł sekcji",
+        "purpose": "Bazowy h2.",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "selector": "h2"
+        }
+      },
+      "subheading": {
+        "displayName": "Śródtytuł",
+        "purpose": "Bazowy h3.",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "selector": "h3"
+        }
+      },
+      "body": {
+        "displayName": "Tekst podstawowy",
+        "purpose": "Treści i odziedziczona typografia formularzy.",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "selector": ":root"
+        }
+      },
+      "label": {
+        "displayName": "Etykieta pola",
+        "purpose": "Powiązany label.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".field > label"
+        }
+      },
+      "metadata": {
+        "displayName": "Wskazówka i metadane",
+        "purpose": "Drobniejsze objaśnienia.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": "small, .muted"
+        }
+      },
+      "button": {
+        "displayName": "Tekst przycisku",
+        "purpose": "Wspólne warianty przycisków.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".button"
+        }
+      },
+      "badge": {
+        "displayName": "Tekst statusu",
+        "purpose": "Mała, tekstowa etykieta.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge"
+        }
+      }
+    },
+    "sources": {
+      "normativePrimitives": "DESIGN.md#frontmatter",
+      "stylesheets": [
+        "frontend/front/src/index.css",
+        "frontend/front/src/App.css",
+        "frontend/front/src/Civic.css"
+      ],
+      "components": [
+        "frontend/front/src/ui.tsx",
+        "frontend/front/src/App.tsx",
+        "frontend/front/src/pages/Public.tsx",
+        "frontend/front/src/pages/Citizen.tsx",
+        "frontend/front/src/pages/Landing.tsx",
+        "frontend/front/src/components/react-bits/AnimatedContent.tsx",
+        "frontend/front/src/components/react-bits/CountUp.tsx",
+        "frontend/front/src/components/react-bits/README.md"
+      ],
+      "direction": ["PRODUCT.md", "frontend/front/mockups/mbg-v4/brief.md"],
+      "mode": "scan",
+      "scope": "Aktualny mbg-v4 po zatwierdzonej zmianie właściciela. CSS, w tym późniejszy Civic.css, rozstrzyga wartości.",
+      "assets": [
+        "frontend/front/public/brand/mbg-landscape.webp",
+        "frontend/front/public/brand/mbg-landscape-original.png",
+        "frontend/front/public/images/małopolska-hero.webp"
+      ]
+    },
+    "primitiveSources": {
+      "rounded": {
+        "badge": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".badge"
+        },
+        "control": {
+          "file": "frontend/front/src/App.css",
+          "selectors": [
+            ".button",
+            "input:not([type='radio']):not([type='checkbox']):not([type='range'])",
+            ".app-sidebar nav a"
+          ]
+        },
+        "overlay": {
+          "file": "frontend/front/src/App.css",
+          "selectors": [".toast", ".prototype-popover"]
+        },
+        "panel": {
+          "file": "frontend/front/src/index.css",
+          "customProperty": "--radius"
+        },
+        "hero": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".landing"
+        },
+        "circle": {
+          "file": "frontend/front/src/App.css",
+          "selectors": [".avatar", ".quick-icon", ".stepper li > span"]
+        }
+      },
+      "spacing": {
+        "file": "frontend/front/src/App.css",
+        "note": "Nazwy space-N porządkują powtarzane długości. CSS nie deklaruje zmiennych spacing.",
+        "examples": {
+          "space-8": ".field gap",
+          "space-12": ".button gap",
+          "space-16": ".page-heading p margin-top",
+          "space-20": ".form-grid gap",
+          "space-24": ".stack gap",
+          "space-28": ".detail-layout gap; .panel padding",
+          "space-32": ".stepper margin-bottom; .hero-note padding",
+          "space-40": ".reading-page padding",
+          "space-64": ".app-main padding-bottom"
+        }
+      }
+    },
+    "shadows": [
+      {
+        "name": "toast",
+        "value": "0 8px 30px #183c3326",
+        "purpose": "Cień lokalnego komunikatu toast.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".toast"
+        }
+      },
+      {
+        "name": "prototype-popover",
+        "value": "0 10px 35px #183c3320",
+        "purpose": "Cień panelu narzędzi prototypu.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".prototype-popover"
+        }
+      },
+      {
+        "name": "landing-stats",
+        "value": "0 10px 25px #23554018",
+        "purpose": "Belka danych demonstracyjnych landingu; brak cienia do 760 px.",
+        "source": {
+          "file": "frontend/front/src/Civic.css",
+          "selector": ".hero-stats"
+        }
+      }
+    ],
+    "focus": [
+      {
+        "name": "global",
+        "value": "outline: 3px solid var(--focus); outline-offset: 4px;",
+        "purpose": "Przyciski, linki, pola, select i summary przy focus-visible.",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "selector": "button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible"
+        }
+      },
+      {
+        "name": "search",
+        "value": "outline: 3px solid var(--focus); outline-offset: 3px;",
+        "purpose": "Cały kontener wyszukiwania przez focus-within; wnętrze bez drugiego obrysu.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".search:focus-within"
+        }
+      },
+      {
+        "name": "error-summary",
+        "value": "outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 8px;",
+        "purpose": "Programowe przejście do zestawienia błędów.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".error-summary:focus"
+        }
+      },
+      {
+        "name": "heading-route-focus",
+        "value": "outline: none;",
+        "purpose": "H1 z tabIndex=-1 jest celem nawigacji do treści, nie zwykłą kontrolką.",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "selector": "h1:focus"
+        }
+      }
+    ],
+    "motion": [
+      {
+        "name": "button",
+        "value": "background 0.18s, transform 0.18s",
+        "purpose": "Primary/secondary hover i aktywne przesunięcie o 1 px; domyślne CSS ease.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selector": ".button"
+        }
+      },
+      {
+        "name": "card-hover",
+        "value": "transform 0.18s; hover: translateY(-3px)",
+        "purpose": "Karty skrótów oraz atlasu.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selectors": [".quick-action", ".atlas-card"]
+        }
+      },
+      {
+        "name": "loading",
+        "value": "spin 1s linear infinite",
+        "purpose": "Obrót wskaźnika ładowania.",
+        "source": {
+          "file": "frontend/front/src/App.css",
+          "selectors": [".loader", "@keyframes spin"]
+        }
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation: none !important; transition: none !important; scroll-behavior: auto !important;",
+        "purpose": "Wszystkie elementy i pseudoelementy przy prefers-reduced-motion: reduce.",
+        "source": {
+          "file": "frontend/front/src/index.css",
+          "selector": "@media (prefers-reduced-motion: reduce)"
+        }
+      },
+      {
+        "name": "hero-heading",
+        "value": "duration: 0.85s; distance: 28px; initialOpacity: 0.65",
+        "purpose": "Wejście nagłówka Animated Content.",
+        "source": {
+          "file": "frontend/front/src/pages/Landing.tsx"
+        }
+      },
+      {
+        "name": "hero-art",
+        "value": "duration: 1.1s; distance: 35px; direction: horizontal; initialOpacity: 0.5",
+        "purpose": "Wejście ilustracji Animated Content.",
+        "source": {
+          "file": "frontend/front/src/pages/Landing.tsx"
+        }
+      },
+      {
+        "name": "hero-stats",
+        "value": "duration: 0.7s; delay: 0.35s; distance: 18px",
+        "purpose": "Wejście belki danych Animated Content.",
+        "source": {
+          "file": "frontend/front/src/pages/Landing.tsx"
+        }
+      },
+      {
+        "name": "count-up",
+        "value": "duration: 1.4s",
+        "purpose": "Parametr sprężyny Count Up; końcowa liczba dostępna tekstowo.",
+        "source": {
+          "file": "frontend/front/src/pages/Landing.tsx"
+        }
+      },
+      {
+        "name": "react-bits-reduced-motion",
+        "value": "gsap.matchMedia; useReducedMotion",
+        "purpose": "Żywa zmiana preferencji ruchu; bazowa treść widoczna, liczby końcowe bez animacji.",
+        "source": {
+          "files": [
+            "frontend/front/src/components/react-bits/AnimatedContent.tsx",
+            "frontend/front/src/components/react-bits/CountUp.tsx"
+          ]
+        }
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "1700px",
+        "query": "min-width",
+        "purpose": "Ograniczenie szerokiego układu aplikacji.",
+        "source": "frontend/front/src/App.css"
+      },
+      {
+        "name": "compact-desktop",
+        "value": "1200px",
+        "query": "max-width",
+        "purpose": "Węższy sidebar.",
+        "source": "frontend/front/src/App.css"
+      },
+      {
+        "name": "tablet",
+        "value": "960px",
+        "query": "max-width",
+        "purpose": "Jednokolumnowe szczegóły i dwa skróty w rzędzie.",
+        "source": "frontend/front/src/App.css"
+      },
+      {
+        "name": "mobile",
+        "value": "760px",
+        "query": "max-width",
+        "purpose": "Dolna nawigacja, menu i formularze w jednej kolumnie.",
+        "source": "frontend/front/src/App.css"
+      },
+      {
+        "name": "small-mobile",
+        "value": "360px",
+        "query": "max-width",
+        "purpose": "Korekta marginesów i tytułów.",
+        "source": "frontend/front/src/App.css"
+      },
+      {
+        "name": "landing-tablet",
+        "value": "761–1100px",
+        "query": "min-width: 761px and max-width: 1100px",
+        "purpose": "Rozmiar logo, nagłówka i układ działań landingu.",
+        "source": "frontend/front/src/Civic.css"
+      }
+    ],
+    "responsiveTypography": [
+      {
+        "refersTo": "display",
+        "query": "(min-width: 761px) and (max-width: 1100px)",
+        "fontSize": "clamp(3.1rem, 6vw, 4.3rem)",
+        "source": "frontend/front/src/Civic.css"
+      },
+      {
+        "refersTo": "display",
+        "query": "(max-width: 760px)",
+        "fontSize": "clamp(2.65rem, 10.6vw, 4rem)",
+        "lineHeight": "1.02",
+        "source": "frontend/front/src/Civic.css"
+      },
+      {
+        "refersTo": "headline",
+        "query": "(max-width: 760px)",
+        "selector": ".page-heading h1",
+        "fontSize": "34px",
+        "source": "frontend/front/src/App.css"
+      }
+    ],
+    "notCanonized": [
+      {
+        "source": "frontend/front/src/index.css",
+        "item": "--error",
+        "reason": "Zadeklarowany kolor nie ma użycia var(--error) w aktualnym src; właściwy komunikat błędu używa pary notice-error."
+      },
+      {
+        "source": "frontend/front/AGENTS.md",
+        "item": "Historyczne kierunki home-v1 / landing-v2",
+        "reason": "Historyczne kierunki, stara paleta i stare logo w AGENTS.md nie zastępują aktualnego mbg-v4 oraz polecenia właściciela."
+      }
+    ],
+    "tonalRampPolicy": "Syntetyczne rampy OKLCH są wyłącznie podglądem panelu z koloru frontmatteru: osiem kroków lightness 15–95%, stała chroma i hue. Nie tworzą nowych kolorów normatywnych."
+  },
+  "components": [
+    {
+      "name": "Przycisk główny",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Główne działanie z płaskim zielonym wypełnieniem.",
+      "source": {
+        "file": "frontend/front/src/ui.tsx",
+        "symbol": "ButtonLink",
+        "css": "frontend/front/src/App.css",
+        "selectors": [".button", ".button:hover", ".button:active"]
+      },
+      "html": "<a class=\"ds-button-primary\" href=\"/zgloszenia/nowe\">Opisz potrzebę<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M40 128h176M144 56l72 72-72 72\"/></svg></a>",
+      "css": ".ds-button-primary{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:48px;padding:12px 20px;border:1px solid transparent;border-radius:8px;font-family:'IBM Plex Sans',sans-serif;font-size:16px;font-weight:600;line-height:1.25;text-align:center;text-decoration:none;cursor:pointer;transition:background .18s,transform .18s}.ds-button-primary:active{transform:translateY(1px)}.ds-button-primary:disabled{opacity:.5;cursor:not-allowed}.ds-button-primary:focus-visible{outline:3px solid var(--focus);outline-offset:4px}@media(prefers-reduced-motion:reduce){.ds-button-primary{transition:none}}.ds-button-primary{background:var(--green);color:var(--surface)}.ds-button-primary:hover{background:var(--green-hover)}"
+    },
+    {
+      "name": "Przycisk dodatkowy",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Drugorzędne działanie z obrysem.",
+      "source": {
+        "file": "frontend/front/src/ui.tsx",
+        "symbol": "ButtonLink secondary",
+        "css": "frontend/front/src/App.css",
+        "selectors": [".button", ".button.secondary"]
+      },
+      "html": "<a class=\"ds-button-secondary\" href=\"/innowacje\">Przeglądaj innowacje<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M40 128h176M144 56l72 72-72 72\"/></svg></a>",
+      "css": ".ds-button-secondary{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:48px;padding:12px 20px;border:1px solid transparent;border-radius:8px;font-family:'IBM Plex Sans',sans-serif;font-size:16px;font-weight:600;line-height:1.25;text-align:center;text-decoration:none;cursor:pointer;transition:background .18s,transform .18s}.ds-button-secondary:active{transform:translateY(1px)}.ds-button-secondary:disabled{opacity:.5;cursor:not-allowed}.ds-button-secondary:focus-visible{outline:3px solid var(--focus);outline-offset:4px}@media(prefers-reduced-motion:reduce){.ds-button-secondary{transition:none}}.ds-button-secondary{background:transparent;color:var(--ink);border-color:var(--input)}.ds-button-secondary:hover{background:var(--sage)}"
+    },
+    {
+      "name": "Przycisk ikony",
+      "kind": "button",
+      "refersTo": "button-icon",
+      "description": "Małe działanie nazwane etykietą dostępną.",
+      "source": {
+        "file": "frontend/front/src/App.tsx",
+        "css": "frontend/front/src/App.css",
+        "selector": ".icon-button"
+      },
+      "html": "<button type=\"button\" class=\"ds-button-icon\" aria-label=\"Przejdź dalej\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M40 128h176M144 56l72 72-72 72\"/></svg></button>",
+      "css": ".ds-button-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;background:transparent;color:var(--ink);border:0;border-radius:8px;cursor:pointer}.ds-button-icon:hover{background:var(--sage)}.ds-button-icon:focus-visible{outline:3px solid var(--focus);outline-offset:4px}"
+    },
+    {
+      "name": "Pole z etykietą",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Powiązana etykieta, pole i wskazówka.",
+      "source": {
+        "file": "frontend/front/src/ui.tsx",
+        "symbol": "Field",
+        "css": "frontend/front/src/App.css",
+        "selectors": [
+          ".field",
+          ".field > label",
+          "input:not([type='radio']):not([type='checkbox']):not([type='range'])"
+        ]
+      },
+      "html": "<div class=\"ds-field\"><label for=\"ds-place\">Miejscowość</label><input id=\"ds-place\" class=\"ds-input\" type=\"text\" aria-describedby=\"ds-place-hint\" placeholder=\"Np. Kraków\"><small id=\"ds-place-hint\">Wpisz miejsce, którego dotyczy potrzeba.</small></div>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:8px;font-family:'IBM Plex Sans',sans-serif;color:var(--ink)}.ds-field label{font-size:14px;font-weight:600;line-height:1.55}.ds-input{width:100%;border:1px solid var(--input);border-radius:8px;min-height:46px;background:var(--surface);padding:11px 13px;color:var(--ink);font-family:inherit;font-size:16px;line-height:1.45;caret-color:var(--green)}.ds-input::placeholder{color:#65736a;opacity:1}.ds-input:focus-visible{outline:3px solid var(--focus);outline-offset:4px}.ds-field small{font-size:13px;line-height:1.6;color:var(--muted)}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Obrysowana powierzchnia spokojnego formularza lub szczegółów.",
+      "source": {
+        "file": "frontend/front/src/ui.tsx",
+        "symbol": "Panel",
+        "css": "frontend/front/src/App.css",
+        "selector": ".panel"
+      },
+      "html": "<section class=\"ds-panel\"><h2>Twoja potrzeba</h2><p>Sprawdź opis i potwierdź, czego potrzebujesz.</p></section>",
+      "css": ".ds-panel{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:28px;min-width:0;font-family:'IBM Plex Sans',sans-serif;font-size:16px;line-height:1.55}.ds-panel h2{font-family:var(--display,'Bricolage Grotesque Variable',sans-serif);font-size:25px;font-weight:600;line-height:1.13;letter-spacing:-.025em;margin:0 0 18px;text-wrap:balance}.ds-panel p{color:var(--muted);max-width:72ch;margin:0 0 1em}@media(max-width:760px){.ds-panel{padding:22px}.ds-panel h2{font-size:24px}}@media(max-width:360px){.ds-panel{padding:18px}}"
+    },
+    {
+      "name": "Statusy",
+      "kind": "chip",
+      "refersTo": "badge-green",
+      "description": "Tekstowe statusy w pięciu istniejących wariantach.",
+      "source": {
+        "file": "frontend/front/src/ui.tsx",
+        "symbol": "Badge",
+        "css": "frontend/front/src/App.css",
+        "selector": ".badge"
+      },
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge\">Potwierdzona</span><span class=\"ds-badge ds-badge-yellow\">Oczekuje</span><span class=\"ds-badge ds-badge-blue\">W trakcie</span><span class=\"ds-badge ds-badge-lavender\">Pomysł</span><span class=\"ds-badge ds-badge-neutral\">Szkic</span></div>",
+      "css": ".ds-badges{display:flex;flex-wrap:wrap;gap:8px}.ds-badge{display:inline-flex;align-items:center;max-width:100%;padding:4px 9px;border-radius:6px;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;line-height:1.4;background:var(--sage);color:#235540}.ds-badge-yellow{background:#faf0cf;color:#76520b}.ds-badge-blue{background:#e7eef5;color:#224966}.ds-badge-lavender{background:#eee8f7;color:#634876}.ds-badge-neutral{background:#eeefea;color:var(--muted)}"
+    },
+    {
+      "name": "Nawigacja boczna",
+      "kind": "nav",
+      "refersTo": "sidebar-active",
+      "description": "Wspólna powierzchnia nawigacji desktopowej.",
+      "source": {
+        "file": "frontend/front/src/App.tsx",
+        "css": "frontend/front/src/App.css",
+        "selectors": [
+          ".app-sidebar nav",
+          ".app-sidebar nav a",
+          ".app-sidebar a.active"
+        ],
+        "overrides": "frontend/front/src/Civic.css"
+      },
+      "html": "<nav class=\"ds-sidebar\" aria-label=\"Nawigacja przykładowa\"><a class=\"ds-sidebar-current\" href=\"/start\" aria-current=\"page\">Strona główna</a><a href=\"/potrzeby\">Potrzeby lokalne</a><a href=\"/innowacje\">Innowacje</a></nav>",
+      "css": ".ds-sidebar{display:flex;flex-direction:column;gap:7px;background:#fbfffb;color:var(--ink);font-family:'IBM Plex Sans',sans-serif}.ds-sidebar a{display:flex;align-items:center;gap:12px;padding:13px 14px;min-height:48px;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500;line-height:1.3}.ds-sidebar .ds-sidebar-current{background:#d4efce;color:#005c34;font-weight:600}.ds-sidebar a:hover{background:#f0f3eb}.ds-sidebar a:focus-visible{outline:3px solid var(--focus);outline-offset:4px}"
+    },
+    {
+      "name": "Zakładki",
+      "kind": "nav",
+      "description": "Nawigacja widoku z podkreśloną bieżącą pozycją.",
+      "source": {
+        "file": "frontend/front/src/ui.tsx",
+        "symbol": "Tabs",
+        "css": "frontend/front/src/App.css",
+        "selector": ".tabs"
+      },
+      "html": "<nav class=\"ds-tabs\" aria-label=\"Zakładki widoku\"><a href=\"/potrzeby\" class=\"ds-tab-current\" aria-current=\"page\">Lista</a><a href=\"/potrzeby?widok=mapa\">Mapa</a></nav>",
+      "css": ".ds-tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);overflow-x:auto;font-family:'IBM Plex Sans',sans-serif;font-size:16px;line-height:1.55}.ds-tabs a{min-height:48px;display:inline-flex;align-items:center;white-space:nowrap;padding:0 2px 12px;text-decoration:none;color:var(--muted);font-weight:500}.ds-tabs .ds-tab-current{border-bottom:3px solid var(--green);color:var(--green)}.ds-tabs a:focus-visible{outline:3px solid var(--focus);outline-offset:4px}@media(max-width:760px){.ds-tabs{gap:24px}.ds-tabs a{font-size:14px}}"
+    },
+    {
+      "name": "Skrót zadania",
+      "kind": "card",
+      "refersTo": "quick-action",
+      "description": "Pastelowa karta działania z tytułem i strzałką.",
+      "source": {
+        "file": "frontend/front/src/pages/Citizen.tsx",
+        "css": "frontend/front/src/App.css",
+        "selector": ".quick-action",
+        "overrides": "frontend/front/src/Civic.css"
+      },
+      "html": "<a class=\"ds-quick\" href=\"/zgloszenia/nowe\"><span class=\"ds-quick-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M40 128h176M144 56l72 72-72 72\"/></svg></span><h2>Opisz potrzebę</h2><p>Zacznij od tego, czego brakuje w Twojej okolicy.</p><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M40 128h176M144 56l72 72-72 72\"/></svg></a>",
+      "css": ".ds-quick{display:flex;flex-direction:column;padding:23px 20px;border-radius:12px;text-decoration:none;background:#ddf3d7;color:var(--ink);min-height:224px;transition:transform .18s;font-family:'IBM Plex Sans',sans-serif}.ds-quick:hover{transform:translateY(-3px)}.ds-quick:focus-visible{outline:3px solid var(--focus);outline-offset:4px}.ds-quick-icon{display:inline-flex;align-items:center;justify-content:center;width:45px;height:45px;border-radius:50%;background:var(--green);color:var(--surface);margin-bottom:18px}.ds-quick h2{font-family:var(--display,'Bricolage Grotesque Variable',sans-serif);font-size:21px;font-weight:600;line-height:1.13;letter-spacing:-.025em;margin:0 0 10px}.ds-quick p{font-size:13px;line-height:1.5;margin:0 0 18px}.ds-quick>svg{margin-top:auto}@media(max-width:760px){.ds-quick{padding:19px 16px;min-height:218px}.ds-quick p{font-size:12px}.ds-quick-icon{width:38px;height:38px;margin-bottom:16px}}@media(prefers-reduced-motion:reduce){.ds-quick{transition:none}}"
+    },
+    {
+      "name": "Komunikat",
+      "kind": "custom",
+      "refersTo": "notice-info",
+      "description": "Spokojna informacja z ikoną i opcjonalnym tytułem.",
+      "source": {
+        "file": "frontend/front/src/ui.tsx",
+        "symbol": "Notice",
+        "css": "frontend/front/src/App.css",
+        "selector": ".notice"
+      },
+      "html": "<div class=\"ds-notice\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"22\" viewBox=\"0 0 256 256\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"128\" cy=\"128\" r=\"96\"/><path d=\"M120 120h8v56h8\"/><circle cx=\"128\" cy=\"84\" r=\"2\" fill=\"currentColor\"/></svg><div><strong>Potrzeba została zapisana.</strong><p>Możesz teraz sprawdzić propozycje innowacji.</p></div></div>",
+      "css": ".ds-notice{display:flex;align-items:flex-start;gap:12px;background:#eaf0ed;padding:18px 20px;border-radius:8px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.55;color:var(--ink)}.ds-notice>svg{flex-shrink:0;margin-top:1px}.ds-notice strong{display:block;font-weight:600;margin-bottom:5px}.ds-notice p{margin:0}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Plakat domu kultury",
+    "overview": "MBG łączy lokalny charakter Małopolski z prostym, czytelnym interfejsem usług społecznych. Białe tło, wyraźna zieleń działań, granatowy atrament, szałwia i ceglasty detal tworzą spokojne tło dla charakterystycznej humanistycznej typografii. Lokalne rysunkowe ilustracje nadają marce konkretne miejsce. Dostarczone przez właściciela logo krajobrazowe jest aktualnym znakiem; interfejs nie używa zdjęć prawdziwych ludzi.\n\nNa ekranach wprowadzających większą rolę mają obraz i duży tytuł. W aplikacji ciężar przechodzi na nazwy zadań, listy, pola formularzy i jawne stany. Minimalizm oznacza oszczędność dekoracji oraz jednoznaczne działania, przy zachowaniu potrzebnych etykiet, źródeł i objaśnień. Ten zapis opisuje istniejący prototyp, a nie pełną bibliotekę wszystkich przyszłych komponentów.",
+    "keyCharacteristics": [
+      "Lokalna rysunkowa ilustracja, logo krajobrazowe właściciela i animowane wejście landingu.",
+      "Bricolage Grotesque w tytułach oraz IBM Plex Sans w tekście i kontrolkach.",
+      "Białe płótno landingu i dashboardu, neutralne podziały i jednolite przyciski.",
+      "Spokojne formularze, tekstowe statusy i wyraźny fokus klawiatury."
+    ],
+    "rules": [
+      {
+        "name": "Jednolity Przycisk",
+        "body": "Główne działania mają jednolite zielone wypełnienie; gradienty, połysk i shimmer nie należą do zatwierdzonego systemu przycisków.",
+        "section": "colors"
+      },
+      {
+        "name": "Dwa Głosy",
+        "body": "Tytuły korzystają z Bricolage Grotesque; treści oraz kontrolki z IBM Plex Sans. Dostarczone logo zachowuje własną typografię. Nowe ekrany kontynuują ten podział.",
+        "section": "typography"
+      },
+      {
+        "name": "Płaska Powierzchnia",
+        "body": "Zwykłe panele, listy i kontrolki budują hierarchię kolorem oraz obrysem. Cień istniejącego overlay nie jest domyślną dekoracją kolejnego ekranu.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** używaj Bricolage Grotesque do tytułów i IBM Plex Sans do treści oraz kontrolek.",
+      "**Do** zachowuj jednolite zielone przyciski i wspólne warianty primary oraz secondary.",
+      "**Do** kontynuuj białe tło dashboardu, granatowy tekst i lokalne rysunkowe ilustracje.",
+      "**Do** pokazuj tekstową etykietę stanu, widoczny fokus oraz powiązaną etykietę pola.",
+      "**Do** dostosowuj układ szczegółów i formularzy do jednej kolumny według istniejących progów.",
+      "**Do** respektuj reduced-motion i pozostawiaj tekstową informację o ładowaniu."
+    ],
+    "donts": [
+      "**Don't** dodawaj gradientu, połysku ani shimmeru do przycisków.",
+      "**Don't** zastępuj aktualnej typografii i palety historycznymi wariantami projektu.",
+      "**Don't** zastępuj dostarczonego logo krajobrazowego starym znakiem, tracingiem ani odtworzonym SVG.",
+      "**Don't** przenoś dekoracyjnej kompozycji landingu do roboczych formularzy i kolejek.",
+      "**Don't** używaj zdjęć prawdziwych ludzi ani przedstawiaj danych syntetycznych lub ilustracji jako dowodu działania inicjatywy."
+    ]
+  }
+}
