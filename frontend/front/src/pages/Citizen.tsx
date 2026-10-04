@@ -1485,6 +1485,7 @@ function NeedDetail({ id }: { id: string }) {
 }
 function ideaTitle(item: { text_refined: string | null; text_raw: string }): string {
   const text = toReadableInnovationText(item.text_refined || item.text_raw)
+    .replace(/^lokalna odpowiedź dla:\s*/iu, '')
   const ending = text.search(/[.!?]/u)
   const title = ending > 0 ? text.slice(0, ending + 1) : text
   return title.length > 100 ? `${title.slice(0, 97).trimEnd()}…` : title
