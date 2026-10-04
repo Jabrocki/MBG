@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from src.models.user import User
 from src.models.idea import Idea, AIJob
@@ -16,6 +16,7 @@ from src.schemas.modules import (
 from src.adapters.ai_gateway import get_ai_gateway
 from src.adapters.vector_repository import VectorRepositoryAdapter
 from src.models.source import SourceKnowledge, Solution
+from src.models.vote import Vote
 from src.models.problem import CanonicalProblem
 from src.models.match import MatchResult
 from src.models.discussion import DiscussionThread, ThreadMessage
@@ -234,28 +235,7 @@ class IdeaService:
             select(Idea).where(Idea.status == "public").order_by(Idea.created_at.desc())
         ).scalars().all()
         # Public view masks author identity unless viewer is admin
-        return [
-            IdeaResponse(
-                id=i.id,
-                author_id=i.author_id,
-                canonical_problem_id=i.canonical_problem_id,
-                text_raw=i.text_raw,
-                text_refined=i.text_refined,
-                need=i.need,
-                beneficiaries=i.beneficiaries,
-                solution=i.solution,
-                partners=i.partners,
-                costs=i.costs,
-                resources=i.resources,
-                stages=i.stages,
-                status=i.status,
-                support_count=i.support_count,
-                skip_count=i.skip_count,
-                created_at=i.created_at,
-                author_name=None,
-            )
-            for i in ideas
-        ]
+        return [self._project_idea(i, User(role="user", id=-1)) for i in ideas]
 
     def get_idea(self, idea_id: int, viewer: User) -> IdeaResponse:
         """Read one idea without exposing a private draft to another account."""
@@ -286,6 +266,7 @@ class IdeaService:
     def _project_idea(self, idea: Idea, viewer: User) -> IdeaResponse:
         show_author = (viewer.role == "admin") or (idea.author_id == viewer.id)
         author_name = "Autor pomysłu" if show_author else None
+        support_count, skip_count = self._vote_counts(idea)
         return IdeaResponse(
             id=idea.id,
             author_id=idea.author_id,
@@ -300,8 +281,25 @@ class IdeaService:
             resources=idea.resources,
             stages=idea.stages,
             status=idea.status,
-            support_count=idea.support_count,
-            skip_count=idea.skip_count,
+            support_count=support_count,
+            skip_count=skip_count,
             created_at=idea.created_at,
             author_name=author_name,
         )
+
+    def _vote_counts(self, idea: Idea) -> tuple[int, int]:
+        """Read counts from the canonical vote rows shared with swipe cards.
+
+        The denormalized counters on ``ideas`` are historical/import data and
+        must not diverge from the votes attached to the published solution.
+        """
+        solution_ids = select(Solution.id).join(
+            SourceKnowledge, Solution.source_knowledge_id == SourceKnowledge.id
+        ).where(SourceKnowledge.source_url == f"user-idea://{idea.id}")
+        rows = self.db.execute(
+            select(Vote.vote_type, func.count(Vote.id))
+            .where(Vote.solution_id.in_(solution_ids))
+            .group_by(Vote.vote_type)
+        ).all()
+        counts = {vote_type: int(count) for vote_type, count in rows}
+        return counts.get("support", 0), counts.get("skip", 0)

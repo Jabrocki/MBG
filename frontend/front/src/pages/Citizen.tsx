@@ -1476,11 +1476,14 @@ function NeedDetail({ id }: { id: string }) {
   )
 }
 function ideaTitle(item: { text_refined: string | null; text_raw: string }): string {
-  const text = toReadableInnovationText(item.text_refined || item.text_raw)
-    .replace(/^lokalna odpowiedź dla:\s*/iu, '')
+  const text = readableIdeaTitle(item.text_refined || item.text_raw)
   const ending = text.search(/[.!?]/u)
   const title = ending > 0 ? text.slice(0, ending + 1) : text
   return title.length > 100 ? `${title.slice(0, 97).trimEnd()}…` : title
+}
+function readableIdeaTitle(value: string | null | undefined): string {
+  return toReadableInnovationText(value)
+    .replace(/^lokal(?:na|ní|ni)\s+odpowiedź\s+dla:\s*/iu, '')
 }
 function ideaStatusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -2175,10 +2178,10 @@ function Support({ notify }: { notify: Notify }) {
                         <Badge tone="lavender">{supportBadgeLabel(card.badge)}</Badge>
                         <span className="vote-counts"><span><Icon name="CaretUp" /> {card.support_count}</span><span><Icon name="CaretDown" /> {card.skip_count}</span></span>
                       </div>
-                      <h2>{toReadableInnovationText(card.title)}</h2>
+                      <h2>{readableIdeaTitle(card.title)}</h2>
                       <p>{getInnovationPreview(card.description)}</p>
                       <p className="support-context">Przypisano do problemu #{card.problem_id}</p>
-                      <Link href={`/innowacje/api/${card.solution_id}?tytul=${encodeURIComponent(toReadableInnovationText(card.title))}`}>Szczegóły i ograniczenia <Icon name="ArrowRight" size={16} /></Link>
+                      <Link href={`/innowacje/api/${card.solution_id}?tytul=${encodeURIComponent(readableIdeaTitle(card.title))}`}>Szczegóły i ograniczenia <Icon name="ArrowRight" size={16} /></Link>
                       <small>{currentVote ? 'Twój wybór został zapisany.' : 'Przesuń kartę w prawo lub lewo, aby oddać głos.'}</small>
                       {actionErrors[cardKey] && <Notice tone="error">{actionErrors[cardKey]}</Notice>}
                     </div>

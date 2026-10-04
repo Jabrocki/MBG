@@ -143,16 +143,14 @@ class VoteService:
                 )
             ).scalar_one_or_none()
 
-            # Określ lifecycle badge
-            # "proposed_idea" | "being_tested" | "established_innovation"
+            # Cards are restricted to published community ideas above, so they
+            # must never be presented as catalogue innovations here.
             pilot = self.db.execute(
                 select(Pilot).where(Pilot.solution_id == sol.id)
             ).scalars().first()
 
             if pilot and pilot.status in ["pilot", "recruitment_funding"]:
                 badge = "being_tested"
-            elif sol.source_knowledge_id is not None:
-                badge = "established_innovation"
             else:
                 badge = "proposed_idea"
 
