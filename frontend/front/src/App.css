@@ -1380,6 +1380,13 @@ small,
   margin-top: 24px;
   display: grid;
   grid-template-columns: 1fr;
+  height: clamp(360px, 70vh, 760px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0 24px;
+  scrollbar-color: var(--muted) transparent;
 }
 .needs-list .need-item {
   padding: 28px 0;
