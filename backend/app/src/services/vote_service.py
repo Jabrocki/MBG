@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, exists, not_
 
 from src.models.user import User
 from src.models.vote import Vote
@@ -100,6 +100,15 @@ class VoteService:
             .join(MatchResult, MatchResult.solution_id == Solution.id)
             .where(
                 MatchResult.problem_id == problem_id,
+                # A swipe card is shown to a given user only once. The unique
+                # vote constraint also protects concurrent submissions.
+                not_(exists().where(
+                    and_(
+                        Vote.user_id == user.id,
+                        Vote.solution_id == Solution.id,
+                        Vote.local_problem_id == problem_id,
+                    )
+                )),
                 # The support/swipe view is for community proposals only.
                 # Catalogue innovations remain available in the innovation
                 # browser and as AI recommendations, but are not vote cards.

@@ -2067,7 +2067,7 @@ function Support({ notify }: { notify: Notify }) {
       .then((groups) => {
         if (!active || !groups) return
         const unique = new Map<string, Awaited<ReturnType<typeof api.getSupportCards>>[number]>()
-        groups.flat().forEach((card) => unique.set(supportCardKey(card), card))
+        groups.flat().filter((card) => !card.my_vote).forEach((card) => unique.set(supportCardKey(card), card))
         setCards([...unique.values()])
         setError('')
       })
