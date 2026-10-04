@@ -1568,7 +1568,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
           <form onSubmit={submit}>
             <h2>Asystent AI</h2>
             <article className="comment ai-message"><div><strong>Doradca AI</strong><p>Najpierw sprawdzę podobne, działające innowacje. Napisz, co chcesz zmienić, a wspólnie dopracujemy rozwiązanie.</p></div></article>
-            {matches.length > 0 && <div className="idea-recommendations"><h3>Najbliższe sprawdzone rozwiązania</h3>{matches.map((match) => <article className="comment" key={match.solution_id}><div><strong>{match.title}</strong><p>{toReadableInnovationText(match.description)}</p><small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small></div></article>)}</div>}
+            {matches.length > 0 && <div className="idea-recommendations"><h3>Najbliższe sprawdzone rozwiązania</h3>{matches.map((match) => <article className="comment" key={match.solution_id}><div><strong>{match.title}</strong><p>{getInnovationPreview(match.description, 280)}</p><small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small></div></article>)}</div>}
             <Field label="Twoja wiadomość" hint="Napisz swobodnie. AI dopyta o szczegóły i zaproponuje rozwiązanie.">
               <textarea name="text_raw" rows={10} required minLength={10} maxLength={5000} autoFocus />
             </Field>

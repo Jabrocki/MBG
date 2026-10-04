@@ -18,6 +18,7 @@ from src.adapters.vector_repository import VectorRepositoryAdapter
 from src.models.source import SourceKnowledge, Solution
 from src.models.problem import CanonicalProblem
 from src.models.match import MatchResult
+from src.models.discussion import DiscussionThread, ThreadMessage
 from src.services.geo_location_service import EntityGeoLocationService
 
 class IdeaService:
@@ -110,6 +111,26 @@ class IdeaService:
             idea.resources = refined.resources
             idea.stages = refined.stages
             idea.status = "pending_author"
+
+            thread = self.db.execute(
+                select(DiscussionThread).where(DiscussionThread.idea_id == idea.id)
+            ).scalar_one_or_none()
+            if not thread:
+                thread = DiscussionThread(
+                    idea_id=idea.id,
+                    title=f"Dyskusja: {(idea.text_refined or idea.text_raw)[:50]}",
+                    created_at=utc_now(),
+                )
+                self.db.add(thread)
+                self.db.flush()
+            if not self.db.execute(select(ThreadMessage.id).where(ThreadMessage.thread_id == thread.id).limit(1)).scalar_one_or_none():
+                self.db.add(ThreadMessage(
+                    thread_id=thread.id,
+                    author_id=idea.author_id,
+                    is_ai=True,
+                    content=f"Proponowane rozwiązanie AI: {idea.solution or idea.text_refined or idea.text_raw}",
+                    created_at=utc_now(),
+                ))
 
             job.status = "done"
             job.processed_at = utc_now()
