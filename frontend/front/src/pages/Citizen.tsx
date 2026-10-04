@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { Circle, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { divIcon, type LatLngLiteral } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { navigate } from '../navigation'
@@ -1168,7 +1168,15 @@ function ApiInnovation({ id }: { id: number }) {
   )
 }
 function geographicMarkerIcon(marker: GeographicMarker) {
-  const label = marker.entity_type === 'problem' ? 'P' : marker.entity_type === 'report' ? 'Z' : marker.entity_type === 'pilot' ? 'T' : 'I'
+  if (marker.entity_type === 'problem') {
+    return divIcon({
+      className: 'mbg-leaflet-pin mbg-leaflet-pin--problem',
+      html: '',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    })
+  }
+  const label = marker.entity_type === 'report' ? 'Z' : marker.entity_type === 'pilot' ? 'T' : 'I'
   return divIcon({
     className: `mbg-leaflet-pin mbg-leaflet-pin--${marker.entity_type}`,
     html: `<span aria-hidden="true">${label}</span>`,
@@ -1201,16 +1209,20 @@ function GeographicMapView({
             key={marker.id}
             position={{ lat: marker.lat, lng: marker.lon }}
             icon={geographicMarkerIcon(marker)}
-            eventHandlers={{ click: () => onSelect(marker) }}
-            opacity={selectedId && selectedId !== marker.id ? 0.72 : 1}
+            {...(marker.entity_type === 'problem' ? {} : { eventHandlers: { click: () => onSelect(marker) } })}
+            opacity={marker.entity_type === 'problem' ? 1 : selectedId && selectedId !== marker.id ? 0.72 : 1}
           >
-            <Popup>
-              <strong>{marker.title}</strong>
-              <br />
-              {marker.location_name}
-              {marker.distance_km !== null && <><br />{marker.distance_km.toFixed(1)} km od środka mapy</>}
-              {marker.reporter_count !== null && <><br />{marker.reporter_count} unikalnych zgłaszających</>}
-            </Popup>
+            {marker.entity_type === 'problem' ? (
+              <Tooltip direction="top" offset={[0, -8]}>{marker.title}</Tooltip>
+            ) : (
+              <Popup>
+                <strong>{marker.title}</strong>
+                <br />
+                {marker.location_name}
+                {marker.distance_km !== null && <><br />{marker.distance_km.toFixed(1)} km od środka mapy</>}
+                {marker.reporter_count !== null && <><br />{marker.reporter_count} unikalnych zgłaszających</>}
+              </Popup>
+            )}
           </Marker>
         ))}
       </MapContainer>

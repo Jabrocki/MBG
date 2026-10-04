@@ -322,7 +322,21 @@ html .landing-prototype-banner {
   background: #00834a;
 }
 .mbg-leaflet-pin--problem {
-  background: #1e40af;
+  background: #c2412d;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 5px #0c294166;
+}
+.geographic-map .leaflet-tooltip {
+  background: #102f4f;
+  border: 1px solid #102f4f;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 6px 9px;
+}
+.geographic-map .leaflet-tooltip-top::before {
+  border-top-color: #102f4f;
 }
 .mbg-leaflet-pin--innovation {
   background: #a8492f;
