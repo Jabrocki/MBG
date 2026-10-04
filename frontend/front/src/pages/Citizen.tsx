@@ -622,10 +622,10 @@ function ReportForm({ state }: { state: string }) {
         </Panel>
         <aside className="context-aside">
           <img src="/images/community.webp" alt="" />
-          <h2>Najpierw zrozummy potrzebę.</h2>
+          <h2>Zobacz zgłoszenia innych mieszkańców.</h2>
           <p>
-            Krótko opisz sytuację, odbiorców i przeszkodę. Potem sprawdzisz podpowiedzi i
-            wybierzesz, czy podobna sprawa pasuje do Twojej.
+            Opisz swoją sprawę, a później porównamy ją z podobnymi zgłoszeniami w okolicy.
+            Możesz potwierdzić istniejące zgłoszenie albo opisać sprawę osobno.
           </p>
           <Notice>
             Dane identyfikujące są usuwane przed przekazaniem opisu do modułu AI. Wynik klasyfikacji
