@@ -168,6 +168,19 @@ class ReportService:
         self.db.refresh(report)
         return self.project_report(report, viewer=user)
 
+    def update_details(self, report_id: int, audience: str, urgency: str, user: User) -> ReportResponse:
+        report = self.db.get(Report, report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="Zgłoszenie nie zostało odnalezione")
+        if report.author_id != user.id and user.role != "admin":
+            raise HTTPException(status_code=403, detail="Brak uprawnień do edycji tego zgłoszenia")
+        report.audience = audience.strip()
+        report.urgency = urgency
+        report.is_urgent = urgency == "urgent"
+        self.db.commit()
+        self.db.refresh(report)
+        return self.project_report(report, viewer=user)
+
     def get_report(self, report_id: int, user: User) -> ReportResponse:
         report = self.db.get(Report, report_id)
         if not report:

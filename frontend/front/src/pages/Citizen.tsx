@@ -644,6 +644,8 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
     storedCandidates ? (JSON.parse(storedCandidates) as ProblemCandidate[]) : [],
   )
   const [categories, setCategories] = useState<string[]>(report?.categories ?? ['Społeczność lokalna'])
+  const [audience, setAudience] = useState(report?.audience ?? '')
+  const [urgency, setUrgency] = useState<'standard' | 'urgent'>(report?.urgency === 'urgent' ? 'urgent' : 'standard')
   const [selected, setSelected] = useState<string>('new')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -653,11 +655,17 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
       setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszenia.')
     })
   }, [report, reportId])
+  useEffect(() => {
+    if (!report) return
+    setAudience(report.audience ?? '')
+    setUrgency(report.urgency === 'urgent' ? 'urgent' : 'standard')
+  }, [report])
   async function confirm() {
     setSaving(true)
     setError('')
     try {
       await api.updateReportCategories(reportId, categories)
+      await api.updateReportDetails(reportId, { audience, urgency })
       const selectedCandidate = candidates.find((candidate) => String(candidate.problem_id) === selected)
       const problem = await api.confirmGrouping(
         reportId,
@@ -707,13 +715,18 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
             </fieldset>
             <div className="facts">
               <Field label="Odbiorcy · szacunek AI">
-                <input value={report?.audience ?? ''} readOnly />
+                <input value={audience} onChange={(event) => setAudience(event.target.value)} />
               </Field>
-              <Field label="Pilność · szacunek AI">
-                <input value={report?.urgency ?? ''} readOnly />
-              </Field>
-              <Field label="Czas trwania · szacunek AI">
-                <input value={report?.duration ?? ''} readOnly />
+              <Field label={`Pilność · ${urgency === 'urgent' ? 'pilna' : 'standardowa'}`}>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={urgency === 'urgent' ? 100 : 40}
+                  onChange={(event) => setUrgency(Number(event.target.value) >= 70 ? 'urgent' : 'standard')}
+                  aria-label="Pilność zgłoszenia"
+                />
               </Field>
             </div>
           </Panel>

@@ -456,6 +456,9 @@ export const api = {
       body: JSON.stringify({ categories }),
     })
   },
+  updateReportDetails(id: number, data: { audience: string; urgency: 'standard' | 'urgent' }) {
+    return request<Report>(`/reports/${id}/details`, { method: 'PATCH', body: JSON.stringify(data) })
+  },
   confirmGrouping(id: number, confirmedProblemId: number | null, createNew: boolean) {
     return request<CanonicalProblem>(`/reports/${id}/confirm-grouping`, {
       method: 'POST',

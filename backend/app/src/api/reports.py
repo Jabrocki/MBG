@@ -5,6 +5,7 @@ from src.models.user import User
 from src.schemas.matchmaking import (
     ReportCreateRequest,
     CategoryCorrectionRequest,
+    ReportDetailsUpdateRequest,
     ReportResponse,
     ReportSubmissionResult,
     ConfirmGroupingRequest,
@@ -51,6 +52,15 @@ def update_categories(
 ):
     service = ReportService(db)
     return service.update_categories(report_id, data.categories, current_user)
+
+@router.patch("/{report_id}/details", response_model=ReportResponse, summary="Edycja odbiorców i pilności zgłoszenia")
+def update_details(
+    report_id: int,
+    data: ReportDetailsUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return ReportService(db).update_details(report_id, data.audience, data.urgency, current_user)
 
 @router.post("/{report_id}/confirm-grouping", response_model=CanonicalProblemResponse, summary="Potwierdzenie przypisania do problemu lub utworzenie nowego")
 def confirm_grouping(

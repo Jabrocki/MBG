@@ -58,6 +58,10 @@ class ReportCreateRequest(BaseModel):
 class CategoryCorrectionRequest(BaseModel):
     categories: List[str] = Field(..., min_length=1)
 
+class ReportDetailsUpdateRequest(BaseModel):
+    audience: str = Field(..., min_length=1, max_length=300)
+    urgency: Literal["standard", "urgent"]
+
 class ReportResponse(BaseModel):
     id: int
     text_raw: str
