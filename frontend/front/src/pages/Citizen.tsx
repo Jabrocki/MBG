@@ -1694,6 +1694,7 @@ function IdeaCard({ item }: { item: Awaited<ReturnType<typeof api.getPublicIdeas
           <span>{item.beneficiaries ? `Dla: ${toReadableInnovationText(item.beneficiaries)}` : 'Odbiorcy do sprawdzenia'}</span>
           <span>{item.costs ? `Koszty: ${toReadableInnovationText(item.costs)}` : 'Koszty do sprawdzenia'}</span>
         </div>
+        <div className="vote-counts" aria-label="Głosy społeczności"><span><Icon name="CaretUp" /> {item.support_count}</span><span><Icon name="CaretDown" /> {item.skip_count}</span></div>
       </div>
     </Link>
   )
@@ -1797,6 +1798,7 @@ function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
   return (
     <>
       <Heading title={ideaTitle(item)} back="/pomysly" description={ideaStatusLabel(item.status)} />
+      <div className="vote-counts" aria-label="Głosy społeczności"><span><Icon name="CaretUp" /> {item.support_count}</span><span><Icon name="CaretDown" /> {item.skip_count}</span></div>
       <div className="detail-layout">
         <div className="stack">
           <Panel>

@@ -228,6 +228,8 @@ class IdeaService:
                 resources=i.resources,
                 stages=i.stages,
                 status=i.status,
+                support_count=i.support_count,
+                skip_count=i.skip_count,
                 created_at=i.created_at,
                 author_name=None,
             )
@@ -277,6 +279,8 @@ class IdeaService:
             resources=idea.resources,
             stages=idea.stages,
             status=idea.status,
+            support_count=idea.support_count,
+            skip_count=idea.skip_count,
             created_at=idea.created_at,
             author_name=author_name,
         )

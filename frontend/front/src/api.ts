@@ -85,6 +85,8 @@ export type Idea = {
   resources: string | null
   stages: string | null
   status: string
+  support_count: number
+  skip_count: number
   created_at: string
   author_name: string | null
 }

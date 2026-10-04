@@ -23,6 +23,8 @@ class Idea(Base):
     # Stany cyklu życia pomysłu wg tasks.md / README:
     # private_draft -> queued -> pending_author -> pending_admin -> public
     status: Mapped[str] = mapped_column(String(50), default="private_draft", nullable=False)
+    support_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    skip_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     threads = relationship("DiscussionThread", back_populates="idea", cascade="all, delete-orphan")

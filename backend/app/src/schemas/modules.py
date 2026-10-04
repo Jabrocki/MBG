@@ -28,6 +28,8 @@ class IdeaResponse(BaseModel):
     resources: Optional[str] = None
     stages: Optional[str] = None
     status: str
+    support_count: int = 0
+    skip_count: int = 0
     created_at: datetime
     author_name: Optional[str] = None
 
