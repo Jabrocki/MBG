@@ -68,6 +68,9 @@ class AIGatewayProtocol(Protocol):
     def refine_idea(self, raw_text: str) -> RefinedIdeaResult:
         ...
 
+    def discuss_idea(self, idea_text: str, structured_context: str, question: str) -> str:
+        ...
+
     def adapt_institution_innovation(
         self,
         solution_title: str,

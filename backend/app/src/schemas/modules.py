@@ -207,6 +207,7 @@ class ThreadMessageResponse(BaseModel):
     thread_id: int
     author_id: int
     author_name: str
+    is_ai: bool = False
     content: str
     created_at: datetime
 
@@ -216,6 +217,10 @@ class DiscussionThreadResponse(BaseModel):
     title: str
     created_at: datetime
     messages: List[ThreadMessageResponse] = []
+
+
+class AIDiscussionRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=4000)
 
 class NotificationResponse(BaseModel):
     id: int

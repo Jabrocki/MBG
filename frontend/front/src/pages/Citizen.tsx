@@ -79,6 +79,19 @@ function LocationPicker({
   onError: (message: string) => void
 }) {
   const [locating, setLocating] = useState(false)
+  const [localityQuery, setLocalityQuery] = useState('')
+  const [localities, setLocalities] = useState<Awaited<ReturnType<typeof api.searchLocalities>>>([])
+  useEffect(() => {
+    const query = localityQuery.trim()
+    if (query.length < 2) {
+      setLocalities([])
+      return
+    }
+    const timer = window.setTimeout(() => {
+      api.searchLocalities(query).then(setLocalities).catch(() => setLocalities([]))
+    }, 350)
+    return () => window.clearTimeout(timer)
+  }, [localityQuery])
   const position: LatLngLiteral = { lat: value.lat, lng: value.lon }
   function pick(point: LatLngLiteral, source: ChosenLocation['source'] = 'map') {
     onChange({ lat: point.lat, lon: point.lng, source })
@@ -104,6 +117,33 @@ function LocationPicker({
   }
   return (
     <section className="geographic-picker" aria-label="Wybór lokalizacji problemu">
+      <Field label="Miejscowość w Małopolsce" hint="Wyszukiwanie korzysta z OpenStreetMap/Nominatim, bez Google Maps.">
+        <input
+          value={localityQuery}
+          onChange={(event) => setLocalityQuery(event.target.value)}
+          placeholder="np. Limanowa, Krynica-Zdrój, Brzesko"
+          autoComplete="off"
+        />
+        {localities.length > 0 && (
+          <div className="locality-results" role="listbox">
+            {localities.map((locality) => (
+              <button
+                type="button"
+                className="locality-result"
+                key={`${locality.latitude}:${locality.longitude}:${locality.name}`}
+                onClick={() => {
+                  onChange({ lat: locality.latitude, lon: locality.longitude, source: 'manual' })
+                  setLocalityQuery(locality.name)
+                  setLocalities([])
+                  onError('')
+                }}
+              >
+                <strong>{locality.name}</strong><span>{locality.display_name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </Field>
       <MapContainer center={position} zoom={10} className="leaflet-map" scrollWheelZoom>
         <MapViewport center={position} zoom={value.source === 'gps' ? 14 : 10} />
         <TileLayer
@@ -1476,23 +1516,13 @@ function IdeaForm() {
     event.preventDefault()
     if (savedIdeaId !== null) return
     const form = new FormData(event.currentTarget)
-    const title = String(form.get('title') ?? '').trim()
-    const need = String(form.get('need') ?? '').trim()
-    const beneficiaries = String(form.get('beneficiaries') ?? '').trim()
-    const solution = String(form.get('solution') ?? '').trim()
+    const textRaw = String(form.get('text_raw') ?? '').trim()
     setSaving(true)
     setError('')
     let createdIdeaId: number | null = null
     try {
       const saved = await api.createIdea({
-        text_raw: [title, need, solution].filter(Boolean).join('. '),
-        need,
-        beneficiaries,
-        solution,
-        partners: String(form.get('partners') ?? '').trim(),
-        costs: String(form.get('costs') ?? '').trim(),
-        resources: String(form.get('resources') ?? '').trim(),
-        stages: String(form.get('stages') ?? '').trim(),
+        text_raw: textRaw,
       })
       createdIdeaId = saved.id
       setSavedIdeaId(saved.id)
@@ -1516,39 +1546,16 @@ function IdeaForm() {
   return (
     <>
       <Heading
-        title="Dobry pomysł potrzebuje kilku konkretów."
-        description="Szkic pozostaje prywatny, aż AI go uporządkuje, autor potwierdzi treść, a administrator podejmie decyzję."
+        title="Opisz swój pomysł własnymi słowami."
+        description="Jedno pole wystarczy. Potem porozmawiasz z AI, a model oszacuje potrzebę, odbiorców, zasoby, koszty i etapy."
         back="/pomysly"
       />
       <div className="detail-layout">
         <Panel>
           <form onSubmit={submit}>
-            <h2>Zapisz sedno pomysłu.</h2>
-            <Field label="Nazwa pomysłu">
-              <input name="title" required />
-            </Field>
-            <Field label="Potrzeba">
-              <textarea name="need" rows={3} required />
-            </Field>
-            <Field label="Odbiorcy">
-              <textarea name="beneficiaries" rows={2} required />
-            </Field>
-            <Field label="Proponowane rozwiązanie">
-              <textarea name="solution" rows={4} required />
-            </Field>
-            <div className="form-grid">
-              <Field label="Partnerzy">
-                <input name="partners" required />
-              </Field>
-              <Field label="Koszty" hint="Deklaracja autora, nie zatwierdzony budżet.">
-                <input name="costs" required />
-              </Field>
-              <Field label="Zasoby">
-                <input name="resources" required />
-              </Field>
-            </div>
-            <Field label="Etapy wdrożenia">
-              <textarea name="stages" rows={3} required />
+            <h2>Co chcesz zmienić?</h2>
+            <Field label="Opis pomysłu" hint="Napisz swobodnie: dla kogo, gdzie i co mogłoby się zmienić. Nie musisz znać budżetu ani planu.">
+              <textarea name="text_raw" rows={10} required minLength={10} maxLength={5000} autoFocus />
             </Field>
             {error && <Notice tone="error">{error}</Notice>}
             {savedIdeaId !== null && (
@@ -1558,7 +1565,7 @@ function IdeaForm() {
               </Notice>
             )}
             <button className="button" type="submit" disabled={saving || savedIdeaId !== null}>
-              {saving ? 'Zapisywanie…' : 'Przekaż do przetworzenia AI'}
+              {saving ? 'Zapisywanie…' : 'Rozpocznij rozmowę z AI'}
               <Icon name="ArrowRight" />
             </button>
           </form>
@@ -1567,12 +1574,12 @@ function IdeaForm() {
           <h2>Od szkicu do propozycji.</h2>
           <ol className="timeline">
             <li>
-              <strong>Redakcja AI</strong>
-              <span>Porządkowanie tekstu i wskazanie niewiadomych.</span>
+              <strong>AI porządkuje opis</strong>
+              <span>Model wyodrębni potrzebę, odbiorców, rozwiązanie, zasoby i koszty.</span>
             </li>
             <li>
-              <strong>Twoje potwierdzenie</strong>
-              <span>Sprawdzenie znaczenia i treści.</span>
+              <strong>Twoja rozmowa z AI</strong>
+              <span>Dopytaj o założenia i popraw wersję roboczą.</span>
             </li>
             <li>
               <strong>Decyzja administratora</strong>
@@ -1858,6 +1865,7 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [askingAi, setAskingAi] = useState(false)
   const [error, setError] = useState('')
   const [notFoundIdeaId, setNotFoundIdeaId] = useState<number | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -1909,6 +1917,23 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
     }
   }
 
+  async function askAi() {
+    const content = text.trim()
+    if (!thread || !content) return
+    setAskingAi(true)
+    setError('')
+    try {
+      const created = await api.postAIThreadMessage(thread.id, content)
+      setThread((current) => current && current.id === thread.id ? { ...current, messages: [...current.messages, created] } : current)
+      setText('')
+      notify('Odpowiedź AI została dodana do tego pomysłu.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się uzyskać odpowiedzi AI.')
+    } finally {
+      setAskingAi(false)
+    }
+  }
+
   function retry() {
     setLoading(true)
     setError('')
@@ -1957,6 +1982,10 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
             </Field>
             <button className="button" disabled={sending || !text.trim()}>
               {sending ? 'Wysyłanie…' : 'Dodaj komentarz'}
+              <Icon name="ChatCircle" />
+            </button>
+            <button type="button" className="button secondary" disabled={sending || askingAi || !text.trim()} onClick={() => void askAi()}>
+              {askingAi ? 'AI analizuje…' : 'Zapytaj AI o ten pomysł'}
               <Icon name="ChatCircle" />
             </button>
           </form>

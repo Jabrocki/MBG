@@ -70,6 +70,9 @@ class AIGatewayAdapter:
     def refine_idea(self, raw_text: str) -> RefinedIdeaResult:
         return self._gateway.refine_idea(raw_text)
 
+    def discuss_idea(self, idea_text: str, structured_context: str, question: str) -> str:
+        return self._gateway.discuss_idea(idea_text, structured_context, question)
+
     def adapt_institution_innovation(
         self,
         solution_title: str,

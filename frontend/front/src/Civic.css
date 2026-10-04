@@ -289,6 +289,10 @@ html .landing-prototype-banner {
   color: var(--muted);
   margin: 0;
 }
+.locality-results { display: grid; gap: .35rem; margin-top: .4rem; }
+.locality-result { display: grid; gap: .1rem; text-align: left; border: 1px solid var(--line); background: var(--paper); border-radius: .5rem; padding: .55rem .7rem; cursor: pointer; }
+.locality-result:hover, .locality-result:focus-visible { border-color: var(--ink); }
+.locality-result span { color: var(--muted); font-size: .8rem; }
 .mbg-leaflet-pin {
   display: grid;
   place-items: center;

@@ -22,6 +22,7 @@ class ThreadMessage(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     thread_id: Mapped[int] = mapped_column(Integer, ForeignKey("discussion_threads.id", ondelete="CASCADE"), nullable=False)
     author_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    is_ai: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 

@@ -122,6 +122,11 @@ class FakeAIGateway:
             stages="1. Rekrutacja uczestników (miesiąc 1), 2. Cykl 8 warsztatów (miesiące 2-3), 3. Wystawa podsumowująca (miesiąc 4)."
         )
 
+    def discuss_idea(self, idea_text: str, structured_context: str, question: str) -> str:
+        if self.simulate_outage:
+            raise RuntimeError("AI Service unavailable")
+        return f"Odnoszę się wyłącznie do tego pomysłu: {idea_text[:180]}. Na pytanie „{question[:180]}” proponuję doprecyzować założenia i sprawdzić je z odbiorcami."
+
     def adapt_institution_innovation(
         self,
         solution_title: str,

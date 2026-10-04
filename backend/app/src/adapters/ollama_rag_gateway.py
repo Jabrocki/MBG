@@ -154,6 +154,17 @@ class OllamaRagGateway:
         values["solution"] = values["solution"] or clean
         return RefinedIdeaResult(**values)
 
+    def discuss_idea(self, idea_text: str, structured_context: str, question: str) -> str:
+        prompt = (
+            "Jesteś doradcą AI w dyskusji nad jednym pomysłem społecznym. Odpowiadaj po polsku, konkretnie i krótko. "
+            "Rozmawiaj wyłącznie o tym pomyśle; nie łącz go z innymi pomysłami i nie twórz niezależnego rozwiązania. "
+            "Możesz oszacować brakujące elementy jako hipotezy i wyraźnie oznacz niepewność. "
+            f"POMYSŁ: {self._sanitize(idea_text)}\nDANE OSZACOWANE PRZEZ AI: {self._sanitize(structured_context)}\n"
+            f"PYTANIE UŻYTKOWNIKA: {self._sanitize(question)}"
+        )
+        data = self._json(prompt)
+        return str(data.get("answer") or data.get("response") or data.get("message") or "Nie mam jeszcze wystarczających danych, aby odpowiedzieć.").strip()
+
     def adapt_institution_innovation(
         self,
         solution_title: str,

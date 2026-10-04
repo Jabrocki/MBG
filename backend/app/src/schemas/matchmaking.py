@@ -175,4 +175,13 @@ class MapMarkersResponse(BaseModel):
     radius_km: Optional[float] = None
     markers: List[MapMarkerResponse]
     counts: MapMarkerCountsResponse
+
+
+class LocalitySearchResult(BaseModel):
+    """OpenStreetMap/Nominatim result constrained to Małopolska."""
+
+    name: str
+    latitude: float
+    longitude: float
+    display_name: str
     privacy_note: str

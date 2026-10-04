@@ -201,6 +201,12 @@ export type GeographicMap = {
   }
   privacy_note: string
 }
+export type LocalitySearchResult = {
+  name: string
+  latitude: number
+  longitude: number
+  display_name: string
+}
 
 export type PilotStatus =
   | 'draft'
@@ -262,6 +268,7 @@ export type DiscussionMessage = {
   thread_id: number
   author_id: number
   author_name: string
+  is_ai: boolean
   content: string
   created_at: string
 }
@@ -454,6 +461,9 @@ export const api = {
     if (radiusKm !== undefined) params.set('radius_km', String(radiusKm))
     return request<GeographicMap>(`/map/markers${params.size ? `?${params}` : ''}`)
   },
+  searchLocalities(query: string) {
+    return request<LocalitySearchResult[]>(`/map/localities?query=${encodeURIComponent(query)}`)
+  },
   searchCatalogue(query = '', category = '') {
     const params = new URLSearchParams()
     if (query) params.set('q', query)
@@ -556,6 +566,12 @@ export const api = {
   },
   postThreadMessage(threadId: number, content: string) {
     return request<DiscussionMessage>(`/threads/${threadId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    })
+  },
+  postAIThreadMessage(threadId: number, content: string) {
+    return request<DiscussionMessage>(`/threads/${threadId}/ai`, {
       method: 'POST',
       body: JSON.stringify({ content }),
     })

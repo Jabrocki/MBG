@@ -70,8 +70,22 @@ class DiscussionService:
             author_id=msg.author_id,
             author_name=author_name,
             content=msg.content,
+            is_ai=False,
             created_at=msg.created_at,
         )
+
+    def post_ai_message(self, thread_id: int, content: str, author: User) -> ThreadMessageResponse:
+        thread = self.db.get(DiscussionThread, thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="Wątek nie został odnaleziony")
+        self._ensure_idea_visible(thread.idea, author)
+        context = "; ".join(filter(None, [thread.idea.need, thread.idea.beneficiaries, thread.idea.solution, thread.idea.resources, thread.idea.stages]))
+        answer = self.ai.discuss_idea(thread.idea.text_raw, context, content)
+        msg = ThreadMessage(thread_id=thread_id, author_id=author.id, is_ai=True, content=answer, created_at=utc_now())
+        self.db.add(msg)
+        self.db.commit()
+        self.db.refresh(msg)
+        return ThreadMessageResponse(id=msg.id, thread_id=msg.thread_id, author_id=msg.author_id, author_name="Doradca AI", content=msg.content, is_ai=True, created_at=msg.created_at)
 
     def get_user_notifications(self, user: User) -> List[NotificationResponse]:
         notifs = self.db.execute(
@@ -148,7 +162,7 @@ class DiscussionService:
     def _project_thread(self, thread: DiscussionThread) -> DiscussionThreadResponse:
         messages = []
         for m in thread.messages:
-            author_name = f"{m.author.name} {m.author.surname}".strip() if m.author else "Użytkownik"
+            author_name = "Doradca AI" if m.is_ai else (f"{m.author.name} {m.author.surname}".strip() if m.author else "Użytkownik")
             messages.append(
                 ThreadMessageResponse(
                     id=m.id,
@@ -156,6 +170,7 @@ class DiscussionService:
                     author_id=m.author_id,
                     author_name=author_name,
                     content=m.content,
+                    is_ai=m.is_ai,
                     created_at=m.created_at,
                 )
             )

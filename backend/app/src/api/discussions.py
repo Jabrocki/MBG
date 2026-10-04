@@ -10,6 +10,7 @@ from src.schemas.modules import (
     NotificationResponse,
     InstitutionAdaptationRequest,
     InstitutionAdaptationResponse,
+    AIDiscussionRequest,
 )
 from src.services.discussion_service import DiscussionService
 
@@ -33,6 +34,15 @@ def post_thread_message(
 ):
     service = DiscussionService(db)
     return service.post_message(thread_id, data, current_user)
+
+@router.post("/threads/{thread_id}/ai", response_model=ThreadMessageResponse, summary="Odpowiedź Ollamy w wątku jednego pomysłu")
+def post_ai_thread_message(
+    thread_id: int,
+    data: AIDiscussionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return DiscussionService(db).post_ai_message(thread_id, data.content, current_user)
 
 @router.get("/notifications", response_model=List[NotificationResponse], summary="In-app powiadomienia dla bieżącego użytkownika")
 def get_notifications(
