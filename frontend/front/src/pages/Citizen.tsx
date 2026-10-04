@@ -1522,6 +1522,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
   const [proposal, setProposal] = useState('')
   const [proposalSources, setProposalSources] = useState<string[]>([])
   const [proposalLoading, setProposalLoading] = useState(true)
+  const [lastMessage, setLastMessage] = useState('')
   useEffect(() => {
     api.getProblem(problemId).then(setProblem).catch((caught: unknown) => setProblemError(caught instanceof Error ? caught.message : 'Nie udało się pobrać problemu.'))
     api.getMatches(problemId).then((result) => setMatches(result.matches.slice(0, 5))).catch(() => setMatches([]))
@@ -1534,29 +1535,28 @@ function IdeaForm({ problemId }: { problemId: number }) {
     const textRaw = String(form.get('text_raw') ?? '').trim()
     setSaving(true)
     setError('')
-    let createdIdeaId: number | null = null
     try {
-      const saved = await api.createIdea({
-        text_raw: textRaw,
-        canonical_problem_id: problemId,
-      })
-      createdIdeaId = saved.id
-      setSavedIdeaId(saved.id)
-      const job = await api.submitIdea(saved.id)
-      if (job.status === 'failed') {
-        setError('Nie udało się przekazać szkicu do przetworzenia AI. Szkic pozostaje zapisany i nie zostanie opublikowany.')
-        return
-      }
-      // Processing is synchronous on the API. Open the discussion directly so
-      // the first visible assistant message is the generated proposal.
-      navigate(`/pomysly/${saved.id}/dyskusja`)
+      const result = await api.refineAiProposal(problemId, textRaw, proposal)
+      setLastMessage(textRaw)
+      setProposal(result.proposal)
+      setProposalSources(result.based_on ?? [])
+      event.currentTarget.reset()
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : 'Nie udało się zapisać pomysłu.'
-      setError(
-        createdIdeaId === null
-          ? message
-          : `Szkic został zapisany, ale nie udało się przekazać go do przetworzenia AI. ${message}`,
-      )
+      setError(caught instanceof Error ? caught.message : 'Nie udało się uzyskać odpowiedzi AI.')
+    } finally {
+      setSaving(false)
+    }
+  }
+  async function approveDraft() {
+    if (!proposal || !problem || savedIdeaId !== null) return
+    setSaving(true)
+    setError('')
+    try {
+      const saved = await api.createIdea({ text_raw: proposal, canonical_problem_id: problemId })
+      setSavedIdeaId(saved.id)
+      navigate(`/pomysly/${saved.id}`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać draftu pomysłu.')
     } finally {
       setSaving(false)
     }
@@ -1575,6 +1575,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
             <h2>Asystent AI</h2>
             <article className="comment ai-message"><div><strong>Doradca AI</strong><p>Najpierw sprawdzę podobne, działające innowacje. Napisz, co chcesz zmienić, a wspólnie dopracujemy rozwiązanie.</p></div></article>
             {matches.length > 0 && <div className="idea-recommendations"><h3>Najbliższe sprawdzone rozwiązania</h3>{matches.map((match) => <article className="comment" key={match.solution_id}><div><strong>{match.title}</strong><p>{getInnovationPreview(match.description, 280)}</p><small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small><br /><Link href={`/innowacje/api/${match.solution_id}?tytul=${encodeURIComponent(toReadableInnovationText(match.title))}`}>Zobacz stronę innowacji <Icon name="ArrowRight" size={16} /></Link></div></article>)}</div>}
+            {lastMessage && <article className="comment"><div><strong>Ty</strong><p>{lastMessage}</p></div></article>}
             {proposalLoading ? <LoadingState label="AI układa propozycję rozwiązania…" /> : proposal ? <article className="comment ai-message"><div><strong>Doradca AI — proponowane rozwiązanie</strong><p>{toReadableInnovationText(proposal)}</p>{proposalSources.length > 0 && <small>Na podstawie: {proposalSources.join(', ')}</small>}</div></article> : null}
             <Field label="Twoja wiadomość" hint="Napisz swobodnie. AI dopyta o szczegóły i zaproponuje rozwiązanie.">
               <textarea name="text_raw" rows={10} required minLength={10} maxLength={5000} autoFocus />
@@ -1587,9 +1588,13 @@ function IdeaForm({ problemId }: { problemId: number }) {
               </Notice>
             )}
             <button className="button" type="submit" disabled={saving || savedIdeaId !== null || !problem}>
-              {saving ? 'AI przygotowuje propozycję…' : 'Wyślij wiadomość do AI'}
+              {saving ? 'AI odpowiada…' : 'Wyślij wiadomość do AI'}
               <Icon name="ArrowRight" />
             </button>
+            {proposal && <button className="button secondary" type="button" disabled={saving || savedIdeaId !== null} onClick={() => void approveDraft()}>
+              {saving ? 'Zapisywanie draftu…' : 'Zgadzam się — otwórz kartę draftu'}
+              <Icon name="Check" />
+            </button>}
           </form>
         </Panel>
         <aside className="context-aside">

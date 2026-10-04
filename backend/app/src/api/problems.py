@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Body
 from sqlalchemy.orm import Session
 from src.api.deps import get_db, get_current_user
 from src.models.user import User
@@ -64,6 +64,30 @@ def get_ai_proposal(
         "Jeśli lokalizacja nie jest potwierdzona, użyj określenia obszar problemu. Odpowiedz po polsku w 2-3 zdaniach, bez nagłówków.",
     )
     return {"proposal": proposal, "based_on": [match.title for match in matches]}
+
+@router.post("/{problem_id}/ai-proposal", summary="Dalsza rozmowa o niezapisanej propozycji")
+def refine_ai_proposal(
+    problem_id: int,
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    problem = db.get(CanonicalProblem, problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail="Problem nie został odnaleziony")
+    matches = MatchingService(db).get_matches_for_problem(problem_id).matches[:3]
+    message = str(payload.get("message") or "").strip()
+    current = str(payload.get("proposal") or "").strip()
+    if not message:
+        raise HTTPException(status_code=422, detail="Wiadomość nie może być pusta")
+    context = "; ".join(f"{match.title}: {match.description[:600]}" for match in matches)
+    answer = get_ai_gateway().discuss_idea(
+        problem.generated_description,
+        f"Najbliższe sprawdzone innowacje: {context}\nAktualna propozycja: {current}",
+        f"Użytkownik napisał: {message}\nZaktualizuj propozycję rozwiązania, korzystając wyłącznie z problemu i tych innowacji. "
+        "Nie wymyślaj ulic, adresów, tras, liczb ani faktów lokalnych. Odpowiedz po polsku w 2-3 zdaniach.",
+    )
+    return {"proposal": answer, "based_on": [match.title for match in matches]}
 
 @router.get("/{problem_id}/coordinates", response_model=CoordinatesResponse, summary="Współrzędne 3D dla wizualizacji semantycznej")
 def get_problem_coordinates(

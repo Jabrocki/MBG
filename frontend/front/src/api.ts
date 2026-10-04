@@ -466,6 +466,12 @@ export const api = {
   getAiProposal(problemId: number) {
     return request<{ proposal: string; based_on: string[] }>(`/problems/${problemId}/ai-proposal`)
   },
+  refineAiProposal(problemId: number, message: string, proposal: string) {
+    return request<{ proposal: string; based_on: string[] }>(`/problems/${problemId}/ai-proposal`, {
+      method: 'POST',
+      body: JSON.stringify({ message, proposal }),
+    })
+  },
   getProblem(problemId: number) {
     return request<CanonicalProblem>(`/problems/${problemId}`)
   },
