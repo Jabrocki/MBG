@@ -129,6 +129,47 @@ def import_records() -> tuple[int, int]:
                 EntityGeoLocationService(db).persist_report(report)
                 created_reports += 1
 
+        # Every canonical problem must remain backed by at least one report.  The
+        # generated corpus has fewer reports than problems, so materialise one
+        # deterministic seed report for otherwise empty problems.  The marker makes
+        # this idempotent on subsequent imports.
+        for problem in db.execute(select(CanonicalProblem)).scalars():
+            has_report = db.execute(
+                select(Report.id).where(Report.canonical_problem_id == problem.id).limit(1)
+            ).scalar_one_or_none()
+            if has_report is not None:
+                continue
+            text_raw = f"[syntetyczne zgłoszenie startowe dla problemu {problem.id}] {problem.generated_description or problem.title}"[:4000]
+            report = Report(
+                author_id=synthetic_user.id,
+                text_raw=text_raw,
+                location_lat=problem.location_centroid_lat or 50.0619,
+                location_lon=problem.location_centroid_lon or 19.9368,
+                location_type="manual",
+                location_name="Małopolska",
+                categories=["syntetyczne"],
+                audience="Mieszkańcy",
+                urgency="standard",
+                duration="nieznany",
+                is_urgent=False,
+                canonical_problem_id=problem.id,
+                status="confirmed",
+                created_at=utc_now(),
+                expires_at=utc_now() + timedelta(days=3650),
+            )
+            db.add(report)
+            db.flush()
+            db.add(ReportProblemLink(
+                report_id=report.id,
+                problem_id=problem.id,
+                confidence=1.0,
+                status="confirmed",
+                confirmed_at=utc_now(),
+            ))
+            problem.reporter_count += 1
+            EntityGeoLocationService(db).persist_report(report)
+            created_reports += 1
+
         db.commit()
         return created_problems, created_reports
 
