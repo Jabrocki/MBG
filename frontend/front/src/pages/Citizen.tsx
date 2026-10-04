@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { divIcon, type LatLngLiteral } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -2027,6 +2027,8 @@ function Support({ notify }: { notify: Notify }) {
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
   const [actingOn, setActingOn] = useState<Record<string, true>>({})
   const [refreshKey, setRefreshKey] = useState(0)
+  const [swipeOffsets, setSwipeOffsets] = useState<Record<string, number>>({})
+  const swipeStart = useRef<{ key: string; x: number } | null>(null)
 
   useEffect(() => {
     let active = true
@@ -2121,6 +2123,25 @@ function Support({ notify }: { notify: Notify }) {
       })
     }
   }
+
+  function beginSwipe(event: ReactPointerEvent<HTMLElement>, cardKey: string) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    swipeStart.current = { key: cardKey, x: event.clientX }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+  function moveSwipe(event: ReactPointerEvent<HTMLElement>, cardKey: string) {
+    if (!swipeStart.current || swipeStart.current.key !== cardKey) return
+    setSwipeOffsets((current) => ({ ...current, [cardKey]: event.clientX - swipeStart.current!.x }))
+  }
+  function endSwipe(event: ReactPointerEvent<HTMLElement>, card: Awaited<ReturnType<typeof api.getSupportCards>>[number]) {
+    const start = swipeStart.current
+    swipeStart.current = null
+    if (!start || start.key !== supportCardKey(card)) return
+    const delta = event.clientX - start.x
+    const key = supportCardKey(card)
+    setSwipeOffsets((current) => ({ ...current, [key]: 0 }))
+    if (Math.abs(delta) >= 110 && !actingOn[key]) void castVote(card, delta > 0 ? 'support' : 'skip')
+  }
   async function undoVote(card: Awaited<ReturnType<typeof api.getSupportCards>>[number]) {
     const cardKey = supportCardKey(card)
     const voteId = card.my_vote_id ?? voteIds[cardKey]
@@ -2191,7 +2212,15 @@ function Support({ notify }: { notify: Notify }) {
                 const currentVote = card.my_vote
                 const actionInProgress = Boolean(actingOn[cardKey])
                 return (
-                  <article className="support-card" key={cardKey}>
+                  <article
+                    className="support-card support-card--swipeable"
+                    key={cardKey}
+                    style={{ transform: `translateX(${swipeOffsets[cardKey] ?? 0}px) rotate(${(swipeOffsets[cardKey] ?? 0) / 18}deg)` }}
+                    onPointerDown={(event) => beginSwipe(event, cardKey)}
+                    onPointerMove={(event) => moveSwipe(event, cardKey)}
+                    onPointerUp={(event) => endSwipe(event, card)}
+                    onPointerCancel={(event) => endSwipe(event, card)}
+                  >
                     <div>
                       <div className="row-meta">
                         <Badge tone="lavender">{supportBadgeLabel(card.badge)}</Badge>
@@ -2219,8 +2248,8 @@ function Support({ notify }: { notify: Notify }) {
               })}
             </div>
             <aside className="context-aside">
-              <h2>Twój głos. Twój wybór.</h2>
-              <p>Możesz poprzeć propozycję, pominąć ją lub cofnąć swój bieżący wybór.</p>
+              <h2>Przesuń jak w Tinderze.</h2>
+              <p>Przeciągnij kartę w prawo, aby poprzeć propozycję, albo w lewo, aby ją pominąć. Przyciski pozostają dostępne na każdym urządzeniu.</p>
               <small>Jedno bieżące poparcie przypada na propozycję w konkretnej potrzebie. Liczby nie opisują satysfakcji ani skuteczności.</small>
             </aside>
           </div>
