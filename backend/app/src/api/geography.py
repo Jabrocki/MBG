@@ -14,18 +14,18 @@ from src.services.geography_service import GeographyService
 
 router = APIRouter(prefix="/map", tags=["Mapa geograficzna"])
 
-MALOPOLSKA_VIEWBOX = "18.7,50.7,22.0,49.0"  # west,north,east,south
+MALOPOLSKA_EXTENT = "18.7,49.0,22.0,50.7"  # xmin,ymin,xmax,ymax
 
 
 @router.get("/localities", response_model=list[LocalitySearchResult], summary="Wyszukiwarka miejscowości Małopolski bez Google Maps")
 def search_localities(query: str = Query(..., min_length=2, max_length=100)):
-    """Use the public OpenStreetMap Nominatim gazetteer, never Google Maps."""
+    """Use the ArcGIS World geocoder, never Google Maps or OSM tiles."""
     request = Request(
-        "https://nominatim.openstreetmap.org/search?" + "&".join([
-            f"q={quote(query)}", "format=jsonv2", "addressdetails=1", "limit=8",
-            f"viewbox={MALOPOLSKA_VIEWBOX}", "bounded=1",
+        "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?" + "&".join([
+            f"singleLine={quote(query + ' Małopolska')}", "f=json", "maxLocations=8", "outFields=*",
+            f"searchExtent={MALOPOLSKA_EXTENT}",
         ]),
-        headers={"User-Agent": "HUBMI/1.0 (open geodata locality picker)"},
+        headers={"User-Agent": "HUBMI/1.0 (commercial map locality picker)"},
     )
     try:
         with urlopen(request, timeout=5) as response:
@@ -33,21 +33,18 @@ def search_localities(query: str = Query(..., min_length=2, max_length=100)):
     except Exception:
         return []
     results: list[LocalitySearchResult] = []
-    for row in rows:
+    for row in (rows.get("candidates") or []):
         try:
-            lat, lon = float(row["lat"]), float(row["lon"])
+            lat, lon = float(row["location"]["y"]), float(row["location"]["x"])
         except (KeyError, TypeError, ValueError):
             continue
         if not (49.0 <= lat <= 50.7 and 18.7 <= lon <= 22.0):
             continue
-        address = row.get("address") or {}
-        if not any(address.get(key) for key in ("village", "town", "city", "municipality", "hamlet")):
-            continue
         results.append(LocalitySearchResult(
-            name=(address.get("village") or address.get("town") or address.get("city") or address.get("municipality") or address.get("hamlet") or query),
+            name=row.get("address", query),
             latitude=lat,
             longitude=lon,
-            display_name=row.get("display_name", query),
+            display_name=row.get("address", query),
         ))
     return results
 

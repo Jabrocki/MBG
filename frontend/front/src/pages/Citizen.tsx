@@ -122,7 +122,7 @@ function LocationPicker({
   }
   return (
     <section className="geographic-picker" aria-label="Wybór lokalizacji problemu">
-      <Field label="Miejscowość w Małopolsce" hint="Wyszukiwanie korzysta z OpenStreetMap/Nominatim, bez Google Maps.">
+      <Field label="Miejscowość w Małopolsce" hint="Wyszukiwanie korzysta z geokodera ArcGIS, bez Google Maps i kafelków OSM.">
         <input
           value={localityQuery}
           onChange={(event) => setLocalityQuery(event.target.value)}

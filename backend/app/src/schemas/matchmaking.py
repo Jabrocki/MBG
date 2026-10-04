@@ -178,7 +178,7 @@ class MapMarkersResponse(BaseModel):
 
 
 class LocalitySearchResult(BaseModel):
-    """OpenStreetMap/Nominatim result constrained to Małopolska."""
+    """ArcGIS geocoder result constrained to Małopolska."""
 
     name: str
     latitude: float
