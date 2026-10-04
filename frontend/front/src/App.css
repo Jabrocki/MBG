@@ -318,16 +318,6 @@ html .demo-banner .prototype-popover label {
   font-size: 13px;
   font-weight: 400;
 }
-.sidebar-art {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 165px;
-  object-fit: cover;
-  object-position: 55% 60%;
-  opacity: 0.85;
-}
 .app-main {
   padding: 42px 46px 64px;
   max-width: 1420px;

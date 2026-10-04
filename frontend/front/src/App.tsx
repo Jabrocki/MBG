@@ -189,7 +189,6 @@ export default function App() {
                 Wyloguj się
               </Link>
             </div>
-            <img className="sidebar-art" src="/images/community.webp" alt="" />
           </aside>
         )}
         <main
