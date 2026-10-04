@@ -1523,6 +1523,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
   const [proposalSources, setProposalSources] = useState<string[]>([])
   const [proposalLoading, setProposalLoading] = useState(true)
   const [lastMessage, setLastMessage] = useState('')
+  const [draftReady, setDraftReady] = useState(false)
   useEffect(() => {
     api.getProblem(problemId).then(setProblem).catch((caught: unknown) => setProblemError(caught instanceof Error ? caught.message : 'Nie udało się pobrać problemu.'))
     api.getMatches(problemId).then((result) => setMatches(result.matches.slice(0, 5))).catch(() => setMatches([]))
@@ -1548,6 +1549,10 @@ function IdeaForm({ problemId }: { problemId: number }) {
     }
   }
   async function approveDraft() {
+    if (!proposal || !problem || savedIdeaId !== null) return
+    setDraftReady(true)
+  }
+  async function saveDraft() {
     if (!proposal || !problem || savedIdeaId !== null) return
     setSaving(true)
     setError('')
@@ -1577,6 +1582,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
             {matches.length > 0 && <div className="idea-recommendations"><h3>Najbliższe sprawdzone rozwiązania</h3>{matches.map((match) => <article className="comment" key={match.solution_id}><div><strong>{match.title}</strong><p>{getInnovationPreview(match.description, 280)}</p><small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small><br /><Link href={`/innowacje/api/${match.solution_id}?tytul=${encodeURIComponent(toReadableInnovationText(match.title))}`}>Zobacz stronę innowacji <Icon name="ArrowRight" size={16} /></Link></div></article>)}</div>}
             {lastMessage && <article className="comment"><div><strong>Ty</strong><p>{lastMessage}</p></div></article>}
             {proposalLoading ? <LoadingState label="AI układa propozycję rozwiązania…" /> : proposal ? <article className="comment ai-message"><div><strong>Doradca AI — proponowane rozwiązanie</strong><p>{toReadableInnovationText(proposal)}</p>{proposalSources.length > 0 && <small>Na podstawie: {proposalSources.join(', ')}</small>}</div></article> : null}
+            {draftReady && proposal && <article className="comment draft-card"><div><strong>Karta draftu pomysłu</strong><p>{toReadableInnovationText(proposal)}</p><small>Draft nie został jeszcze zapisany.</small><br /><button className="button" type="button" disabled={saving} onClick={() => void saveDraft()}>{saving ? 'Zapisywanie…' : 'Zapisz draft pomysłu'} <Icon name="Check" /></button><button className="button secondary" type="button" disabled={saving} onClick={() => setDraftReady(false)}>Wróć do dyskusji</button></div></article>}
             <Field label="Twoja wiadomość" hint="Napisz swobodnie. AI dopyta o szczegóły i zaproponuje rozwiązanie.">
               <textarea name="text_raw" rows={10} required minLength={10} maxLength={5000} autoFocus />
             </Field>
@@ -1591,8 +1597,8 @@ function IdeaForm({ problemId }: { problemId: number }) {
               {saving ? 'AI odpowiada…' : 'Wyślij wiadomość do AI'}
               <Icon name="ArrowRight" />
             </button>
-            {proposal && <button className="button secondary" type="button" disabled={saving || savedIdeaId !== null} onClick={() => void approveDraft()}>
-              {saving ? 'Zapisywanie draftu…' : 'Zgadzam się — otwórz kartę draftu'}
+            {proposal && !draftReady && <button className="button secondary" type="button" disabled={saving || savedIdeaId !== null} onClick={() => void approveDraft()}>
+              Zgadzam się — otwórz kartę draftu
               <Icon name="Check" />
             </button>}
           </form>
