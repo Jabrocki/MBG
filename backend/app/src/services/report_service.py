@@ -8,6 +8,7 @@ from sqlalchemy import select
 from src.config import settings
 from src.models.user import User
 from src.models.report import Report
+from src.models.problem import CanonicalProblem, ReportProblemLink
 from src.schemas.matchmaking import (
     ReportCreateRequest,
     ReportResponse,
@@ -96,6 +97,32 @@ class ReportService:
             entity_id=report.id,
             embedding=hyde_result.embedding,
         )
+
+        # Every accepted report belongs to one canonical problem before it becomes
+        # visible in the problem/solution workflow.  If Ollama has no existing
+        # candidate, create the canonical problem from the edited HyDE text.
+        problem = CanonicalProblem(
+            title=edited_need[:120],
+            generated_description=edited_need,
+            reporter_count=1,
+            location_centroid_lat=data.location_lat,
+            location_centroid_lon=data.location_lon,
+            status="active",
+            created_at=utc_now(),
+        )
+        self.db.add(problem)
+        self.db.flush()
+        self.vector_repo.upsert_vector_record(
+            entity_type="problem", entity_id=problem.id, embedding=hyde_result.embedding,
+        )
+        report.canonical_problem_id = problem.id
+        report.status = "confirmed"
+        self.db.add(ReportProblemLink(
+            report_id=report.id, problem_id=problem.id, confidence=1.0,
+            status="confirmed", confirmed_at=utc_now(), confirmed_by_user_id=None,
+        ))
+        self.geo_locations.persist_problem(problem)
+        self.db.commit()
 
         # 4. Find problem candidates (semantic grouping suggestion)
         candidates = self.ai.find_problem_candidates(

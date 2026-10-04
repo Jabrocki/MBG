@@ -16,6 +16,8 @@ from src.schemas.modules import (
 from src.adapters.ai_gateway import get_ai_gateway
 from src.adapters.vector_repository import VectorRepositoryAdapter
 from src.models.source import SourceKnowledge, Solution
+from src.models.problem import CanonicalProblem
+from src.models.match import MatchResult
 from src.services.geo_location_service import EntityGeoLocationService
 
 class IdeaService:
@@ -183,10 +185,34 @@ class IdeaService:
         self.db.commit()
         self.db.refresh(idea)
         self.db.refresh(solution)
+        problem_text = idea.need or idea.text_refined or idea.text_raw
+        problem = CanonicalProblem(
+            title=problem_text[:120],
+            generated_description=problem_text,
+            reporter_count=0,
+            location_centroid_lat=50.0619,
+            location_centroid_lon=19.9368,
+            status="active",
+            created_at=utc_now(),
+        )
+        self.db.add(problem)
+        self.db.flush()
+        self.db.add(MatchResult(
+            problem_id=problem.id,
+            solution_id=solution.id,
+            rank=1,
+            score=1.0,
+            explanation="Pomysł użytkownika przypisany do problemu wygenerowanego z jego opisu.",
+            limitations="Wymaga lokalnej weryfikacji przed pilotażem.",
+            coord_x=0.0,
+            coord_y=0.0,
+            coord_z=0.0,
+        ))
         self.geo_locations.persist_innovation(solution)
         self.db.commit()
         idea_vector = self.vector_repo.get_vector_record("idea", idea.id)
         if idea_vector:
+            self.vector_repo.upsert_vector_record("problem", problem.id, idea_vector.embedding)
             self.vector_repo.upsert_vector_record("solution", solution.id, idea_vector.embedding)
         return self._project_idea(idea, admin_user)
 

@@ -10,6 +10,8 @@ from src.models.vote import Vote
 from src.models.source import Solution
 from src.models.problem import CanonicalProblem
 from src.models.pilot import Pilot
+from src.models.match import MatchResult
+from src.services.matching_service import MatchingService
 from src.schemas.modules import (
     VoteCreateRequest,
     VoteResponse,
@@ -29,6 +31,14 @@ class VoteService:
         prob = self.db.get(CanonicalProblem, data.local_problem_id)
         if not prob:
             raise HTTPException(status_code=404, detail="Problem lokalny nie został odnaleziony")
+        assigned = self.db.execute(
+            select(MatchResult).where(
+                MatchResult.problem_id == data.local_problem_id,
+                MatchResult.solution_id == data.solution_id,
+            )
+        ).scalar_one_or_none()
+        if not assigned:
+            raise HTTPException(status_code=409, detail="To rozwiązanie nie jest przypisane do wskazanego problemu")
 
         existing_vote = self.db.execute(
             select(Vote).where(
@@ -84,7 +94,17 @@ class VoteService:
 
     def get_cards_for_problem(self, problem_id: int, user: User) -> List[SwipeCardResponse]:
         """Returns eligible swipe cards for local problem, with support counts and badges."""
-        solutions = self.db.execute(select(Solution)).scalars().all()
+        if not self.db.get(CanonicalProblem, problem_id):
+            raise HTTPException(status_code=404, detail="Problem lokalny nie został odnaleziony")
+        # Populate problem-specific AI matches first; cards never expose a global
+        # catalogue detached from the selected problem.
+        MatchingService(self.db).get_matches_for_problem(problem_id)
+        solutions = self.db.execute(
+            select(Solution)
+            .join(MatchResult, MatchResult.solution_id == Solution.id)
+            .where(MatchResult.problem_id == problem_id)
+            .distinct()
+        ).scalars().all()
         cards = []
 
         for sol in solutions:
