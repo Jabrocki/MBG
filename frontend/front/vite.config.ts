@@ -18,12 +18,11 @@ function compressedPreview(): Plugin {
           const [encoding, quality] = part.trim().split(';')
           return encoding === 'gzip' && !/^\s*q=0(?:\.0*)?\s*$/.test(quality ?? '')
         })
-        if (!acceptsGzip) return next()
-        const file = resolve(output, '.' + asset + '.gz')
+        const file = resolve(output, '.' + asset + (acceptsGzip ? '.gz' : ''))
         if (!existsSync(file)) return next()
         res.setHeader('Cache-Control', hashed ? 'public, max-age=31536000, immutable' : 'no-cache')
         res.setHeader('Vary', 'Origin, Accept-Encoding')
-        res.setHeader('Content-Encoding', 'gzip')
+        if (acceptsGzip) res.setHeader('Content-Encoding', 'gzip')
         res.setHeader(
           'Content-Type',
           asset.endsWith('.js')
