@@ -731,7 +731,7 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
                 <div>
                   <Badge>Do Twojego potwierdzenia · {Math.round(candidate.confidence * 100)}%</Badge>
                   <h3>{candidate.title}</h3>
-                  <p>To podpowiedź na podstawie opisu i miejsca. Możesz zamiast niej utworzyć nową potrzebę.</p>
+                  <p>To podpowiedź na podstawie opisu i miejsca. Wybierz ją, jeśli opisuje Twoją sprawę.</p>
                 </div>
               </label>
             ))}
@@ -743,15 +743,13 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
                 onChange={() => setSelected('new')}
               />
               <div>
-                <h3>Żadna potrzeba nie pasuje</h3>
-                <p>
-                  Utwórz nową potrzebę. Będzie widoczna od razu i podlega późniejszej moderacji.
-                </p>
+                <h3>Żadna podpowiedź nie pasuje</h3>
+                <p>Zgłoszenie zostanie rozpatrzone osobno.</p>
               </div>
             </label>
             {error && <Notice tone="error">{error}</Notice>}
             <button className="button" onClick={() => void confirm()} disabled={saving || !report}>
-              {saving ? 'Zapisywanie…' : selected === 'new' ? 'Utwórz nową potrzebę' : 'Potwierdzam tę potrzebę'}
+              {saving ? 'Zapisywanie…' : 'Potwierdzam zgłoszenie'}
               <Icon name="ArrowRight" />
             </button>
           </Panel>
@@ -797,10 +795,10 @@ function Results({ problemId }: { problemId: number }) {
       <Heading
         title={
           !error && matches.length === 0
-            ? 'Nie znaleźliśmy trafnego rozwiązania.'
-            : 'Jedno rozwiązanie warte sprawdzenia.'
+            ? 'Nie znaleźliśmy podobnych zgłoszeń w Twojej okolicy.'
+            : 'Podobne zgłoszenia w Twojej okolicy'
         }
-        description="Dopasowanie to punkt wyjścia. Zobacz źródło, odbiorców i ograniczenia przed podjęciem decyzji."
+        description="Zobacz, jakie podobne sprawy zgłosili mieszkańcy i jakie rozwiązania mogą im odpowiadać."
         back="/zgloszenia"
       />
       {error ? (
@@ -2871,8 +2869,7 @@ function Information({ path }: { path: string }) {
             <h2>Chcę znaleźć rozwiązanie.</h2>
             <p>
               Opisz potrzebę, wybierz jej miejsce i sprawdź sugerowane kategorie. Powiązanie z
-              istniejącą potrzebą zawsze potwierdzasz samodzielnie. Odrzucenie podpowiedzi tworzy
-              nową potrzebę.
+              istniejącą potrzebą zawsze potwierdzasz samodzielnie.
             </p>
             <ButtonLink to="/zgloszenia/nowe">Zgłoś potrzebę</ButtonLink>
             <h2>Chcę zaproponować coś nowego.</h2>
