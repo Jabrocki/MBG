@@ -36,6 +36,11 @@ describe('innovation content', () => {
     expect(getInnovationPreview(description)).toBe('Pierwsze zdanie rozwiązania. Drugie zdanie rozwiązania.')
   })
 
+  it('summarises descriptions when markdown headings were flattened by the API', () => {
+    const flattened = 'Dostępny transport publiczny Metadane - Źródło: ROPS Opis 1. Na czym polega rozwiązanie? Aplikacja pokazuje przystanki i ułatwia planowanie podróży. Działa z funkcjami dostępności. 2. Jakich problemów dotyczy innowacja? Brak informacji pasażerskiej.'
+    expect(getInnovationPreview(flattened)).toBe('Aplikacja pokazuje przystanki i ułatwia planowanie podróży. Działa z funkcjami dostępności.')
+  })
+
   it('allows only HTTP source links', () => {
     expect(getSafeExternalUrl('https://rops.krakow.pl/innowacje')).toBe('https://rops.krakow.pl/innowacje')
     expect(getSafeExternalUrl('javascript:alert(1)')).toBeNull()

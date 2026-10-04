@@ -124,7 +124,15 @@ export function getInnovationPreview(value: string | null | undefined, maxLength
   const preferred = sections.find((section) => section.title === 'Na czym polega rozwiązanie?')
     ?? sections.find((section) => section.title === 'Problem, na który odpowiada')
     ?? sections.find((section) => section.title !== 'Lokalizacja')
-  const text = preferred?.text ?? toReadableInnovationText(value)
+  const readable = toReadableInnovationText(value)
+  // Some API responses arrive with Markdown headings already flattened. In
+  // that form the section parser cannot find markers, so cut away scraper
+  // metadata using the visible section label before summarising.
+  const solutionLabel = /na czym polega rozwiązanie\??/iu.exec(readable)
+  const flattened = solutionLabel
+    ? readable.slice((solutionLabel.index ?? 0) + solutionLabel[0].length)
+    : readable
+  const text = preferred?.text ?? flattened
 
   // Cards and recommendations show a summary, never the scraped document.
   // Keep at most two complete sentences so the actual solution remains easy

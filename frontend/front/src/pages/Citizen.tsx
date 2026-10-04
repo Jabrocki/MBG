@@ -1543,7 +1543,9 @@ function IdeaForm({ problemId }: { problemId: number }) {
         setError('Nie udało się przekazać szkicu do przetworzenia AI. Szkic pozostaje zapisany i nie zostanie opublikowany.')
         return
       }
-      navigate(`/pomysly/${saved.id}`)
+      // Processing is synchronous on the API. Open the discussion directly so
+      // the first visible assistant message is the generated proposal.
+      navigate(`/pomysly/${saved.id}/dyskusja`)
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Nie udało się zapisać pomysłu.'
       setError(
