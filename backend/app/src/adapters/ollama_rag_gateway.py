@@ -86,17 +86,28 @@ class OllamaRagGateway:
         """
         vector = self._embed(text)
         query_tokens = self._tokenize(text)
-        documents = [self._tokenize(f"{row['title']} {row['content']}") for row in self.records]
+        documents = [self._tokenize(self._retrieval_text(row)) for row in self.records]
         avgdl = (sum(len(doc) for doc in documents) / len(documents)) if documents else 1.0
         doc_freq: Counter[str] = Counter()
         for doc in documents:
             doc_freq.update(set(doc))
         n_docs = max(1, len(documents))
+        query_concepts = self._concept_tokens(query_tokens)
         scored: list[tuple[float, dict[str, Any]]] = []
         for row, doc in zip(self.records, documents):
             dense = sum(a * b for a, b in zip(vector, row["embedding"]))
             bm25 = self._bm25(query_tokens, doc, doc_freq, n_docs, avgdl)
-            scored.append((0.68 * dense + 0.32 * min(1.0, bm25 / 8.0), row))
+            doc_concepts = self._concept_tokens(doc)
+            # A dense vector captures paraphrases, but it can still rank generic
+            # senior/education records above a transport problem.  Require a
+            # small amount of domain evidence as a tie-breaker and penalise
+            # candidates with no shared meaningful concept.
+            overlap = self._concept_overlap(query_concepts, doc_concepts)
+            lexical = min(1.0, bm25 / 6.0)
+            score = 0.58 * dense + 0.20 * lexical + 0.22 * overlap
+            if not overlap and dense < 0.82:
+                score -= 0.12
+            scored.append((score, row))
         scored.sort(key=lambda item: item[0], reverse=True)
         unique: dict[str, tuple[float, dict[str, Any]]] = {}
         for score, row in scored:
@@ -106,8 +117,49 @@ class OllamaRagGateway:
         return list(unique.values())
 
     @staticmethod
+    def _concept_tokens(tokens: list[str]) -> set[str]:
+        """Return simple Polish concept stems, excluding generic catalogue words."""
+        stop = {
+            "jest", "są", "dla", "oraz", "przez", "który", "która", "które",
+            "problem", "problemu", "innowacja", "innowacje", "rozwiązanie",
+            "rozwiązania", "osób", "osoby", "grupa", "docelowa", "brak",
+            "dostęp", "potrzeb", "potrzeba", "może", "mogą", "oraz", "oraz",
+            "czy", "jak", "się", "tym", "jego", "ich", "oraz", "jestem",
+            # Audience/location descriptors are useful for display but are too
+            # broad to prove that an innovation addresses the same domain.
+            "starsz", "senior", "dzieci", "młodzi", "młodzie", "niepełn",
+            "mieszka", "użytkow", "lokaln", "krakow", "małopol", "osiedl",
+            "szczeg", "muszą", "ludzie", "dystan", "długie", "ulicy", "brakuj",
+        }
+        result: set[str] = set()
+        for token in tokens:
+            if token in stop or len(token) < 5:
+                continue
+            # Shared first six characters handles Polish inflection (przystank- /
+            # przystanki, autobus- / autobusów) without an external stemmer.
+            stem = token[:6]
+            if stem in stop:
+                continue
+            result.add(stem)
+        return result
+
+    @staticmethod
+    def _concept_overlap(query: set[str], document: set[str]) -> float:
+        if not query or not document:
+            return 0.0
+        return min(1.0, len(query.intersection(document)) / max(1.0, min(3, len(query))))
+
+    @staticmethod
     def _tokenize(text: str) -> list[str]:
         return re.findall(r"[a-ząćęłńóśźż0-9]{2,}", text.casefold())
+
+    @staticmethod
+    def _retrieval_text(row: dict[str, Any]) -> str:
+        """Use the innovation title and substantive description, not scraper metadata."""
+        content = str(row.get("content") or "")
+        if "## Opis" in content:
+            content = content.split("## Opis", 1)[1]
+        return f"{row.get('title', '')} {content}"
 
     @staticmethod
     def _bm25(query: list[str], document: list[str], doc_freq: Counter[str], n_docs: int, avgdl: float) -> float:
@@ -178,7 +230,7 @@ class OllamaRagGateway:
         limitations = str(guidance.get("limitations") or "Wymaga lokalnej weryfikacji warunków wdrożenia i źródła.")
         return [
             SolutionMatch(
-                solution_id=row["solution_id"], rank=index, score=max(0.5, min(0.99, (score + 1) / 2)),
+                solution_id=row["solution_id"], rank=index, score=max(0.0, min(0.99, score)),
                 explanation=explanation, limitations=limitations,
                 coord_x=round(score, 4), coord_y=round(index / 10, 4), coord_z=0.0,
             )

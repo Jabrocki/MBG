@@ -23,7 +23,9 @@ class Settings(BaseSettings):
     
     # AI thresholds
     GROUPING_CONFIDENCE_THRESHOLD: float = 0.75
-    MIN_MATCH_SCORE: float = 0.50
+    # Require meaningful semantic/domain evidence before showing a catalogue
+    # innovation as a solution to a problem.
+    MIN_MATCH_SCORE: float = 0.62
     AI_PROVIDER: str = "fake"  # fake for tests; ollama on hackyeah
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
     OLLAMA_CHAT_MODEL: str = "hubmi-synthetic"
