@@ -63,6 +63,13 @@ class OllamaRagGateway:
         except (KeyError, TypeError, json.JSONDecodeError) as exc:
             raise RuntimeError("Ollama nie zwróciła poprawnego JSON") from exc
 
+    def _text(self, prompt: str) -> str:
+        response = self._post(
+            "/api/generate",
+            {"model": self.chat_model, "prompt": prompt, "stream": False, "options": {"temperature": 0.35}},
+        )
+        return str(response.get("response") or "").strip()
+
     def _embed(self, text: str) -> list[float]:
         response = self._post("/api/embed", {"model": self.embedding_model, "input": [f"search_query: {text}"]})
         vector = response["embeddings"][0][:512]
@@ -162,8 +169,12 @@ class OllamaRagGateway:
             f"POMYSŁ: {self._sanitize(idea_text)}\nDANE OSZACOWANE PRZEZ AI: {self._sanitize(structured_context)}\n"
             f"PYTANIE UŻYTKOWNIKA: {self._sanitize(question)}"
         )
-        data = self._json(prompt)
-        return str(data.get("answer") or data.get("response") or data.get("message") or "Nie mam jeszcze wystarczających danych, aby odpowiedzieć.").strip()
+        try:
+            data = self._json(prompt + "\nZwróć JSON {\"answer\": \"odpowiedź\"}.")
+            answer = str(data.get("answer") or data.get("response") or data.get("message") or "").strip()
+        except RuntimeError:
+            answer = self._text(prompt + "\nOdpowiedz bezpośrednio, bez JSON i bez markdownowego nagłówka.")
+        return answer or "Nie mam jeszcze wystarczających danych, aby odpowiedzieć."
 
     def adapt_institution_innovation(
         self,
