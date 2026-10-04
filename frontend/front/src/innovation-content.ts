@@ -119,16 +119,22 @@ export function parseInnovationSections(value: string | null | undefined): Innov
   return sections
 }
 
-export function getInnovationPreview(value: string | null | undefined, maxLength = 360): string {
+export function getInnovationPreview(value: string | null | undefined, maxLength = 280): string {
   const sections = parseInnovationSections(value)
   const preferred = sections.find((section) => section.title === 'Na czym polega rozwiązanie?')
     ?? sections.find((section) => section.title === 'Problem, na który odpowiada')
     ?? sections.find((section) => section.title !== 'Lokalizacja')
   const text = preferred?.text ?? toReadableInnovationText(value)
 
-  if (text.length <= maxLength) return text
-  const ending = text.lastIndexOf(' ', maxLength - 1)
-  return `${text.slice(0, ending > 0 ? ending : maxLength).trimEnd()}…`
+  // Cards and recommendations show a summary, never the scraped document.
+  // Keep at most two complete sentences so the actual solution remains easy
+  // to scan; the full source is still available on the details page.
+  const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)/gu)
+  const summary = sentences?.slice(0, 2).join(' ').replace(/\s+/g, ' ').trim() || text
+
+  if (summary.length <= maxLength) return summary
+  const ending = summary.lastIndexOf(' ', maxLength - 1)
+  return `${summary.slice(0, ending > 0 ? ending : maxLength).trimEnd()}…`
 }
 
 export function getSafeExternalUrl(value: string | null | undefined): string | null {

@@ -46,6 +46,23 @@ class DiscussionService:
             self.db.commit()
             self.db.refresh(thread)
 
+        # Older ideas were processed before the initial AI proposal was added
+        # to the thread. Backfill it on first open so every processed idea
+        # starts with the promised proposal, without duplicating messages.
+        has_message = self.db.execute(
+            select(ThreadMessage.id).where(ThreadMessage.thread_id == thread.id).limit(1)
+        ).scalar_one_or_none()
+        proposal = idea.solution or idea.text_refined or idea.text_raw
+        if not has_message and proposal:
+            self.db.add(ThreadMessage(
+                thread_id=thread.id,
+                author_id=idea.author_id,
+                is_ai=True,
+                content=f"Proponowane rozwiązanie AI: {proposal}",
+                created_at=utc_now(),
+            ))
+            self.db.commit()
+
         return self._project_thread(thread)
 
     def post_message(self, thread_id: int, data: ThreadMessageCreateRequest, author: User) -> ThreadMessageResponse:

@@ -31,6 +31,11 @@ describe('innovation content', () => {
     expect(text).not.toContain('onerror')
   })
 
+  it('keeps recommendation cards to two short sentences', () => {
+    const description = '## Opis ### 1. Na czym polega rozwiązanie? Pierwsze zdanie rozwiązania. Drugie zdanie rozwiązania. Trzecie zdanie z pełnego dokumentu.'
+    expect(getInnovationPreview(description)).toBe('Pierwsze zdanie rozwiązania. Drugie zdanie rozwiązania.')
+  })
+
   it('allows only HTTP source links', () => {
     expect(getSafeExternalUrl('https://rops.krakow.pl/innowacje')).toBe('https://rops.krakow.pl/innowacje')
     expect(getSafeExternalUrl('javascript:alert(1)')).toBeNull()
