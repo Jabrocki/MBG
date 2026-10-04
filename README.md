@@ -1,194 +1,193 @@
 # Małopolska bez granic (MBG)
 
-Małopolska bez granic (MBG), previously known by the working name HUBMI, is a Polish-language hackathon prototype supporting the Małopolska Social Innovation Hub. It connects reported social needs with existing innovations, helps people develop new ideas, and supports community feedback and administrator-led pilots.
+MBG, wcześniej HUBMI, to polskojęzyczny projekt hackathonowy łączący potrzeby mieszkańców Małopolski z istniejącymi innowacjami społecznymi. Użytkownik opisuje problem, potwierdza jego przypisanie do potrzeby i otrzymuje propozycje rozwiązań ze źródłami. Może również zgłosić pomysł, poprzeć propozycję lub uczestniczyć w pilotażu.
 
-This README records the intended application behavior, accepted decisions, and unresolved questions. It is a product context document, not a claim that these features are implemented. The application interface is in Polish; this document is in English.
+Repozytorium zawiera działający frontend z API, backend aplikacyjny, warstwę AI oraz narzędzia pozyskiwania danych. Dane demonstracyjne są syntetyczne. To prototyp, nie system gotowy do obsługi wrażliwych danych produkcyjnych.
 
-## Scope and priorities
+## Implementacja
 
-The original citizen journey is the core scope: report a problem, confirm a suggested problem grouping, discover up to ten relevant innovations, optionally develop an idea with AI, explore nearby needs, support proposals through swipe cards, participate in approved pilots, and evaluate outcomes.
+| Część | Technologia i odpowiedzialność |
+| --- | --- |
+| [Frontend](frontend/front) | React 19, TypeScript, Vite; interfejs mieszkańca i administratora, formularze, katalog, mapa, wizualizacja dopasowań. |
+| [Backend](backend/app) | Python 3.11+, FastAPI, SQLAlchemy 2, Alembic; konta, sesje, uprawnienia, zgłoszenia, grupowanie, głosy, moderacja, pilotaże i zasoby. |
+| [AI aplikacji](backend/app/src/adapters) | Wymienialny gateway: deterministyczny tryb `fake` do rozwoju/testów oraz `ollama` na obecnym serwerze. |
+| [Niezależny pakiet AI](backend/ai) | Python 3.14+, lokalne embeddingi Nomic z Hugging Face i klient Gemini; adapter repozytorium dostarcza aplikacja. |
+| [Pozyskiwanie danych](backend/scrap) | Scrapy, normalizacja opisów ROPS, generowanie embeddingów i import do PostgreSQL. |
+| [Dane](backend/data) | Opisy innowacji, źródła problemów, syntetyczne zgłoszenia, wektory JSONL i zrzut tabel embeddingów. |
 
-Finding existing solutions for a submitted problem is the highest priority. Social matchmaking is also the mandatory challenge module. All agreed features are intended to work in the prototype; the remaining features have no specified relative priority. Grant application generation, real payments, external system integrations, resumable AI conversations, and collaborative idea editing are outside the current scope. There are no production capacity or operational ownership commitments at this stage.
+Frontend komunikuje się z REST API pod `/api/v1`. Kontrakt znajduje się w [backend/app/contracts](backend/app/contracts). Mapa geograficzna używa Leaflet i kafelków Esri; widok semantyczny pokazuje przybliżoną bliskość rozwiązań, a nie ich lokalizację.
 
-Do not include team details, a delivery roadmap, cost-of-operation estimates, acceptance criteria, or a demo scenario in this README.
+Podstawowy przepływ: opis i lokalizacja → sugestie klasyfikacji → korekta użytkownika → potwierdzenie istniejącej albo utworzenie nowej potrzeby → maksymalnie 10 trafnych innowacji. Wynik może być pusty. Źródło, ograniczenia i propozycja AI nie są dowodem skuteczności rozwiązania.
 
-## Current repository
+Są dwie role: użytkownik i administrator. Instytucje korzystają z roli użytkownika i ścieżki adaptacji innowacji. Landing jest publiczny; funkcje aplikacji wymagają logowania. Pomysły przechodzą przetwarzanie AI, potwierdzenie autora i moderację. Awaria AI pozostawia pomysł w kolejce.
 
-- `frontend/front`: React, TypeScript, and Vite frontend with 45 interactive MBG mockup screens and a review atlas; see [mockup documentation](frontend/front/mockups/mbg-v4/README.md). These use local fixtures and do not implement backend sessions or AI.
-- `backend/scrap`: Python/Scrapy innovation-library scraper; see its README for usage.
-- `backend/data`: scraped innovation descriptions in Markdown.
+Pilotaże mają etapy: szkic → przegląd → rekrutacja/zasoby → pilotaż → ewaluacja → upowszechnienie. Poparcie nie jest oceną satysfakcji ani zgodą na rozpoczęcie pilotażu. Zasoby i budżet są deklaracjami; projekt nie obsługuje płatności ani powiadamiania służb.
 
-The scraper documentation describes extracting descriptions, categories, metadata, and links. It does not describe downloading linked PDFs, archives, or videos. The broader ingestion and application behavior below remains intended scope rather than verified implementation.
+## Uruchomienie lokalne
 
-## Users and access
+Wymagania: Git, Node.js zgodny z Vite 8 (np. Node 24), npm i Python 3.11+. Szybki start korzysta z SQLite i trybu AI `fake`, więc nie wymaga GPU ani kluczy usług zewnętrznych. Polecenia poniżej zakładają terminal POSIX.
 
-There are two application roles: user and administrator. All application features require login. An informational public landing presents the initiative before login; the catalogue and application data remain behind the intended session boundary. Prototype accounts, reports, and locations are synthetic. There is no mObywatel integration, PESEL-based authorization, or real identity verification in the prototype; this supersedes earlier identity-integration ideas.
+```bash
+git clone https://github.com/Jabrocki/hubmi.git
+cd hubmi/backend/app
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+export DATABASE_URL="sqlite:///./hubmi.db"
+export AI_PROVIDER="fake"
+export ENVIRONMENT="development"
+uvicorn src.main:app --reload --port 8000
+```
 
-Users may report issues affecting themselves, other people, organizations, or communities. An institution-oriented journey is available under the user role rather than a separate verified institutional role.
+Przy starcie API tworzy tabele i dane demonstracyjne. Otwórz [Swagger](http://localhost:8000/docs); [healthcheck](http://localhost:8000/healthz) sprawdza odpowiedź procesu API, nie jakość AI ani pełną gotowość bazy.
 
-The prototype uses two synthetic demo accounts, user and administrator, selectable without a production authentication flow. Anonymous reporting hides the author from other users, while the administrator can see the synthetic author identity.
+W drugim terminalu, z katalogu repozytorium:
 
-## Sources and ingestion
+```bash
+cd frontend/front
+npm ci
+npm run dev
+```
 
-The intended knowledge sources are:
+Otwórz [frontend](http://localhost:5173) i utwórz konto formularzem rejestracji. Vite przekazuje `/api` do `http://127.0.0.1:8000`. Opcjonalne konto administratora konfiguruje się przez `TEST_ADMIN_EMAIL` i `TEST_ADMIN_PASSWORD` przed startem backendu; danych dostępowych nie zapisuj w repozytorium.
 
-- [ROPS Social Innovation Library](https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/kategorie).
-- [Publications from the world of innovation](https://rops.krakow.pl/innowacje-spoleczne/publikacje-ze-swiata-innowacji).
-- [Małopolska social policy observatory](https://obserwator.rops.krakow.pl/).
-- [Map of Social Challenges](https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf).
-- [Social Innovation Canvas](https://rops.krakow.pl/mpliki/IS/Moj_folder/INNO_AGH_-_SOCIAL_CANVAS.pdf), supplied as a reference; its contents have not yet been verified in this session.
+### PostgreSQL i konfiguracja
 
-Refresh sources daily. Extract and chunk text; apply OCR to scanned documents. Only text is indexed. Media links may remain available as source references. A unified taxonomy spans the source material and citizen reports.
+Ustawienia backendu są w [config.py](backend/app/src/config.py); aplikacja czyta też `.env` w katalogu roboczym. Aby użyć istniejącej bazy PostgreSQL, ustaw własny adres i zastosuj migracje:
 
-Remove source material from the active indexed dataset only after confirmed removal. Keep the last successful copy during temporary timeouts, access denials, or server failures. Handling innovations with existing votes or pilots after confirmed source removal remains unresolved.
+```bash
+cd backend/app
+source .venv/bin/activate
+export DATABASE_URL="postgresql+psycopg://USER:PASSWORD@localhost:5432/hubmi"
+alembic upgrade head
+python -m src.scripts.backfill_geo_locations
+uvicorn src.main:app --reload --port 8000
+```
 
-## Technology and AI boundary
+Baza musi już istnieć. Backfill lokalizacji jest idempotentny; nierozpoznana miejscowość innowacji nie jest zastępowana fikcyjnym punktem na mapie.
 
-- Frontend: React, TypeScript, Vite.
-- Backend: Python; framework and ORM are not selected.
-- Storage: one PostgreSQL database, with separate logical tables and vector support. Extensions are permitted; containerization is acceptable.
-- Embeddings: a local Nomic embedding model, with Ollama as the intended local runtime. Exact model tag and embedding configuration remain open.
-- Generative AI: an external API for classification, text refinement, aggregation assistance, HyDE, estimates, and the idea assistant. Gemini API is accepted as the initial provider; the integration must support replacement through a provider boundary. The exact generative model remains open.
+Najważniejsze ustawienia:
 
-The latest decision supersedes the earlier proposal to run all AI locally. Only embeddings run locally. API credentials, the exact generative model, and API spending limits remain unresolved; free generative inference must not be assumed.
+| Zmienna | Znaczenie |
+| --- | --- |
+| `DATABASE_URL` | Adres SQLite lub PostgreSQL aplikacji. |
+| `SECRET_KEY` | Sekret podpisywania sesji; zmień wartość deweloperską przed wdrożeniem. |
+| `AI_PROVIDER` | `fake` lokalnie albo `ollama` przy uruchomionym serwerze modeli. |
+| `OLLAMA_BASE_URL` | Domyślnie `http://127.0.0.1:11434`. |
+| `OLLAMA_CHAT_MODEL` | Domyślnie `hubmi-synthetic`; model musi być dostępny w Ollamie. |
+| `OLLAMA_EMBEDDING_MODEL` | Domyślnie `nomic-embed-text`. |
+| `OLLAMA_INNOVATIONS_INDEX` | Domyślnie `../data/embeddings/innovations.jsonl`, względem katalogu backendu. |
+| `VITE_API_BASE_URL` | Adres API używany przy budowaniu frontendu dla zdalnego serwera. |
+| `VITE_MAP_TILE_URL`, `VITE_MAP_ATTRIBUTION` | Opcjonalny dostawca kafelków i przypisanie źródła mapy. |
+| `REPORT_EXPIRY_DAYS` | Konfiguracja retencji, domyślnie 30 dni; nie zastępuje audytu usuwania danych. |
+| `SMTP_*`, `FRONTEND_BASE_URL` | Konfiguracja poczty i odnośników do resetowania hasła. |
 
-Use the same compatible embedding model and configuration for indexed and query text. Model changes require an explicit re-embedding strategy. Generative AI outputs are suggestions and estimates, not administrator decisions.
+## Obecny serwer i wdrożenie
 
-## Data organization
+Frontend: [179.255.106.231:26260](http://179.255.106.231:26260). API: [179.255.106.231:26224/api/v1](http://179.255.106.231:26224/api/v1). Dostęp administracyjny: `ssh hackyeah`. Adresy i porty dotyczą obecnej instancji.
 
-Use one database with separate logical stores for:
+Aktualizacja samego frontendu z katalogu repozytorium:
 
-- Source knowledge and text chunks, including provenance.
-- Individual reports, including their links to a canonical problem.
-- Canonical problems and solutions in a shared vector-search collection, with explicit entity types so they can be compared without confusing their meanings.
-- New ideas, distinct from source-backed solutions until their lifecycle and publication decisions allow further use.
+```bash
+git switch main
+git pull --ff-only origin main
+cd frontend/front
+npm ci
+bash scripts/deploy-server.sh
+```
 
-A common vector collection does not replace relational records for users, votes, moderation, pilot stages, and participation.
+Skrypt wykonuje testy, lint i build, wysyła pliki do `/root/hubmi/frontend/front`, zachowuje kopię poprzedniej wersji, publikuje `index.html` na końcu i restartuje `hubmi-frontend` w Supervisorze. Weryfikuje identyfikator `/release.json` i odpowiedź API `/healthz`. Nie tworzy nowej instancji ani nie aktualizuje backendu lub bazy.
 
-When creating a new problem, generate one description from the first report through the agreed HyDE step and embed that description. Use a single generated description rather than multiple generated variants. The exact prompt and whether subsequent confirmed reports update the representation remain implementation details to settle. Preserve the original report separately from generated text, subject to the retention policy, so generated information is not treated as an observed fact.
+Inny cel wdrożenia można ustawić zmiennymi `MBG_SSH_TARGET`, `MBG_REMOTE_FRONTEND` i `VITE_API_BASE_URL`. Szablon procesu jest w [hubmi-frontend.supervisor.conf](frontend/front/scripts/hubmi-frontend.supervisor.conf).
 
-## Reporting and grouping problems
+```bash
+ssh hackyeah supervisorctl status hubmi-frontend
+ssh hackyeah supervisorctl restart hubmi-frontend
+```
 
-1. The user submits text and the location of the problem. Location comes from a map, manual entry, or phone geolocation confirmed as the problem location.
-2. AI estimates categories, target audience, urgency, and duration. Reports may have multiple categories, and users may correct the categorization.
-3. Unsuitable text receives an explanation and a request to revise it.
-4. AI and text similarity suggest an existing canonical problem, considering geographic proximity and contextual relevance.
-5. The user confirms the suggested association. Low-confidence matches are not assigned automatically. Rejecting all suggestions creates a new problem.
-6. A new problem is visible immediately, initially with one reporter, and remains subject to ongoing administrator moderation.
+Po wdrożeniu sprawdź w przeglądarce logowanie, zgłoszenie, mapę i katalog. Lista potrzeb obok mapy przewija się niezależnie na desktopie; ilustracje kart innowacji mają ograniczoną szerokość.
 
-Only problems in Małopolska are accepted. The user selects the discovery radius, independently of the radius used to group reports. Changing a discovery filter must not change problem grouping. Cross-municipality grouping depends on geographic proximity. Geographic and similarity thresholds will be configurable; initial values are to be proposed and checked against sample data rather than treated as agreed constants. Boundary handling remains open.
+Cofnięcie wdrożenia skryptu: przywróć `dist/index.html` z wypisanego katalogu `ui-backup-<data>-<commit>`, najpierw do pliku tymczasowego, następnie atomowym `mv`. Skrypt zachowuje starsze hashowane zasoby. Backup na tej samej instancji nie zastępuje niezależnego backupu bazy.
 
-Count unique reporting users per problem. Repeat submissions by the same user count once. Administrators can merge or split grouped problems. Reconciliation of counts, votes, and existing user associations after such actions must be specified.
+Podgląd lokalnego builda z API serwera:
 
-For recurrence of a previously resolved problem, automatically recommend the highest-rated suitable innovation and allow case-specific voting. Recommendation does not start implementation: another deployment still requires administrator approval. Episode boundaries and the scope of the historical rating remain open.
+```bash
+cd frontend/front
+VITE_API_BASE_URL=http://179.255.106.231:26224/api/v1 npm run build
+npm run preview
+```
 
-For urgent cases, the prototype displays contact guidance and a clearly labeled simulated routing status. It does not contact emergency services or imply that a real notification was sent. Exact guidance and destinations remain to be defined.
+## Dane i AI
 
-## Matching and presentation
+Biblioteka pochodzi z [ROPS](https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/kategorie). Scraper zapisuje opis, metadane YAML, kategorie, datę pobrania i odnośniki. Nie pobiera automatycznie filmów, ZIP-ów i materiałów pod linkami; aktualizacja zachowuje wcześniej poprawnie zapisane wpisy.
 
-Users can independently browse a knowledge catalogue of innovations and materials, explore categories, and search without submitting a problem. Login is still required.
+```bash
+cd backend/scrap
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python scrape.py --all --output ../data/innovations
+python -m unittest discover -s tests -v
+```
 
-Show up to ten sufficiently relevant innovations. Do not fill the result list with poor matches. Consider semantic/textual similarity, cost, local availability, target audience, and evidence of prior testing.
+Zamiast `--all` można podać `--url URL`; tryby wykluczają się. Scraper respektuje `robots.txt`, ogranicza zapytania i zwraca błąd również przy częściowym niepowodzeniu.
 
-Each result includes its source, an explanation of the match, and relevant limitations. Ranking weights and minimum relevance thresholds remain open.
+`backend/data/problems` zawiera źródła i szkice, a `submissions` syntetyczne scenariusze. Persony nie są prawdziwymi zgłoszeniami ani statystyką. [Przegląd źródeł](backend/data/problems/SOURCES_REVIEW.md) zachowuje kwalifikację regionalną i lata badań. Materiał ogólnopolski nie staje się materiałem Małopolski przez sam fakt publikacji przez ROPS. Szkice AI wymagają przeglądu.
 
-Use full embeddings and applicable filters for ranking. A reduced-dimensional 3D view visualizes semantic proximity between the problem and its candidate solutions; it is not a geographic map and does not determine ranking. Projection distances are approximate. Provide a conventional result list alongside the 3D visualization.
+Embeddingi JSONL zawierają stabilne ID, ścieżkę, tekst, hash, model i wektor. Importowane i wyszukiwane wektory muszą mieć zgodny model i wymiar. Pipeline Hugging Face używa `nomic-ai/nomic-embed-text-v1.5`, prefiksu `search_document` i 512 wymiarów; nie mieszaj go automatycznie z innym modelem Ollamy.
 
-Retrieval automatically identifies candidate source material; generation can explain or summarize it. Automatic retrieval does not guarantee relevance. Sample problems can be used to check matching quality without manually matching every user report. No evaluation dataset or evaluation procedure has yet been agreed.
+Z katalogu `backend/app`, po instalacji zależności scrapera:
 
-## Nearby needs and trends
+```bash
+../scrap/.venv/bin/python ../scrap/embed_data.py
+../scrap/.venv/bin/python ../scrap/load_embeddings_postgres.py --dry-run
+../scrap/.venv/bin/python ../scrap/load_embeddings_postgres.py
+```
 
-A separate view shows how often a problem has been reported and how close it is to the user's chosen area. It offers entry to the idea assistant.
+Importer wymaga własnego `DATABASE_URL` w formacie `postgresql://USER:PASSWORD@localhost:5432/hubmi` (bez sufiksu SQLAlchemy `+psycopg`) oraz obsługi pgvector. Przed importem zastosuj [migrację magazynu](backend/prisma/migrations/20261003180000_add_embedding_store/migration.sql), która tworzy osobne tabele `embedding_documents` i `embedding_chunks`. Opcjonalny zrzut [embedding_store.sql](backend/data/database/embedding_store.sql) można załadować przez `psql "$DATABASE_URL" -f backend/data/database/embedding_store.sql` z katalogu repozytorium. To nie jest zrzut kont ani całej bazy aplikacji.
 
-Grouping uses AI and text similarity. The prototype's trends view means the most frequently reported problems in the selected area, ranked algorithmically by unique-reporter count. It does not measure growth over time. The counting period remains open.
+Niezależny pakiet AI jest opcjonalny dla szybkiego startu; wymaga Python 3.14 oraz osobnego środowiska:
 
-Both administrators and users are intended to see relevant statistics. This is a deliberate departure from the challenge document's restriction of aggregated needs and trend analysis to administrators. The product decision is retained; this README does not claim full compliance with that restriction.
+```bash
+cd backend/ai
+python3.14 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+pip install pytest
+export GEMINI_API_KEY="WŁASNY_KLUCZ"
+PYTHONPATH=src python -m pytest tests
+```
 
-## Idea creation and AI assistant
+Pakiet usuwa wybrane identyfikatory przed wywołaniem Gemini. Sama anonimizacja nie gwarantuje prywatności wszystkich kombinacji lokalizacji i opisów. Klucze i rzeczywiste dane osobowe nie powinny trafiać do wersjonowanych danych.
 
-Users can propose ideas directly or enter a conversation when existing solutions do not meet their needs. The assistant conducts a conversation and produces a draft. Resuming previous conversations and collaborative editing are outside scope.
+## Weryfikacja
 
-The structured result covers:
+Frontend, z `frontend/front`:
 
-- Need and intended beneficiaries.
-- Proposed solution.
-- Partners.
-- Costs and resources.
-- Implementation stages.
+```bash
+npm run test:unit
+npm run lint
+npm run build
+```
 
-Directly entered ideas also pass through AI text refinement for readability and clarity. AI-generated cost estimates are provisional; an administrator approves a cost based on a prepared budget.
+Backend, z `backend/app` i aktywnym środowiskiem:
 
-If the AI API is unavailable, a form is the primary fallback. A submitted idea waits in a processing queue instead of being published immediately. Author approval cannot bypass AI processing or send the unprocessed idea directly to the administrator for publication.
+```bash
+python -m pytest tests
+```
 
-The agreed publication flow is: form or conversation → AI-refined text → author confirmation → administrator approval → public card and voting. A draft can be stored before approval but remains private. Being stored or published as an idea does not mark it as a tested innovation.
+Testy AI i scrapera są opisane wyżej. [Przypadki retrieval](backend/ai/evaluation/retrieval_cases.md) sprawdzają dopasowanie tematu, zakres regionalny, pusty wynik i deduplikację. Testy offline nie dowodzą jakości inferencji na działającym modelu.
 
-## Community support and swipe cards
+Dowody wcześniejszych kontroli UI są w [docs/audyt-serwera](docs/audyt-serwera) oraz JSON-ach i zrzutach w [mockups](frontend/front/mockups). Historyczne makiety i ich liczby nie opisują aktualnego stanu bazy.
 
-Cards present relevant local or region-wide proposals for existing unresolved problems. Swipe right means support. Users can undo a choice and optionally explain rejection. Desktop interaction uses mouse dragging; mobile interaction uses touch dragging. Equivalent keyboard-accessible buttons labeled Popieram and Pomijam are also required.
+## Interfejs, materiały i ograniczenia
 
-Eligible cards must be administrator-approved. New ideas are ordered by the number of supports within the eligible relevant set. Cards distinguish proposed ideas, solutions being tested, and established innovations with a visible annotation.
+Interfejs jest po polsku: biały dashboard, płaskie zielone akcje, granatowy tekst, neutralne obramowania i lokalne ilustracje. Fonty: Bricolage Grotesque i IBM Plex Sans. Logo krajobrazowe pochodzi od właściciela; ilustracje nie przedstawiają prawdziwych uczestników ani udokumentowanych efektów projektu. Zachowuj etykiety, obsługę klawiatury, alternatywną listę dla grafu i `prefers-reduced-motion`.
 
-Similar solutions are flagged for administrator review and possible merging. Independently of duplicate detection, allow only one current vote per user for a solution in a specific local problem. Users can change or withdraw it. Popularity means support count, not a positive-rating percentage or post-pilot satisfaction score. Tie-breaking, popularity across local deployments, and vote reconciliation after merging remain open.
+Animacje landingu pochodzą z [React Bits](https://github.com/DavidHDev/react-bits): AnimatedContent (GSAP) i CountUp (Motion), z lokalnymi poprawkami dostępności i cleanup. [Licencja komponentów](frontend/front/src/components/react-bits/LICENSE.md) pozostaje przy kodzie. Ikony Phosphor regular mają [licencję MIT](frontend/front/public/brand/Phosphor-LICENSE.txt); sprite odtwarza `npm run icons:build`.
 
-## Moderation, pilots, and resources
+Przed użyciem produkcyjnym potrzebne są HTTPS (obecny serwer używa HTTP), przegląd sekretów i CORS, niezależny backup, weryfikacja uprawnień, retencji oraz dostępności. WCAG 2.1 AA jest celem, nie potwierdzonym certyfikatem. Nie ma generatora wniosków grantowych, płatności, weryfikacji tożsamości przez mObywatel ani integracji służb.
 
-The accepted lifecycle is:
+Historyczny kosztorys z 4 października 2026 szacował odtworzenie zakresu na 120–240 godzin przy 200 zł/h (24–48 tys. zł), a utrzymanie instancji na 1,95605 USD/h. Są to zapisane założenia i historyczny odczyt, nie aktualna oferta ani gwarancja kosztu. Materiał pomiarowy pozostaje w [instance-cost.json](docs/audyt-serwera/instance-cost.json).
 
-`Draft → Review → Recruitment / Funding → Pilot → Evaluation → Dissemination`
-
-Recruitment and funding may need to run together; exact transition rules remain open. Administrators approve drafts, recruitment, funding, pilot start, and dissemination. They also maintain knowledge, review reports and ideas, and handle duplicate suggestions.
-
-Support can include budget declarations, volunteer time, equipment, and premises. No real payments are included at present. A future payment feature requires a separate scope decision.
-
-A pilot requires an approved budget, an accountable owner, required partners, a test plan, and sufficient participants. The administrator makes the final start decision. When resource or funding conditions fail, an administrator can mark the initiative unavailable; pause, cancellation, and recovery behavior require clarification.
-
-## Volunteering and evaluation
-
-Volunteer registration is open, with optional capacity limits, dates, and waiting lists. Where skills are required, an administrator confirms them. Only synthetic evidence is appropriate for this prototype; no real document scans or mObywatel verification are included.
-
-A cancellation frees a place for a waiting volunteer. Notify the selected volunteer inside the application and provide a button to accept the available place. An administrator can also move a volunteer from the waiting list manually. External notification channels remain outside scope. Offer expiry, waiting-list ordering, and handling competing acceptances remain implementation details to settle.
-
-Beneficiaries and volunteers rate satisfaction with the innovation, provide feedback, and suggest improvements. Administrators approve dissemination. Rating scales, timing, eligibility, and the relationship between satisfaction and public popularity remain open.
-
-## Communication and institution journey
-
-Communication takes place in threads attached to ideas. This is intended to support dialogue with administrators and other participants; audience, visibility, and expert participation need clarification.
-
-A separate user journey adapts an existing innovation into a service for an institution's needs. The institution supplies its beneficiaries, location, resources, budget, and constraints. The output is a draft adaptation of the selected innovation. No additional verified institution role is introduced.
-
-## Privacy and retention
-
-Use public innovation descriptions and synthetic accounts, reports, and locations for the prototype. Anonymous public presentation must be distinguished from authenticated submission.
-
-Remove identifying information locally before sending text to any external AI API. Retain the problem location and target group for matching. The moderation order is then AI processing followed by administrator review. Location and target-group combinations must not be assumed anonymous by default.
-
-Retain raw reports and conversations for approximately one month. Keep the innovation catalogue, approved ideas, and active pilots beyond that period. Exact expiry scheduling and treatment of derived embeddings, canonical problem summaries, unique-reporter counts, and votes after raw-report deletion remain implementation details to settle.
-
-## Challenge alignment and explicit gaps
-
-Reference: `CRITERIA Wojewodztwo Malopolskie HUBMI.pdf`, supplied by the project owner.
-
-- Social matchmaking is mandatory and central to this concept.
-- The challenge describes six additional modules: knowledge resources, idea creation, innovation testing, active communication, administration, and institution-specific innovation adaptation. Their implemented breadth determines coverage; this README does not claim completed modules.
-- Public aggregation/trends intentionally differ from the administrator-only requirement on page 3.
-- The grant application generator is explicitly deferred. Use of the supplied Social Innovation Canvas still needs definition.
-- An independently browsable knowledge library is in scope, including categories and search without first submitting a problem.
-- The challenge targets WCAG 2.1 AA. Equivalent keyboard-accessible voting buttons and a conventional list alongside the 3D view are agreed requirements. These decisions alone do not establish full accessibility conformance.
-- NGO, municipality, and expert needs are represented, if at all, through the user role. Their detailed journeys are incomplete.
-- External notification and integration functionality is deferred. In-app waiting-list notifications, acceptance of an offered place, and manual administrator promotion are in scope.
-- Formal submission materials and operating-cost estimates are required by the challenge but intentionally excluded from this README at the user's request. They have not been produced by this documentation task.
-
-## Decisions still required
-
-1. Exact Nomic model, Gemini model, credentials, and API spending limit. No Ollama setup script has been requested definitively or created; installation method and target operating systems are undecided.
-2. Proposed geographic and similarity thresholds, ranking weights, boundary handling, and recurrence episode rules.
-3. Exact prompt for the single generated description used by the HyDE step, and representation updates after additional reports.
-4. Popularity across local deployments, tie-breaking, and deduplication of votes and reporters after merging.
-5. Waiting-list ordering, offer expiry, and handling competing acceptances.
-6. Treatment of already-referenced innovations after confirmed source removal.
-7. Retention expiry scheduling and treatment of derived data after deleting raw reports or conversations.
-8. Detailed use of the supplied Social Innovation Canvas.
-9. Satisfaction scale, feedback timing, counting period for frequent problems, and communication-thread visibility.
-10. Sample-based checking of retrieval quality, if included in subsequent development work.
-
-Any proposed defaults for the remaining open decisions must remain labeled as proposals until accepted.
+Ten README zastępuje osobne instrukcje modułów, dokumenty produktu, plany i opisy mockupów. Pozostałe pliki Markdown to dane wejściowe, kwalifikacja źródeł, przypadki ewaluacji, licencja oraz instrukcje dla agentów.

@@ -20,7 +20,7 @@ class Idea(Base):
     costs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     resources: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     stages: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    # Stany cyklu życia pomysłu wg tasks.md / README:
+    # Stany cyklu życia pomysłu opisane w głównym README:
     # private_draft -> queued -> pending_author -> pending_admin -> public
     status: Mapped[str] = mapped_column(String(50), default="private_draft", nullable=False)
     support_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

@@ -1,12 +1,12 @@
 # Małopolska bez granic (MBG): instrukcje dla przyszłych mockupów i frontendu
 
-Aktualna marka: **Małopolska bez granic**, skrót **MBG**. Aktualny kierunek: `mockups/mbg-v4/README.md`, `mockups/mbg-v4/brief.md`, root DESIGN.md oraz `src/index.css` i nowsze reguły `src/Civic.css`. Landing odtwarza kompozycję pierwszego kadru planszy właściciela. Rysunkowy świat bez zdjęć prawdziwych ludzi, biały dashboard, boczna nawigacja i pastelowe skróty. Dostarczone logo krajobrazowe (`public/brand/mbg-landscape.webp`, oryginalny PNG obok) zastępuje wcześniejszy znak SVG. Nie zmieniaj artworku właściciela bez polecenia. Bricolage Grotesque + IBM Plex Sans pozostają. Dawne wersje nie zastępują tego kierunku.
+Aktualna marka: **Małopolska bez granic**, skrót **MBG**. Aktualny kierunek opisuje główny `../../README.md` oraz `src/index.css` i nowsze reguły `src/Civic.css`. Landing odtwarza kompozycję pierwszego kadru planszy właściciela. Rysunkowy świat bez zdjęć prawdziwych ludzi, biały dashboard, boczna nawigacja i pastelowe skróty. Dostarczone logo krajobrazowe (`public/brand/mbg-landscape.webp`, oryginalny PNG obok) zastępuje wcześniejszy znak SVG. Nie zmieniaj artworku właściciela bez polecenia. Bricolage Grotesque + IBM Plex Sans pozostają. Dawne wersje nie zastępują tego kierunku.
 
 ## Kontekst i zakres
 
-Przed planowaniem lub zmianą UI przeczytaj główny `../../README.md`, `../../PLAN_IMPLEMENTACJI.md`, `../../tasks.md` i lokalny `FRONTEND_KIERUNEK.md`.
+Przed planowaniem lub zmianą UI przeczytaj główny `../../README.md`.
 
-README opisuje aktualny produkt. PLAN_IMPLEMENTACJI rozstrzyga wykryte rozbieżności i proponuje strony, stany oraz kolejność. Kierunek frontendu jest źródłem estetyki tylko w zakresie zgodnym z README. Adresy i narzędzia z planu są propozycjami, nie istniejącymi interfejsami. Nowe polecenia użytkownika mają pierwszeństwo.
+README opisuje aktualny produkt, implementację i uruchomienie. Historyczne plany i opisy mockupów zostały scalone z tym dokumentem. Nowe polecenia użytkownika mają pierwszeństwo.
 
 - Interfejs po polsku; React + TypeScript + Vite. Sprawdź `package.json` przed proponowaniem/importowaniem zależności.
 - Dwie role i dwa syntetyczne konta: użytkownik oraz administrator. Adaptacja dla instytucji działa w roli użytkownika.
@@ -30,15 +30,15 @@ Skille są pomocą projektową. Zachowanie produktu i jawnie ustalona estetyka m
 
 ## System wizualny
 
-Aktualny kierunek i podglądy: `mockups/mbg-v4/README.md` oraz `../../DESIGN.md`. Użytkownik wskazał minimalistyczny wygląd, inspirację Government Service Website for Award Management, 21st.dev i React Bits, a następnie regionalną planszę dziewięciu ekranów. Zakazał gradientów na przyciskach. Fonty to Bricolage Grotesque (nagłówki) i IBM Plex Sans (tekst), oba lokalne. Przyciski: jednolity kolor, bez gradientu, połysku lub shimmeru. Landing działa w trybie Persuade; start po zalogowaniu w Operate.
+Aktualny kierunek: `../../README.md`; materiały wizualne są w `mockups`. Użytkownik wskazał minimalistyczny wygląd, inspirację Government Service Website for Award Management, 21st.dev i React Bits, a następnie regionalną planszę dziewięciu ekranów. Zakazał gradientów na przyciskach. Fonty to Bricolage Grotesque (nagłówki) i IBM Plex Sans (tekst), oba lokalne. Przyciski: jednolity kolor, bez gradientu, połysku lub shimmeru. Landing działa w trybie Persuade; start po zalogowaniu w Operate.
 
-Obowiązujące tokeny z `src/index.css`: białe tło i powierzchnie `#FFFFFF`, tekst `#0C2941`, primary `#00834A`, szałwia `#E0F3DF`, akcent `#A8492F`, neutralne obramowania `#E1E5E3`, fokus `#1E40AF`. Promienie, typografię i responsywność bierz z kodu oraz DESIGN.md.
+Obowiązujące tokeny z `src/index.css`: białe tło i powierzchnie `#FFFFFF`, tekst `#0C2941`, primary `#00834A`, szałwia `#E0F3DF`, akcent `#A8492F`, neutralne obramowania `#E1E5E3`, fokus `#1E40AF`. Promienie, typografię i responsywność bierz z kodu.
 
 Jedna rodzina ikon i jeden zestaw prymitywów UI. Główne działanie czytelne w pierwszym widoku, proste formularze, spokojne kolejki. Proponowane parametry mockupów: variance 3, motion 2, density 4 dla użytkownika; admin density 6. Nie są blokadą poleceń użytkownika ani ustawieniem biblioteki animacji.
 
 ## Mockupy i weryfikacja
 
-- Zacznij od M1 z planu, nie od galerii dashboardów. Przed ekranem określ rolę, URL, główne działanie, dane, źródła i stany.
+- Zacznij od przepływu zgłoszenia i dopasowania opisanego w README. Przed ekranem określ rolę, URL, główne działanie, dane, źródła i stany.
 - Każda seria: desktop i telefon, polskie realistyczne teksty, ładowanie/pusto/błąd/retry oraz krytyczne stany domenowe. Dane osobowe/zgłoszenia demo są syntetyczne i oznaczone.
 - Fixtures zgodne z kontraktem są narzędziem rozwoju; finalne działanie wymaga realnego API. Obraz mockupu nie dowodzi działania ani dostępności.
 - WCAG 2.1 AA jako cel, bez deklaracji zgodności przed audytem. Etykiety, fokus, klawiatura, kontrast, reflow, reduced motion, projektowe cele dotykowe 44 × 44 px. Lista alternatywna dla 3D, ręczny wybór lokalizacji, przyciski zamiast konieczności gestu.
@@ -46,4 +46,4 @@ Jedna rodzina ikon i jeden zestaw prymitywów UI. Główne działanie czytelne w
 - Wykonaj zbiorczą inspekcję desktop/telefon, popraw wykryte problemy w partii i potwierdź jedną dodatkową rundą; unikaj nieograniczonych pętli dopracowywania.
 - Obecny zestaw jest interaktywnym prototypem React z atlasem, statycznymi screenshotami oraz rzeczywistymi komponentami React Bits na landingu (Animated Content i Count Up, osobny lazy chunk, reduced-motion); rozwijaj go według aktualnego polecenia użytkownika i workflow skilla.
 
-Cały frontend, także administrator, należy do Osoby 1 w podziale `tasks.md`. Osoba 2 publikuje kontrakt HTTP i migracje, Osoba 3 kontrakt AI. Nie implementuj biznesowych bramek publikacji, uprawnień i gotowości pilotażu wyłącznie w UI.
+Frontend obejmuje również administratora; backend publikuje kontrakt HTTP i migracje, warstwa AI dostarcza kontrakt analizy. Nie implementuj biznesowych bramek publikacji, uprawnień i gotowości pilotażu wyłącznie w UI.

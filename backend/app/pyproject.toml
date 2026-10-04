@@ -2,7 +2,7 @@
 name = "hubmi-backend"
 version = "0.1.0"
 description = "HUBMI Application Backend and Workflows"
-readme = "README.md"
+readme = {text = "HUBMI application backend. Project documentation: https://github.com/Jabrocki/hubmi", content-type = "text/plain"}
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110.0",
