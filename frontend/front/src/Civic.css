@@ -268,7 +268,7 @@ html .landing-prototype-banner {
   min-height: 360px;
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 14px 14px 0 0;
   overflow: hidden;
   z-index: 0;
 }
