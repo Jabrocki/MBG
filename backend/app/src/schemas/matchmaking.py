@@ -60,7 +60,7 @@ class CategoryCorrectionRequest(BaseModel):
 
 class ReportDetailsUpdateRequest(BaseModel):
     audience: str = Field(..., min_length=1, max_length=300)
-    urgency: Literal["standard", "urgent"]
+    urgency: Literal["low", "normal", "high", "critical", "standard", "urgent"]
 
 class ReportResponse(BaseModel):
     id: int

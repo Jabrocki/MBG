@@ -456,7 +456,7 @@ export const api = {
       body: JSON.stringify({ categories }),
     })
   },
-  updateReportDetails(id: number, data: { audience: string; urgency: 'standard' | 'urgent' }) {
+  updateReportDetails(id: number, data: { audience: string; urgency: 'low' | 'normal' | 'high' | 'critical' }) {
     return request<Report>(`/reports/${id}/details`, { method: 'PATCH', body: JSON.stringify(data) })
   },
   confirmGrouping(id: number, confirmedProblemId: number | null, createNew: boolean) {

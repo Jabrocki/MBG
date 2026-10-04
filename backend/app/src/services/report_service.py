@@ -175,8 +175,10 @@ class ReportService:
         if report.author_id != user.id and user.role != "admin":
             raise HTTPException(status_code=403, detail="Brak uprawnień do edycji tego zgłoszenia")
         report.audience = audience.strip()
-        report.urgency = urgency
-        report.is_urgent = urgency == "urgent"
+        # Keep legacy AI values readable while allowing four user-facing levels.
+        normalized_urgency = {"standard": "normal", "urgent": "critical"}.get(urgency, urgency)
+        report.urgency = normalized_urgency
+        report.is_urgent = normalized_urgency == "critical"
         self.db.commit()
         self.db.refresh(report)
         return self.project_report(report, viewer=user)

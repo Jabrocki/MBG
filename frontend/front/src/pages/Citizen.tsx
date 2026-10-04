@@ -645,7 +645,19 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
   )
   const [categories, setCategories] = useState<string[]>(report?.categories ?? ['Społeczność lokalna'])
   const [audience, setAudience] = useState(report?.audience ?? '')
-  const [urgency, setUrgency] = useState<'standard' | 'urgent'>(report?.urgency === 'urgent' ? 'urgent' : 'standard')
+  type UrgencyLevel = 'low' | 'normal' | 'high' | 'critical'
+  const urgencyLevels: Array<{ value: UrgencyLevel; label: string; position: number }> = [
+    { value: 'low', label: 'niska', position: 0 },
+    { value: 'normal', label: 'zwykła', position: 33 },
+    { value: 'high', label: 'wysoka', position: 66 },
+    { value: 'critical', label: 'krytyczna', position: 100 },
+  ]
+  const normalizeUrgency = (value: string | undefined): UrgencyLevel => {
+    if (value === 'urgent') return 'critical'
+    if (value === 'standard') return 'normal'
+    return urgencyLevels.some((level) => level.value === value) ? (value as UrgencyLevel) : 'normal'
+  }
+  const [urgency, setUrgency] = useState<UrgencyLevel>(normalizeUrgency(report?.urgency))
   const [selected, setSelected] = useState<string>('new')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -658,7 +670,7 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
   useEffect(() => {
     if (!report) return
     setAudience(report.audience ?? '')
-    setUrgency(report.urgency === 'urgent' ? 'urgent' : 'standard')
+    setUrgency(normalizeUrgency(report.urgency))
   }, [report])
   async function confirm() {
     setSaving(true)
@@ -717,16 +729,24 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
               <Field label="Odbiorcy · szacunek AI">
                 <input value={audience} onChange={(event) => setAudience(event.target.value)} />
               </Field>
-              <Field label={`Pilność · ${urgency === 'urgent' ? 'pilna' : 'standardowa'}`}>
+              <Field label={`Pilność · ${urgencyLevels.find((level) => level.value === urgency)?.label}`}>
                 <input
                   type="range"
                   min="0"
                   max="100"
                   step="1"
-                  value={urgency === 'urgent' ? 100 : 40}
-                  onChange={(event) => setUrgency(Number(event.target.value) >= 70 ? 'urgent' : 'standard')}
+                  value={urgencyLevels.find((level) => level.value === urgency)?.position ?? 33}
+                  onChange={(event) => {
+                    const position = Number(event.target.value)
+                    setUrgency(urgencyLevels.reduce((closest, level) =>
+                      Math.abs(level.position - position) < Math.abs(closest.position - position) ? level : closest,
+                    ).value)
+                  }}
                   aria-label="Pilność zgłoszenia"
                 />
+                <div className="range-labels" aria-hidden="true">
+                  {urgencyLevels.map((level) => <span key={level.value}>{level.label}</span>)}
+                </div>
               </Field>
             </div>
           </Panel>
