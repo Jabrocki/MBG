@@ -487,13 +487,6 @@ function ReportForm({ state }: { state: string }) {
       </ol>
       <div className="detail-layout">
         <Panel>
-          <h2>Najbliższe sprawdzone innowacje</h2>
-          {currentThread.recommended_innovations.length === 0 ? <Notice>Nie znaleziono wystarczająco podobnych rozwiązań.</Notice> : currentThread.recommended_innovations.map((innovation) => (
-            <article className="comment" key={innovation.solution_id}>
-              <div><strong>{innovation.title}</strong><p>{toReadableInnovationText(innovation.description)}</p><small>Podobieństwo: {Math.round(innovation.similarity * 100)}%</small></div>
-            </article>
-          ))}
-          <h2>Rozmowa o pomyśle</h2>
           <form onSubmit={submit}>
             {step === 1 ? (
               <>
@@ -1525,8 +1518,10 @@ function IdeaForm({ problemId }: { problemId: number }) {
   const [savedIdeaId, setSavedIdeaId] = useState<number | null>(null)
   const [problem, setProblem] = useState<Awaited<ReturnType<typeof api.getProblem>> | null>(null)
   const [problemError, setProblemError] = useState('')
+  const [matches, setMatches] = useState<InnovationMatch[]>([])
   useEffect(() => {
     api.getProblem(problemId).then(setProblem).catch((caught: unknown) => setProblemError(caught instanceof Error ? caught.message : 'Nie udało się pobrać problemu.'))
+    api.getMatches(problemId).then((result) => setMatches(result.matches.slice(0, 5))).catch(() => setMatches([]))
   }, [problemId])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1563,16 +1558,18 @@ function IdeaForm({ problemId }: { problemId: number }) {
   return (
     <>
       <Heading
-        title="Opisz swój pomysł własnymi słowami."
-        description={problem ? `Pomysł zostanie przypisany do problemu: „${problem.title}”. Jedno pole wystarczy; potem porozmawiasz z AI.` : 'Ładowanie wybranego problemu…'}
+        title="Rozmowa z AI o rozwiązaniu"
+        description={problem ? `Rozwijamy rozwiązanie problemu: „${problem.title}”.` : 'Ładowanie wybranego problemu…'}
         back={problem ? `/potrzeby/${problemId}` : '/potrzeby'}
       />
       <div className="detail-layout">
         <Panel>
           {problemError ? <Notice tone="error">{problemError}</Notice> : <Notice title="Wybrany problem">{problem?.title ?? 'Ładowanie…'}</Notice>}
           <form onSubmit={submit}>
-            <h2>Co chcesz zmienić?</h2>
-            <Field label="Opis pomysłu" hint="Napisz swobodnie: dla kogo, gdzie i co mogłoby się zmienić. Nie musisz znać budżetu ani planu.">
+            <h2>Asystent AI</h2>
+            <article className="comment ai-message"><div><strong>Doradca AI</strong><p>Najpierw sprawdzę podobne, działające innowacje. Napisz, co chcesz zmienić, a wspólnie dopracujemy rozwiązanie.</p></div></article>
+            {matches.length > 0 && <div className="idea-recommendations"><h3>Najbliższe sprawdzone rozwiązania</h3>{matches.map((match) => <article className="comment" key={match.solution_id}><div><strong>{match.title}</strong><p>{toReadableInnovationText(match.description)}</p><small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small></div></article>)}</div>}
+            <Field label="Twoja wiadomość" hint="Napisz swobodnie. AI dopyta o szczegóły i zaproponuje rozwiązanie.">
               <textarea name="text_raw" rows={10} required minLength={10} maxLength={5000} autoFocus />
             </Field>
             {error && <Notice tone="error">{error}</Notice>}
@@ -1583,7 +1580,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
               </Notice>
             )}
             <button className="button" type="submit" disabled={saving || savedIdeaId !== null || !problem}>
-              {saving ? 'Zapisywanie…' : 'Rozpocznij rozmowę z AI'}
+              {saving ? 'AI przygotowuje propozycję…' : 'Wyślij wiadomość do AI'}
               <Icon name="ArrowRight" />
             </button>
           </form>
