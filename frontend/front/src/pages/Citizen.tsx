@@ -2616,7 +2616,7 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
 
   async function askAi() {
     const content = text.trim()
-    if (!thread || !content) return
+    if (!thread || !content || sending || askingAi) return
     setAskingAi(true)
     setError('')
     try {
@@ -2627,6 +2627,8 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
           : current,
       )
       setText('')
+      // The AI endpoint saves both the question and the reply in the same thread.
+      api.getIdeaThread(ideaId).then(setThread).catch(() => setRefreshKey((value) => value + 1))
       notify('Odpowiedź AI została dodana do tego pomysłu.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Nie udało się uzyskać odpowiedzi AI.')
@@ -2692,22 +2694,23 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
               </article>
             ))
           )}
-          <form onSubmit={sendMessage}>
-            <Field label="Dodaj komentarz">
+          <form onSubmit={sendMessage} className="solution-chat">
+            <Field label="Wiadomość lub pytanie do AI" hint="Zapytaj AI, aby rozwinąć rozwiązanie, albo dodaj komentarz do tego wątku.">
               <textarea
                 rows={3}
                 value={text}
                 onChange={(event) => setText(event.target.value)}
+                disabled={sending || askingAi}
                 required
               />
             </Field>
-            <button className="button" disabled={sending || !text.trim()}>
+            <button className="button secondary" disabled={sending || askingAi || !text.trim()}>
               {sending ? 'Wysyłanie…' : 'Dodaj komentarz'}
               <Icon name="ChatCircle" />
             </button>
             <button
               type="button"
-              className="button secondary"
+              className="button"
               disabled={sending || askingAi || !text.trim()}
               onClick={() => void askAi()}
             >

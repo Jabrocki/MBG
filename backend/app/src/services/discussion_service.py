@@ -105,8 +105,21 @@ class DiscussionService:
             ))
         except Exception:
             pass
+        recent_messages = self.db.execute(
+            select(ThreadMessage).where(ThreadMessage.thread_id == thread_id)
+            .order_by(ThreadMessage.id.desc()).limit(12)
+        ).scalars().all()
+        context_parts.append("Historia tej rozmowy:\n" + "\n".join(
+            f"{'Doradca AI' if message.is_ai else 'Użytkownik'}: {message.content}"
+            for message in reversed(recent_messages)
+        ))
         context = "; ".join(filter(None, context_parts))
         answer = self.ai.discuss_idea(thread.idea.text_raw, context, content)
+        # Persist the question and answer together; a failed generation leaves no orphan question.
+        self.db.add(ThreadMessage(
+            thread_id=thread_id, author_id=author.id, is_ai=False,
+            content=content, created_at=utc_now(),
+        ))
         msg = ThreadMessage(thread_id=thread_id, author_id=author.id, is_ai=True, content=answer, created_at=utc_now())
         self.db.add(msg)
         self.db.commit()
