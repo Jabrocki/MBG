@@ -11,7 +11,6 @@ from src.models.source import Solution, SourceKnowledge
 from src.models.problem import CanonicalProblem
 from src.models.pilot import Pilot
 from src.models.match import MatchResult
-from src.services.matching_service import MatchingService
 from src.schemas.modules import (
     VoteCreateRequest,
     VoteResponse,
@@ -96,9 +95,6 @@ class VoteService:
         """Returns eligible swipe cards for local problem, with support counts and badges."""
         if not self.db.get(CanonicalProblem, problem_id):
             raise HTTPException(status_code=404, detail="Problem lokalny nie został odnaleziony")
-        # Populate problem-specific AI matches first; cards never expose a global
-        # catalogue detached from the selected problem.
-        MatchingService(self.db).get_matches_for_problem(problem_id)
         solutions = self.db.execute(
             select(Solution)
             .join(MatchResult, MatchResult.solution_id == Solution.id)

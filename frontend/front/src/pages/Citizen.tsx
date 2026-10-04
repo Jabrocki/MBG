@@ -2052,11 +2052,14 @@ function Support({ notify }: { notify: Notify }) {
 
   useEffect(() => {
     let active = true
-    api.getMapMarkers()
-      .then((map) => {
+    // Load only problems that have published community ideas. The old flow
+    // fetched every map problem and triggered one expensive cards query per
+    // marker, even when no card could be shown.
+    api.getPublicIdeas()
+      .then((ideas) => {
         if (!active) return
-        const availableProblems = map.markers.filter((marker) => marker.entity_type === 'problem')
-        return Promise.all(availableProblems.map((problem) => api.getSupportCards(problem.entity_id)))
+        const problemIds = [...new Set(ideas.map((idea) => idea.canonical_problem_id).filter((id): id is number => typeof id === 'number'))]
+        return Promise.all(problemIds.map((problemId) => api.getSupportCards(problemId)))
       })
       .then((groups) => {
         if (!active || !groups) return
