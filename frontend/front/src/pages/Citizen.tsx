@@ -1519,9 +1519,13 @@ function IdeaForm({ problemId }: { problemId: number }) {
   const [problem, setProblem] = useState<Awaited<ReturnType<typeof api.getProblem>> | null>(null)
   const [problemError, setProblemError] = useState('')
   const [matches, setMatches] = useState<InnovationMatch[]>([])
+  const [proposal, setProposal] = useState('')
+  const [proposalSources, setProposalSources] = useState<string[]>([])
+  const [proposalLoading, setProposalLoading] = useState(true)
   useEffect(() => {
     api.getProblem(problemId).then(setProblem).catch((caught: unknown) => setProblemError(caught instanceof Error ? caught.message : 'Nie udało się pobrać problemu.'))
     api.getMatches(problemId).then((result) => setMatches(result.matches.slice(0, 5))).catch(() => setMatches([]))
+    api.getAiProposal(problemId).then((result) => { setProposal(result.proposal); setProposalSources(result.based_on ?? []) }).catch(() => setProposal('')).finally(() => setProposalLoading(false))
   }, [problemId])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1570,7 +1574,8 @@ function IdeaForm({ problemId }: { problemId: number }) {
           <form onSubmit={submit}>
             <h2>Asystent AI</h2>
             <article className="comment ai-message"><div><strong>Doradca AI</strong><p>Najpierw sprawdzę podobne, działające innowacje. Napisz, co chcesz zmienić, a wspólnie dopracujemy rozwiązanie.</p></div></article>
-            {matches.length > 0 && <div className="idea-recommendations"><h3>Najbliższe sprawdzone rozwiązania</h3>{matches.map((match) => <article className="comment" key={match.solution_id}><div><strong>{match.title}</strong><p>{getInnovationPreview(match.description, 280)}</p><small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small></div></article>)}</div>}
+            {matches.length > 0 && <div className="idea-recommendations"><h3>Najbliższe sprawdzone rozwiązania</h3>{matches.map((match) => <article className="comment" key={match.solution_id}><div><strong>{match.title}</strong><p>{getInnovationPreview(match.description, 280)}</p><small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small><br /><Link href={`/innowacje/api/${match.solution_id}?tytul=${encodeURIComponent(toReadableInnovationText(match.title))}`}>Zobacz stronę innowacji <Icon name="ArrowRight" size={16} /></Link></div></article>)}</div>}
+            {proposalLoading ? <LoadingState label="AI układa propozycję rozwiązania…" /> : proposal ? <article className="comment ai-message"><div><strong>Doradca AI — proponowane rozwiązanie</strong><p>{toReadableInnovationText(proposal)}</p>{proposalSources.length > 0 && <small>Na podstawie: {proposalSources.join(', ')}</small>}</div></article> : null}
             <Field label="Twoja wiadomość" hint="Napisz swobodnie. AI dopyta o szczegóły i zaproponuje rozwiązanie.">
               <textarea name="text_raw" rows={10} required minLength={10} maxLength={5000} autoFocus />
             </Field>

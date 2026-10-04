@@ -463,6 +463,9 @@ export const api = {
   getMatches(problemId: number) {
     return request<MatchList>(`/problems/${problemId}/matches`)
   },
+  getAiProposal(problemId: number) {
+    return request<{ proposal: string; based_on: string[] }>(`/problems/${problemId}/ai-proposal`)
+  },
   getProblem(problemId: number) {
     return request<CanonicalProblem>(`/problems/${problemId}`)
   },
