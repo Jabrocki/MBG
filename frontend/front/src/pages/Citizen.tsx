@@ -1793,6 +1793,7 @@ function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
         <div className="stack">
           <Panel>
             <Badge tone={ideaStatusTone(item.status)}>{ideaStatusLabel(item.status)}</Badge>
+            <p className="muted">Pomysł przypisany do problemu #{item.canonical_problem_id}.</p>
             <h2>Propozycja</h2>
             <p>{toReadableInnovationText(text)}</p>
             {!canConfirm && (
