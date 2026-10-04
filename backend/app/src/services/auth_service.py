@@ -4,11 +4,17 @@ import hmac
 import re
 from src.utils.datetime_utils import utc_now
 import secrets
+import logging
+import smtplib
+from email.message import EmailMessage
+from datetime import timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from src.models.user import User, DemoSession, LocalCredential
+from src.models.user import User, DemoSession, LocalCredential, PasswordResetToken
 from src.schemas.matchmaking import DemoTokenResponse, PasswordLoginRequest, RegisterRequest
 from src.config import settings
+
+logger = logging.getLogger(__name__)
 
 DEMO_ACCOUNTS = {
     "user": {
@@ -133,6 +139,70 @@ class AuthService:
         if session:
             self.db.delete(session)
             self.db.commit()
+
+    def request_password_reset(self, email: str) -> None:
+        normalized = self._normalize_email(email)
+        user = self.db.execute(select(User).where(User.email == normalized)).scalar_one_or_none()
+        # Keep the response identical for existing and unknown accounts.
+        if not user or not user.credential:
+            return
+        raw_token = secrets.token_urlsafe(48)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        reset = PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=utc_now() + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES),
+        )
+        self.db.add(reset)
+        self.db.commit()
+        link = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/reset-hasla?token={raw_token}"
+        self._send_reset_email(user.email, link)
+
+    def confirm_password_reset(self, token: str, new_password: str) -> None:
+        self._validate_password(new_password)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        reset = self.db.execute(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)).scalar_one_or_none()
+        if not reset or reset.used_at or reset.expires_at < utc_now():
+            raise ValueError("Link do ustawienia hasła jest nieprawidłowy albo wygasł.")
+        user = self.db.get(User, reset.user_id)
+        if not user:
+            raise ValueError("Link do ustawienia hasła jest nieprawidłowy albo wygasł.")
+        if user.credential:
+            user.credential.password_hash = self._hash_password(new_password)
+        else:
+            self.db.add(LocalCredential(user_id=user.id, password_hash=self._hash_password(new_password)))
+        reset.used_at = utc_now()
+        self.db.query(DemoSession).filter(DemoSession.user_id == user.id).delete()
+        self.db.commit()
+
+    def change_password(self, user: User, current_password: str, new_password: str) -> None:
+        if not user.credential or not self._verify_password(current_password, user.credential.password_hash):
+            raise ValueError("Bieżące hasło jest nieprawidłowe.")
+        self._validate_password(new_password)
+        user.credential.password_hash = self._hash_password(new_password)
+        self.db.commit()
+
+    @staticmethod
+    def _validate_password(password: str) -> None:
+        if len(password) < 10 or not re.search(r"[A-Za-zĄ-Żąćęłńóśźż]", password) or not re.search(r"\d", password):
+            raise ValueError("Hasło musi mieć co najmniej 10 znaków i zawierać literę oraz cyfrę.")
+
+    @staticmethod
+    def _send_reset_email(recipient: str, link: str) -> None:
+        if not settings.SMTP_HOST or not settings.SMTP_FROM:
+            logger.warning("SMTP is not configured; password reset link generated for %s: %s", recipient, link)
+            return
+        message = EmailMessage()
+        message["Subject"] = "MBG — ustawienie nowego hasła"
+        message["From"] = settings.SMTP_FROM
+        message["To"] = recipient
+        message.set_content(f"Aby ustawić nowe hasło w MBG, otwórz link (ważny {settings.PASSWORD_RESET_EXPIRE_MINUTES} minut):\n\n{link}\n")
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:
+            if settings.SMTP_USE_TLS:
+                smtp.starttls()
+            if settings.SMTP_USERNAME:
+                smtp.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            smtp.send_message(message)
 
     def _issue_session(self, user: User) -> DemoTokenResponse:
         """Generate a high-entropy bearer token for a user authenticated by any supported flow."""

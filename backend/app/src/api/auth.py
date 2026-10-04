@@ -8,6 +8,9 @@ from src.schemas.matchmaking import (
     PasswordLoginRequest,
     RegisterRequest,
     UserResponse,
+    PasswordResetRequest,
+    PasswordResetConfirmRequest,
+    PasswordChangeRequest,
 )
 from fastapi.security import HTTPAuthorizationCredentials
 from src.services.auth_service import AuthService
@@ -41,6 +44,31 @@ def login(data: PasswordLoginRequest, db: Session = Depends(get_db)):
         return service.login(data)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
+
+@router.post("/password-reset/request", summary="Wysłanie linku odzyskiwania hasła")
+def request_password_reset(data: PasswordResetRequest, db: Session = Depends(get_db)):
+    AuthService(db).request_password_reset(data.email)
+    return {"message": "Jeśli konto istnieje, wysłaliśmy instrukcję na podany adres e-mail."}
+
+@router.post("/password-reset/confirm", summary="Ustawienie nowego hasła z jednorazowego linku")
+def confirm_password_reset(data: PasswordResetConfirmRequest, db: Session = Depends(get_db)):
+    try:
+        AuthService(db).confirm_password_reset(data.token, data.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return {"message": "Hasło zostało zmienione. Zaloguj się ponownie."}
+
+@router.post("/password-change", summary="Zmiana hasła zalogowanego użytkownika")
+def change_password(
+    data: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        AuthService(db).change_password(current_user, data.current_password, data.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return {"message": "Hasło zostało zmienione."}
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="Unieważnienie bieżącej sesji")

@@ -11,7 +11,7 @@ import { Icon, Link, Logo, Heading, DemoStatus } from './ui'
 import { useRoute } from './navigation'
 import { api, clearSession, getStoredSession, saveSession, type Session } from './api'
 import { navigate } from './navigation'
-import { Login, Atlas, Brand } from './pages/Public'
+import { Login, PasswordReset, Atlas, Brand } from './pages/Public'
 import { Citizen } from './pages/Citizen'
 import { Admin } from './pages/Admin'
 import './App.css'
@@ -28,7 +28,7 @@ export default function App() {
     [session, setSession] = useState<Session | null>(() => getStoredSession())
   const menu = menuRoute === path
   const admin = path.startsWith('/admin'),
-    publicPage = ['/', '/logowanie', '/mockupy', '/marka'].includes(path)
+    publicPage = ['/', '/logowanie', '/reset-hasla', '/mockupy', '/marka'].includes(path)
   const screen = screens.find((item) => item.path.split('?')[0] === path)
   useEffect(() => {
     document.title = `${screen?.title ?? 'Strona MBG'} · MBG`
@@ -79,6 +79,7 @@ export default function App() {
     )
   else if (path === '/logowanie')
     page = <Login onPasswordLogin={loginWithPassword} onRegister={register} />
+  else if (path === '/reset-hasla') page = <PasswordReset />
   else if (path === '/mockupy') page = <Atlas />
   else if (path === '/marka') page = <Brand />
   else if (state === 'blad' || state === 'ladowanie')

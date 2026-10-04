@@ -37,5 +37,13 @@ class Settings(BaseSettings):
     TEST_ADMIN_NAME: str = "Administrator"
     TEST_ADMIN_SURNAME: str = "Testowy"
     ALLOW_DEMO_ADMIN_LOGIN: bool = False
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    SMTP_USE_TLS: bool = True
+    PASSWORD_RESET_EXPIRE_MINUTES: int = 30
 
 settings = Settings()

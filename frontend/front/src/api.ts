@@ -367,6 +367,15 @@ export const api = {
   register(data: Registration) {
     return request<Session>('/auth/register', { method: 'POST', body: JSON.stringify(data) })
   },
+  requestPasswordReset(email: string) {
+    return request<{ message: string }>('/auth/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) })
+  },
+  confirmPasswordReset(token: string, newPassword: string) {
+    return request<{ message: string }>('/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ token, new_password: newPassword }) })
+  },
+  changePassword(currentPassword: string, newPassword: string) {
+    return request<{ message: string }>('/auth/password-change', { method: 'POST', body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }) })
+  },
   logout() {
     return request<void>('/auth/logout', { method: 'POST' })
   },

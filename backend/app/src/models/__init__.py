@@ -1,4 +1,4 @@
-from src.models.user import User, DemoSession, LocalCredential
+from src.models.user import User, DemoSession, LocalCredential, PasswordResetToken
 from src.models.source import SourceKnowledge, Solution, ProblemVectorRecord
 from src.models.report import Report
 from src.models.problem import CanonicalProblem, ReportProblemLink
@@ -14,6 +14,7 @@ __all__ = [
     "User",
     "DemoSession",
     "LocalCredential",
+    "PasswordResetToken",
     "SourceKnowledge",
     "Solution",
     "ProblemVectorRecord",

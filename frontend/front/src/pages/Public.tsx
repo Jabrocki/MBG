@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { screens } from '../routes'
 import { Badge, ButtonLink, Heading, Icon, Link, Logo, Notice } from '../ui'
+import { api } from '../api'
 
 export function Login({
   onPasswordLogin,
@@ -24,7 +25,7 @@ export function Login({
       >
     )[target] ?? '/start'
   const [error, setError] = useState('')
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState('')
   const [surname, setSurname] = useState('')
@@ -91,7 +92,13 @@ export function Login({
           </button>
         </div>
         {error && <Notice tone="error">{error}</Notice>}
-        {mode === 'login' ? (
+        {mode === 'forgot' ? (
+          <form className="auth-form" onSubmit={async (event) => { event.preventDefault(); setLoading(true); setError(''); try { await api.requestPasswordReset(email); setError('Jeśli konto istnieje, instrukcja została wysłana na e-mail.'); } catch (caught) { setError(caught instanceof Error ? caught.message : 'Nie udało się wysłać instrukcji.') } finally { setLoading(false) } }}>
+            <label>E-mail<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label>
+            <button className="button" type="submit" disabled={loading}>{loading ? 'Wysyłanie…' : 'Wyślij link odzyskiwania'}<Icon name="ArrowRight" size={17} /></button>
+            <button type="button" className="text-button" onClick={() => setMode('login')}>Wróć do logowania</button>
+          </form>
+        ) : mode === 'login' ? (
           <form className="auth-form" onSubmit={(event) => void login(event)}>
             <label>
               E-mail
@@ -105,6 +112,7 @@ export function Login({
               {loading ? 'Logowanie…' : 'Zaloguj się'}
               <Icon name="ArrowRight" size={17} />
             </button>
+            <button type="button" className="text-button" onClick={() => { setError(''); setMode('forgot') }}>Nie pamiętam hasła</button>
           </form>
         ) : (
           <form className="auth-form" onSubmit={(event) => void register(event)}>
@@ -143,6 +151,22 @@ export function Login({
       </section>
     </div>
   )
+}
+
+export function PasswordReset() {
+  const token = new URLSearchParams(window.location.search).get('token') ?? ''
+  const [password, setPassword] = useState('')
+  const [repeat, setRepeat] = useState('')
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(''); setMessage('')
+    if (password !== repeat) { setError('Hasła muszą być takie same.'); return }
+    setLoading(true)
+    try { setMessage((await api.confirmPasswordReset(token, password)).message) } catch (caught) { setError(caught instanceof Error ? caught.message : 'Nie udało się ustawić hasła.') } finally { setLoading(false) }
+  }
+  return <div className="login-layout"><section className="login-content"><Heading title="Ustaw nowe hasło" description="Link jest jednorazowy i wygasa po 30 minutach." />{message && <Notice tone="success">{message} <Link href="/logowanie">Wróć do logowania</Link></Notice>}{error && <Notice tone="error">{error}</Notice>}<form className="auth-form" onSubmit={(event) => void submit(event)}><label>Nowe hasło<input type="password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required /></label><label>Powtórz hasło<input type="password" minLength={10} value={repeat} onChange={(event) => setRepeat(event.target.value)} required /></label><button className="button" disabled={loading || !token}>{loading ? 'Zapisywanie…' : 'Ustaw hasło'}<Icon name="Check" /></button></form></section></div>
 }
 export function Atlas() {
   const [query, setQuery] = useState(''),
