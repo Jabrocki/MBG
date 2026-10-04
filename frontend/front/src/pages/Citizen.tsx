@@ -744,9 +744,6 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
                   }}
                   aria-label="Pilność zgłoszenia"
                 />
-                <div className="range-labels" aria-hidden="true">
-                  {urgencyLevels.map((level) => <span key={level.value}>{level.label}</span>)}
-                </div>
               </Field>
             </div>
           </Panel>
