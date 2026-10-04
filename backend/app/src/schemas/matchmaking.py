@@ -175,6 +175,7 @@ class MapMarkersResponse(BaseModel):
     radius_km: Optional[float] = None
     markers: List[MapMarkerResponse]
     counts: MapMarkerCountsResponse
+    privacy_note: str = ""
 
 
 class LocalitySearchResult(BaseModel):

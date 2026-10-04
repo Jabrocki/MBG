@@ -116,7 +116,9 @@ class ReportService:
             entity_type="problem", entity_id=problem.id, embedding=hyde_result.embedding,
         )
         report.canonical_problem_id = problem.id
-        report.status = "confirmed"
+        # The report already has a concrete problem assignment, but remains in the
+        # administrator review queue until the decision endpoint confirms it.
+        report.status = "submitted"
         self.db.add(ReportProblemLink(
             report_id=report.id, problem_id=problem.id, confidence=1.0,
             status="confirmed", confirmed_at=utc_now(), confirmed_by_user_id=None,
