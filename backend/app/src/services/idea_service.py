@@ -28,8 +28,12 @@ class IdeaService:
         self.geo_locations = EntityGeoLocationService(db)
 
     def create_draft(self, data: IdeaCreateRequest, user: User) -> IdeaResponse:
+        problem = self.db.get(CanonicalProblem, data.canonical_problem_id)
+        if not problem or problem.status != "active":
+            raise HTTPException(status_code=404, detail="Wskazany problem nie istnieje albo nie jest aktywny")
         idea = Idea(
             author_id=user.id,
+            canonical_problem_id=problem.id,
             text_raw=data.text_raw,
             need=data.need,
             beneficiaries=data.beneficiaries,
@@ -185,24 +189,12 @@ class IdeaService:
         self.db.commit()
         self.db.refresh(idea)
         self.db.refresh(solution)
-        problem_text = idea.need or idea.text_refined or idea.text_raw
-        problem = CanonicalProblem(
-            title=problem_text[:120],
-            generated_description=problem_text,
-            reporter_count=0,
-            location_centroid_lat=50.0619,
-            location_centroid_lon=19.9368,
-            status="active",
-            created_at=utc_now(),
-        )
-        self.db.add(problem)
-        self.db.flush()
         self.db.add(MatchResult(
-            problem_id=problem.id,
+            problem_id=idea.canonical_problem_id,
             solution_id=solution.id,
             rank=1,
             score=1.0,
-            explanation="Pomysł użytkownika przypisany do problemu wygenerowanego z jego opisu.",
+            explanation="Pomysł użytkownika przypisany do wybranego problemu.",
             limitations="Wymaga lokalnej weryfikacji przed pilotażem.",
             coord_x=0.0,
             coord_y=0.0,
@@ -225,6 +217,7 @@ class IdeaService:
             IdeaResponse(
                 id=i.id,
                 author_id=i.author_id,
+                canonical_problem_id=i.canonical_problem_id,
                 text_raw=i.text_raw,
                 text_refined=i.text_refined,
                 need=i.need,
@@ -273,6 +266,7 @@ class IdeaService:
         return IdeaResponse(
             id=idea.id,
             author_id=idea.author_id,
+            canonical_problem_id=idea.canonical_problem_id,
             text_raw=idea.text_raw,
             text_refined=idea.text_refined,
             need=idea.need,

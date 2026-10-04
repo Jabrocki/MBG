@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 # Idea schemas
 class IdeaCreateRequest(BaseModel):
     text_raw: str = Field(..., min_length=10)
+    canonical_problem_id: int = Field(..., ge=1)
     need: Optional[str] = None
     beneficiaries: Optional[str] = None
     solution: Optional[str] = None
@@ -16,6 +17,7 @@ class IdeaCreateRequest(BaseModel):
 class IdeaResponse(BaseModel):
     id: int
     author_id: int
+    canonical_problem_id: int
     text_raw: str
     text_refined: Optional[str] = None
     need: Optional[str] = None

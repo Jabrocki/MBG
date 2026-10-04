@@ -71,6 +71,7 @@ export type Coordinates = {
 }
 export type Idea = {
   id: number
+  canonical_problem_id: number
   text_raw: string
   text_refined: string | null
   need: string | null
@@ -484,6 +485,7 @@ export const api = {
   },
   createIdea(data: {
     text_raw: string
+    canonical_problem_id: number
     need?: string
     beneficiaries?: string
     solution?: string

@@ -198,7 +198,8 @@ export function Citizen({ path, state, notify }: Props) {
   if (path === '/potrzeby' || path === '/potrzeby/najczestsze')
     return <Needs frequent={path.endsWith('najczestsze')} />
   if (path.startsWith('/potrzeby/')) return <NeedDetail id={path.split('/')[2]} />
-  if (path === '/pomysly/nowy') return <IdeaForm />
+  if (/^\/potrzeby\/\d+\/pomysl$/.test(path)) return <IdeaForm problemId={Number(path.split('/')[2])} />
+  if (path === '/pomysly/nowy') return <Empty title="Wybierz problem, który chcesz rozwiązać." text="Każdy pomysł musi być przypisany do konkretnego problemu. Otwórz jego kartę i wybierz „Zaproponuj pomysł” tam, gdzie ma pomagać." to="/potrzeby" action="Przejdź do problemów" />
   if (path === '/pomysly') return <Ideas />
   if (/^\/pomysly\/\d+\/dyskusja$/.test(path)) return <Discussion ideaId={Number(path.split('/')[2])} notify={notify} />
   if (/^\/pomysly\/\d+$/.test(path)) return <IdeaDetail ideaId={Number(path.split('/')[2])} notify={notify} />
@@ -272,13 +273,6 @@ function Home() {
             'Poznaj metody i narzędzia z biblioteki.',
             'Books',
             'blue',
-          ],
-          [
-            '/pomysly/nowy',
-            'Rozwijaj pomysł',
-            'Uporządkuj propozycję z pomocą asystenta.',
-            'Lightbulb',
-            'lavender',
           ],
           [
             '/poparcie',
@@ -839,7 +833,7 @@ function Results({ problemId, state }: { problemId: number; state: string }) {
             <ButtonLink to="/zgloszenia/nowe" secondary>
               Zmień opis
             </ButtonLink>
-            <ButtonLink to="/pomysly/nowy" secondary>
+            <ButtonLink to={`/potrzeby/${problemId}/pomysl`} secondary>
               Rozwijaj pomysł
             </ButtonLink>
           </div>
@@ -941,8 +935,8 @@ function Results({ problemId, state }: { problemId: number; state: string }) {
               <ButtonLink to="/innowacje" secondary>
                 Przejrzyj bibliotekę
               </ButtonLink>
-              <ButtonLink to="/pomysly/nowy" secondary>
-                Rozwijaj pomysł
+              <ButtonLink to={`/potrzeby/${problemId}/pomysl`} secondary>
+                Rozwijaj pomysł dla tej potrzeby
               </ButtonLink>
             </div>
           </section>
@@ -1200,7 +1194,7 @@ function ApiInnovation({ id }: { id: number }) {
         <aside className="context-aside">
           <h2>Sprawdź przed adaptacją.</h2>
           <p>{toReadableInnovationText(item.limitations)}</p>
-          <ButtonLink to="/pomysly/nowy">Rozwiń własny pomysł</ButtonLink>
+          <ButtonLink to="/pomysly" secondary>Wybierz problem, aby zaproponować pomysł</ButtonLink>
           <dl>
             <Fact label="Dla kogo">{toReadableInnovationText(item.target_audience)}</Fact>
             <Fact label="Szacowany koszt">{toReadableInnovationText(item.cost_estimate)}</Fact>
@@ -1470,7 +1464,7 @@ function NeedDetail({ id }: { id: string }) {
           <h2>Ta sprawa dotyczy też Ciebie?</h2>
           <p>Opisz swoją sytuację. Samo otwarcie karty nie zwiększa liczby zgłaszających.</p>
           <ButtonLink to="/zgloszenia/nowe">Zgłoś swoją potrzebę</ButtonLink>
-          <ButtonLink to="/pomysly/nowy" secondary>
+          <ButtonLink to={`/potrzeby/${problemId}/pomysl`} secondary>
             Zaproponuj pomysł
           </ButtonLink>
           <ButtonLink to="/pilotaze" secondary>
@@ -1510,10 +1504,15 @@ function LoadingState({ label = 'Ładowanie danych…' }: { label?: string }) {
     </div>
   )
 }
-function IdeaForm() {
+function IdeaForm({ problemId }: { problemId: number }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedIdeaId, setSavedIdeaId] = useState<number | null>(null)
+  const [problem, setProblem] = useState<Awaited<ReturnType<typeof api.getProblem>> | null>(null)
+  const [problemError, setProblemError] = useState('')
+  useEffect(() => {
+    api.getProblem(problemId).then(setProblem).catch((caught: unknown) => setProblemError(caught instanceof Error ? caught.message : 'Nie udało się pobrać problemu.'))
+  }, [problemId])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (savedIdeaId !== null) return
@@ -1525,6 +1524,7 @@ function IdeaForm() {
     try {
       const saved = await api.createIdea({
         text_raw: textRaw,
+        canonical_problem_id: problemId,
       })
       createdIdeaId = saved.id
       setSavedIdeaId(saved.id)
@@ -1549,11 +1549,12 @@ function IdeaForm() {
     <>
       <Heading
         title="Opisz swój pomysł własnymi słowami."
-        description="Jedno pole wystarczy. Potem porozmawiasz z AI, a model oszacuje potrzebę, odbiorców, zasoby, koszty i etapy."
-        back="/pomysly"
+        description={problem ? `Pomysł zostanie przypisany do problemu: „${problem.title}”. Jedno pole wystarczy; potem porozmawiasz z AI.` : 'Ładowanie wybranego problemu…'}
+        back={problem ? `/potrzeby/${problemId}` : '/potrzeby'}
       />
       <div className="detail-layout">
         <Panel>
+          {problemError ? <Notice tone="error">{problemError}</Notice> : <Notice title="Wybrany problem">{problem?.title ?? 'Ładowanie…'}</Notice>}
           <form onSubmit={submit}>
             <h2>Co chcesz zmienić?</h2>
             <Field label="Opis pomysłu" hint="Napisz swobodnie: dla kogo, gdzie i co mogłoby się zmienić. Nie musisz znać budżetu ani planu.">
@@ -1566,7 +1567,7 @@ function IdeaForm() {
                 <ButtonLink to={`/pomysly/${savedIdeaId}`} secondary>Otwórz zapisany szkic</ButtonLink>
               </Notice>
             )}
-            <button className="button" type="submit" disabled={saving || savedIdeaId !== null}>
+            <button className="button" type="submit" disabled={saving || savedIdeaId !== null || !problem}>
               {saving ? 'Zapisywanie…' : 'Rozpocznij rozmowę z AI'}
               <Icon name="ArrowRight" />
             </button>
@@ -1632,7 +1633,7 @@ function Ideas() {
       <Heading
         title="Pomysły, które warto rozwijać."
         description="Opublikowane propozycje społeczności oraz Twoje prywatne szkice."
-        action={<ButtonLink to="/pomysly/nowy">Nowy pomysł</ButtonLink>}
+        action={<ButtonLink to="/potrzeby">Najpierw wybierz problem</ButtonLink>}
       />
       <div className="segmented section-tabs">
         <button aria-pressed={tab === 'public'} onClick={() => setTab('public')}>Społeczność</button>
@@ -1649,8 +1650,8 @@ function Ideas() {
         <Empty
           title={tab === 'public' ? 'Nie ma jeszcze opublikowanych pomysłów.' : 'Nie masz jeszcze szkiców.'}
           text={tab === 'public' ? 'Nowe propozycje pojawią się po potwierdzeniu autora i decyzji administratora.' : 'Dodaj pierwszy pomysł, aby rozpocząć jego przetwarzanie.'}
-          to="/pomysly/nowy"
-          action="Dodaj pomysł"
+          to="/potrzeby"
+          action="Wybierz problem"
         />
       ) : tab === 'public' ? (
         <div className="idea-grid">
@@ -3005,8 +3006,8 @@ function Information({ path }: { path: string }) {
               Skorzystaj z formularza lub asystenta. Treść przechodzi redakcję AI, potwierdzenie
               autora i ocenę administratora. Gdy AI nie działa, szkic czeka w kolejce.
             </p>
-            <ButtonLink to="/pomysly/nowy" secondary>
-              Rozwijaj pomysł
+            <ButtonLink to="/potrzeby" secondary>
+              Wybierz problem dla pomysłu
             </ButtonLink>
             <h2>Chcę pomóc lokalnie.</h2>
             <p>

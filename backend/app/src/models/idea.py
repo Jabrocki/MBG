@@ -10,6 +10,7 @@ class Idea(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     author_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    canonical_problem_id: Mapped[int] = mapped_column(Integer, ForeignKey("canonical_problems.id", ondelete="RESTRICT"), nullable=False, index=True)
     text_raw: Mapped[str] = mapped_column(Text, nullable=False)
     text_refined: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     need: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -26,6 +27,7 @@ class Idea(Base):
 
     threads = relationship("DiscussionThread", back_populates="idea", cascade="all, delete-orphan")
     pilots = relationship("Pilot", back_populates="idea")
+    canonical_problem = relationship("CanonicalProblem")
 
 class AIJob(Base):
     __tablename__ = "ai_jobs"
