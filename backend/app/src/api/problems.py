@@ -59,7 +59,9 @@ def get_ai_proposal(
         problem.generated_description,
         f"Najbliższe sprawdzone innowacje: {context}",
         "Zaproponuj jedno krótkie, konkretne rozwiązanie problemu społecznego. "
-        "Połącz tylko elementy, które rzeczywiście pasują do problemu. Odpowiedz po polsku w 2-3 zdaniach, bez nagłówków.",
+        "Połącz tylko elementy, które rzeczywiście pasują do problemu i podanych innowacji. "
+        "Nie wymyślaj ulic, adresów, tras, liczb ani potwierdzonych faktów lokalnych. "
+        "Jeśli lokalizacja nie jest potwierdzona, użyj określenia obszar problemu. Odpowiedz po polsku w 2-3 zdaniach, bez nagłówków.",
     )
     return {"proposal": proposal, "based_on": [match.title for match in matches]}
 
