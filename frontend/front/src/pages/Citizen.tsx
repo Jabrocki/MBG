@@ -808,12 +808,14 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
 }
 function Results({ problemId }: { problemId: number }) {
   const [matches, setMatches] = useState<InnovationMatch[]>([]),
+    [problemTitle, setProblemTitle] = useState(''),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true)
   useEffect(() => {
-    api.getMatches(problemId)
-      .then((result) => {
+    Promise.all([api.getMatches(problemId), api.getProblem(problemId)])
+      .then(([result, problem]) => {
         setMatches(result.matches)
+        setProblemTitle(problem.title)
       })
       .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać dopasowań.'))
       .finally(() => setLoading(false))
@@ -870,9 +872,9 @@ function Results({ problemId }: { problemId: number }) {
             <h2>Najbliższe rozwiązania</h2>
             <p>Najedź na punkt, aby zobaczyć tytuł. Kliknij punkt, aby otworzyć szczegóły innowacji.</p>
             <div className="innovation-star" role="list" aria-label="Najbliższe rozwiązania">
-              <span className="innovation-star-center" tabIndex={0} aria-label="Potrzeba">
+              <span className="innovation-star-center" tabIndex={0} aria-label={problemTitle || 'Potrzeba'}>
                 <span className="innovation-star-dot" aria-hidden="true" />
-                <span className="innovation-star-tooltip">Potrzeba</span>
+                <span className="innovation-star-tooltip">{problemTitle || 'Potrzeba'}</span>
               </span>
               {starPoints.map(({ match, left, top }) => {
                 const title = toReadableInnovationText(match.title)
