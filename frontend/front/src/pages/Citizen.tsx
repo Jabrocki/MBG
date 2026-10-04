@@ -38,6 +38,11 @@ import {
 type Props = { path: string; state: string; notify: Notify }
 
 const MALOPOLSKA_MAP_CENTER: LatLngLiteral = { lat: 50.0619, lng: 19.9368 }
+// Commercial-friendly provider configured at deploy time; no Google or OSM tiles.
+const MAP_TILE_URL = import.meta.env.VITE_MAP_TILE_URL
+  ?? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
+const MAP_ATTRIBUTION = import.meta.env.VITE_MAP_ATTRIBUTION
+  ?? '© Esri, HERE, Garmin'
 
 type ChosenLocation = {
   lat: number
@@ -147,8 +152,8 @@ function LocationPicker({
       <MapContainer center={position} zoom={10} className="leaflet-map" scrollWheelZoom>
         <MapViewport center={position} zoom={value.source === 'gps' ? 14 : 10} />
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution={MAP_ATTRIBUTION}
+          url={MAP_TILE_URL}
         />
         <MapPointPicker onPick={(point) => pick(point)} />
         <Marker
@@ -1233,10 +1238,7 @@ function GeographicMapView({
     <div className="geographic-map" aria-label="Mapa zgłoszeń, potrzeb i innowacji z bazy danych">
       <MapContainer center={center} zoom={11} className="leaflet-map" scrollWheelZoom>
         <MapViewport center={center} zoom={11} />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+          <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_URL} />
         <Circle center={center} radius={radius * 1000} pathOptions={{ color: '#00834a', fillOpacity: 0.06 }} />
         {data.markers.map((marker) => (
           <Marker
