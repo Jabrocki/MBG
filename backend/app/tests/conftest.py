@@ -11,6 +11,7 @@ from src.api.deps import get_db
 from src.models.user import User
 from src.models.source import SourceKnowledge, Solution
 from src.services.auth_service import AuthService
+from src.config import settings
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -91,7 +92,10 @@ def user_client() -> Generator[TestClient, None, None]:
     yield c
 
 @pytest.fixture
-def admin_client() -> Generator[TestClient, None, None]:
+def admin_client(monkeypatch) -> Generator[TestClient, None, None]:
+    # The public application never exposes one-click administrator access.  Existing workflow
+    # tests still need a synthetic privileged session, so they enable it only inside this fixture.
+    monkeypatch.setattr(settings, "ALLOW_DEMO_ADMIN_LOGIN", True)
     c = _make_client()
     with TestingSessionLocal() as db:
         service = AuthService(db)

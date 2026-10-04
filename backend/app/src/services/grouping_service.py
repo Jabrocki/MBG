@@ -14,12 +14,14 @@ from src.schemas.matchmaking import (
 )
 from src.adapters.ai_gateway import get_ai_gateway
 from src.adapters.vector_repository import VectorRepositoryAdapter
+from src.services.geo_location_service import EntityGeoLocationService
 
 class GroupingService:
     def __init__(self, db: Session):
         self.db = db
         self.ai = get_ai_gateway()
         self.vector_repo = VectorRepositoryAdapter(db)
+        self.geo_locations = EntityGeoLocationService(db)
 
     def confirm_grouping(
         self,
@@ -35,6 +37,7 @@ class GroupingService:
 
         if data.create_new or not data.confirmed_problem_id:
             # Tworzymy nowy problem kanoniczny
+            report_vector = self.vector_repo.get_vector_record("report", report.id)
             hyde_result = self.ai.generate_hyde_and_embedding(
                 text=report.text_raw,
                 categories=report.categories or [],
@@ -57,7 +60,7 @@ class GroupingService:
             self.vector_repo.upsert_vector_record(
                 entity_type="problem",
                 entity_id=problem.id,
-                embedding=hyde_result.embedding,
+                embedding=report_vector.embedding if report_vector else hyde_result.embedding,
                 coord_x=0.0,
                 coord_y=0.0,
                 coord_z=0.0,
@@ -102,6 +105,7 @@ class GroupingService:
         # Przeliczamy liczbę unikalnych zgłaszających (unique reporters)
         unique_reporters = self.calculate_unique_reporters(target_problem.id)
         target_problem.reporter_count = unique_reporters
+        self.geo_locations.persist_problem(target_problem)
         self.db.commit()
         self.db.refresh(target_problem)
 

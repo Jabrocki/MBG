@@ -8,19 +8,52 @@ from sqlalchemy import select, func, distinct, update, and_
 from src.models.user import User
 from src.models.problem import CanonicalProblem, ReportProblemLink
 from src.models.report import Report
-from src.models.source import Solution
+from src.models.source import Solution, SourceKnowledge
 from src.models.vote import Vote
 from src.models.match import MatchResult
+from src.models.idea import Idea
+from src.models.pilot import Pilot
+from src.services.geo_location_service import EntityGeoLocationService
 from src.schemas.modules import (
+    AdminCatalogueCreateRequest,
+    AdminCatalogueUpdateRequest,
     MergeProblemsRequest,
     SplitProblemRequest,
     MergeSolutionsRequest,
 )
 from src.schemas.matchmaking import CanonicalProblemResponse
+from src.schemas.modules import AdminDashboardCountsResponse
+from src.services.catalogue_service import CatalogueService
 
 class AdminService:
     def __init__(self, db: Session):
         self.db = db
+        self.geo_locations = EntityGeoLocationService(db)
+
+    def get_dashboard_counts(self, admin: User) -> AdminDashboardCountsResponse:
+        """Return database-backed queue and total counts for the administrator home."""
+        if admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Wymagane uprawnienia administratora")
+        reports_total = self.db.scalar(select(func.count(Report.id))) or 0
+        reports_waiting_grouping = self.db.scalar(
+            select(func.count(Report.id)).where(Report.status != "confirmed")
+        ) or 0
+        ideas_total = self.db.scalar(select(func.count(Idea.id))) or 0
+        ideas_waiting_admin = self.db.scalar(
+            select(func.count(Idea.id)).where(Idea.status == "pending_admin")
+        ) or 0
+        pilots_total = self.db.scalar(select(func.count(Pilot.id))) or 0
+        pilots_waiting_start = self.db.scalar(
+            select(func.count(Pilot.id)).where(Pilot.status.in_(("draft", "review", "recruitment_funding")))
+        ) or 0
+        return AdminDashboardCountsResponse(
+            reports_total=reports_total,
+            reports_waiting_grouping=reports_waiting_grouping,
+            ideas_total=ideas_total,
+            ideas_waiting_admin=ideas_waiting_admin,
+            pilots_total=pilots_total,
+            pilots_waiting_start=pilots_waiting_start,
+        )
 
     def merge_problems(self, data: MergeProblemsRequest, admin: User) -> CanonicalProblemResponse:
         """Merges multiple problems into target_problem.
@@ -88,6 +121,7 @@ class AdminService:
         ).scalar() or 1
 
         target.reporter_count = unique_reporters
+        self.geo_locations.persist_problem(target)
         self.db.commit()
         self.db.refresh(target)
 
@@ -146,6 +180,9 @@ class AdminService:
         ).scalar() or 1
         new_problem.reporter_count = new_reporters
 
+        self.geo_locations.persist_problem(source)
+        self.geo_locations.persist_problem(new_problem)
+
         self.db.commit()
         self.db.refresh(new_problem)
 
@@ -201,4 +238,104 @@ class AdminService:
             # Usuń zduplikowane rozwiązanie
             self.db.delete(dup)
 
+        self.db.commit()
+
+    def list_problems(self, admin: User) -> List[CanonicalProblemResponse]:
+        if admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Wymagane uprawnienia administratora")
+        problems = self.db.execute(
+            select(CanonicalProblem).order_by(CanonicalProblem.created_at.desc())
+        ).scalars().all()
+        return [CatalogueService._project_problem(problem) for problem in problems]
+
+    def update_report_status(self, report_id: int, target_status: str, admin: User):
+        if admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Wymagane uprawnienia administratora")
+        report = self.db.get(Report, report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="Zgłoszenie nie zostało odnalezione")
+        report.status = target_status
+        self.db.commit()
+        self.db.refresh(report)
+        from src.services.report_service import ReportService
+
+        return ReportService(self.db).project_report(report, viewer=admin)
+
+    def create_catalogue_item(self, data: AdminCatalogueCreateRequest, admin: User) -> dict:
+        if admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Wymagane uprawnienia administratora")
+        source = SourceKnowledge(
+            source_url=data.source_url.strip(),
+            title=data.title.strip(),
+            content_summary=data.description.strip(),
+            category=data.category.strip(),
+            provenance_metadata={"created_by": "admin"},
+        )
+        self.db.add(source)
+        self.db.flush()
+        solution = Solution(
+            source_knowledge_id=source.id,
+            title=data.title.strip(),
+            description=data.description.strip(),
+            target_audience=data.target_audience.strip() or "Nie wskazano",
+            cost_estimate=data.cost_estimate.strip() or "Nie wskazano",
+            limitations=data.limitations.strip(),
+        )
+        self.db.add(solution)
+        self.db.commit()
+        self.db.refresh(solution)
+        return CatalogueService._project_solution(solution)
+
+    def update_catalogue_item(
+        self,
+        solution_id: int,
+        data: AdminCatalogueUpdateRequest,
+        admin: User,
+    ) -> dict:
+        if admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Wymagane uprawnienia administratora")
+        solution = self.db.get(Solution, solution_id)
+        if not solution:
+            raise HTTPException(status_code=404, detail="Innowacja nie została odnaleziona")
+
+        if data.title is not None:
+            solution.title = data.title.strip()
+        if data.description is not None:
+            solution.description = data.description.strip()
+        if data.target_audience is not None:
+            solution.target_audience = data.target_audience.strip()
+        if data.cost_estimate is not None:
+            solution.cost_estimate = data.cost_estimate.strip()
+        if data.limitations is not None:
+            solution.limitations = data.limitations.strip()
+
+        source = solution.source_knowledge
+        if not source:
+            source = SourceKnowledge(
+                source_url=data.source_url.strip() if data.source_url else "admin://catalogue",
+                title=solution.title,
+                content_summary=solution.description,
+                category=data.category.strip() if data.category else "Ogólne",
+                provenance_metadata={"created_by": "admin"},
+            )
+            self.db.add(source)
+            self.db.flush()
+            solution.source_knowledge_id = source.id
+        if data.category is not None:
+            source.category = data.category.strip()
+        if data.source_url is not None:
+            source.source_url = data.source_url.strip()
+        source.title = solution.title
+        source.content_summary = solution.description
+        self.db.commit()
+        self.db.refresh(solution)
+        return CatalogueService._project_solution(solution)
+
+    def delete_catalogue_item(self, solution_id: int, admin: User) -> None:
+        if admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Wymagane uprawnienia administratora")
+        solution = self.db.get(Solution, solution_id)
+        if not solution:
+            raise HTTPException(status_code=404, detail="Innowacja nie została odnaleziona")
+        self.db.delete(solution)
         self.db.commit()

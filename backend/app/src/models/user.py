@@ -18,7 +18,27 @@ class User(Base):
 
     reports = relationship("Report", back_populates="author", cascade="all, delete-orphan")
     sessions = relationship("DemoSession", back_populates="user", cascade="all, delete-orphan")
+    credential = relationship("LocalCredential", back_populates="user", cascade="all, delete-orphan", uselist=False)
     votes = relationship("Vote", back_populates="user", cascade="all, delete-orphan")
+
+
+class LocalCredential(Base):
+    """Password credential kept separately so existing user tables remain compatible.
+
+    Demo accounts do not need a password. Accounts created through registration and the configured
+    test administrator receive one secure PBKDF2 hash in this table.
+    """
+
+    __tablename__ = "local_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    user = relationship("User", back_populates="credential")
 
 class DemoSession(Base):
     __tablename__ = "demo_sessions"

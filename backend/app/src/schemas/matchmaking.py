@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Literal, Optional, List
 from pydantic import BaseModel, Field
 
 # Auth schemas
@@ -12,6 +12,21 @@ class DemoTokenResponse(BaseModel):
     role: str
     user_id: int
     user_name: str
+
+
+class RegisterRequest(BaseModel):
+    """A public registration request; only the regular user role can be created here."""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    surname: str = Field("", max_length=100)
+    email: str = Field(..., min_length=3, max_length=255)
+    password: str = Field(..., min_length=10, max_length=256)
+    is_anonymous_by_default: bool = True
+
+
+class PasswordLoginRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+    password: str = Field(..., min_length=1, max_length=256)
 
 class UserResponse(BaseModel):
     id: int
@@ -61,6 +76,11 @@ class ReportSubmissionResult(BaseModel):
     report: ReportResponse
     suggested_candidates: List[ProblemCandidateResponse]
 
+
+class ReportListResponse(BaseModel):
+    """A pageless, permission-filtered prototype projection of reports."""
+    reports: List[ReportResponse]
+
 class ConfirmGroupingRequest(BaseModel):
     confirmed_problem_id: Optional[int] = Field(None, description="ID istniejącego problemu lub null jeśli tworzymy nowy")
     create_new: bool = Field(False, description="Ustaw True aby utworzyć nowy problem kanoniczny")
@@ -109,3 +129,50 @@ class CoordinatesResponse(BaseModel):
     problem_id: int
     problem_coords: Coordinate3D
     solution_coords: List[Coordinate3D]
+
+
+# Geographic map schemas.  They deliberately differ from the semantic 3D coordinates
+# above: these are WGS84 positions suitable for a conventional map.
+class MapCenterResponse(BaseModel):
+    lat: float
+    lon: float
+
+
+class MapMarkerResponse(BaseModel):
+    """A privacy-aware geographic marker returned to an authenticated map view.
+
+    ``precision`` tells the UI whether a point represents the owner's exact report,
+    an intentionally rounded aggregate, or an innovation's city/municipality.  The
+    client must show that distinction instead of presenting every pin as exact.
+    """
+
+    id: str
+    entity_type: Literal["report", "problem", "innovation", "pilot"]
+    entity_id: int
+    title: str
+    lat: float
+    lon: float
+    location_name: str
+    precision: Literal["exact", "area", "aggregate", "municipality"]
+    visibility: Literal["private", "admin", "authenticated"]
+    distance_km: Optional[float] = None
+    reporter_count: Optional[int] = None
+    status: Optional[str] = None
+    category: Optional[str] = None
+    source_url: Optional[str] = None
+
+
+class MapMarkerCountsResponse(BaseModel):
+    reports: int = 0
+    problems: int = 0
+    innovations: int = 0
+    pilots: int = 0
+    innovations_without_known_location: int = 0
+
+
+class MapMarkersResponse(BaseModel):
+    center: Optional[MapCenterResponse] = None
+    radius_km: Optional[float] = None
+    markers: List[MapMarkerResponse]
+    counts: MapMarkerCountsResponse
+    privacy_note: str

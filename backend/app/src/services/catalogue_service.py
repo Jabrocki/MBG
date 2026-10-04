@@ -1,5 +1,6 @@
 import math
 from typing import List, Optional
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_
 
@@ -27,17 +28,28 @@ class CatalogueService:
             source = s.source_knowledge
             if category and source and source.category != category:
                 continue
-            results.append({
-                "id": s.id,
-                "title": s.title,
-                "description": s.description,
-                "target_audience": s.target_audience,
-                "cost_estimate": s.cost_estimate,
-                "limitations": s.limitations,
-                "category": source.category if source else "Ogólne",
-                "source_url": source.source_url if source else None,
-            })
+            results.append(self._project_solution(s))
         return results
+
+    def get_catalogue_item(self, solution_id: int) -> dict:
+        solution = self.db.get(Solution, solution_id)
+        if not solution:
+            raise HTTPException(status_code=404, detail="Innowacja nie została odnaleziona")
+        return self._project_solution(solution)
+
+    @staticmethod
+    def _project_solution(solution: Solution) -> dict:
+        source = solution.source_knowledge
+        return {
+            "id": solution.id,
+            "title": solution.title,
+            "description": solution.description,
+            "target_audience": solution.target_audience,
+            "cost_estimate": solution.cost_estimate,
+            "limitations": solution.limitations,
+            "category": source.category if source else "Ogólne",
+            "source_url": source.source_url if source else None,
+        }
 
     def get_nearby_problems(
         self,
@@ -62,19 +74,29 @@ class CatalogueService:
         nearby.sort(key=lambda p: p.reporter_count, reverse=True)
 
         return [
-            CanonicalProblemResponse(
-                id=p.id,
-                title=p.title,
-                generated_description=p.generated_description,
-                reporter_count=p.reporter_count,
-                location_centroid_lat=p.location_centroid_lat,
-                location_centroid_lon=p.location_centroid_lon,
-                status=p.status,
-                recurrence_recommended=p.recurrence_recommended,
-                created_at=p.created_at,
-            )
+            self._project_problem(p)
             for p in nearby
         ]
+
+    def get_problem(self, problem_id: int) -> CanonicalProblemResponse:
+        problem = self.db.get(CanonicalProblem, problem_id)
+        if not problem:
+            raise HTTPException(status_code=404, detail="Problem nie został odnaleziony")
+        return self._project_problem(problem)
+
+    @staticmethod
+    def _project_problem(problem: CanonicalProblem) -> CanonicalProblemResponse:
+        return CanonicalProblemResponse(
+            id=problem.id,
+            title=problem.title,
+            generated_description=problem.generated_description,
+            reporter_count=problem.reporter_count,
+            location_centroid_lat=problem.location_centroid_lat,
+            location_centroid_lon=problem.location_centroid_lon,
+            status=problem.status,
+            recurrence_recommended=problem.recurrence_recommended,
+            created_at=problem.created_at,
+        )
 
     @staticmethod
     def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

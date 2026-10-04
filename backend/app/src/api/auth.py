@@ -1,8 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from src.api.deps import get_db, get_current_user
+from src.api.deps import get_db, get_current_user, security
 from src.models.user import User
-from src.schemas.matchmaking import DemoLoginRequest, DemoTokenResponse, UserResponse
+from src.schemas.matchmaking import (
+    DemoLoginRequest,
+    DemoTokenResponse,
+    PasswordLoginRequest,
+    RegisterRequest,
+    UserResponse,
+)
+from fastapi.security import HTTPAuthorizationCredentials
 from src.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Uwierzytelnianie"])
@@ -12,8 +19,38 @@ def login_demo(data: DemoLoginRequest, db: Session = Depends(get_db)):
     service = AuthService(db)
     try:
         return service.login_demo(data.role)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.post("/register", response_model=DemoTokenResponse, status_code=status.HTTP_201_CREATED, summary="Rejestracja konta użytkownika")
+def register(data: RegisterRequest, db: Session = Depends(get_db)):
+    service = AuthService(db)
+    try:
+        return service.register(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.post("/login", response_model=DemoTokenResponse, summary="Logowanie e-mailem i hasłem")
+def login(data: PasswordLoginRequest, db: Session = Depends(get_db)):
+    service = AuthService(db)
+    try:
+        return service.login(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="Unieważnienie bieżącej sesji")
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # ``current_user`` verifies the bearer token before it can be removed.
+    AuthService(db).logout(credentials.credentials)
 
 @router.get("/me", response_model=UserResponse, summary="Dane aktualnie zalogowanego użytkownika")
 def get_me(current_user: User = Depends(get_current_user)):

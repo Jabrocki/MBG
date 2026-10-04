@@ -15,6 +15,32 @@ from src.services.pilot_service import PilotService
 
 router = APIRouter(prefix="/pilots", tags=["Pilotaże i Wolontariat"])
 
+
+@router.get("", response_model=List[PilotResponse], summary="Lista dostępnych pilotaży")
+def list_pilots(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return PilotService(db).list_pilots(current_user)
+
+
+@router.get("/{pilot_id}", response_model=PilotResponse, summary="Szczegóły pilotażu wraz z bieżącym stanem udziału")
+def get_pilot(
+    pilot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return PilotService(db).get_pilot(pilot_id, current_user)
+
+
+@router.get("/{pilot_id}/volunteer", response_model=VolunteerResponse, summary="Stan własnego zgłoszenia do pilotażu")
+def get_my_volunteer_registration(
+    pilot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return PilotService(db).get_my_volunteer_registration(pilot_id, current_user)
+
 @router.post("", response_model=PilotResponse, summary="Utworzenie inicjatywy pilotażowej (tylko administrator)")
 def create_pilot(
     data: PilotCreateRequest,

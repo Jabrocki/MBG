@@ -16,3 +16,12 @@ def search_catalogue(
 ):
     service = CatalogueService(db)
     return service.search_catalogue(query=q, category=category)
+
+
+@router.get("/{solution_id}", summary="Szczegóły innowacji z katalogu")
+def get_catalogue_item(
+    solution_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return CatalogueService(db).get_catalogue_item(solution_id)

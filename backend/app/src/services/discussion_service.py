@@ -25,10 +25,11 @@ class DiscussionService:
         self.db = db
         self.ai = get_ai_gateway()
 
-    def get_or_create_thread_for_idea(self, idea_id: int) -> DiscussionThreadResponse:
+    def get_or_create_thread_for_idea(self, idea_id: int, viewer: User) -> DiscussionThreadResponse:
         idea = self.db.get(Idea, idea_id)
         if not idea:
             raise HTTPException(status_code=404, detail="Pomysł nie został odnaleziony")
+        self._ensure_idea_visible(idea, viewer)
 
         thread = self.db.execute(
             select(DiscussionThread).where(DiscussionThread.idea_id == idea_id)
@@ -50,6 +51,7 @@ class DiscussionService:
         thread = self.db.get(DiscussionThread, thread_id)
         if not thread:
             raise HTTPException(status_code=404, detail="Wątek nie został odnaleziony")
+        self._ensure_idea_visible(thread.idea, author)
 
         msg = ThreadMessage(
             thread_id=thread_id,
@@ -126,18 +128,22 @@ class DiscussionService:
         self.db.commit()
         self.db.refresh(adaptation)
 
-        return InstitutionAdaptationResponse(
-            id=adaptation.id,
-            user_id=adaptation.user_id,
-            solution_id=adaptation.solution_id,
-            beneficiaries=adaptation.beneficiaries,
-            location=adaptation.location,
-            resources=adaptation.resources,
-            budget=adaptation.budget,
-            constraints=adaptation.constraints,
-            draft_adaptation=adaptation.draft_adaptation,
-            created_at=adaptation.created_at,
-        )
+        return self._project_adaptation(adaptation)
+
+    def list_adaptations(self, viewer: User) -> List[InstitutionAdaptationResponse]:
+        statement = select(InstitutionAdaptation).order_by(InstitutionAdaptation.created_at.desc())
+        if viewer.role != "admin":
+            statement = statement.where(InstitutionAdaptation.user_id == viewer.id)
+        adaptations = self.db.execute(statement).scalars().all()
+        return [self._project_adaptation(adaptation) for adaptation in adaptations]
+
+    def get_adaptation(self, adaptation_id: int, viewer: User) -> InstitutionAdaptationResponse:
+        adaptation = self.db.get(InstitutionAdaptation, adaptation_id)
+        if not adaptation:
+            raise HTTPException(status_code=404, detail="Adaptacja nie została odnaleziona")
+        if adaptation.user_id != viewer.id and viewer.role != "admin":
+            raise HTTPException(status_code=403, detail="Brak uprawnień do tej adaptacji")
+        return self._project_adaptation(adaptation)
 
     def _project_thread(self, thread: DiscussionThread) -> DiscussionThreadResponse:
         messages = []
@@ -160,4 +166,28 @@ class DiscussionService:
             title=thread.title,
             created_at=thread.created_at,
             messages=messages,
+        )
+
+    @staticmethod
+    def _ensure_idea_visible(idea: Idea, viewer: User) -> None:
+        if idea.status != "public" and idea.author_id != viewer.id and viewer.role != "admin":
+            raise HTTPException(status_code=404, detail="Pomysł nie został odnaleziony")
+
+    @staticmethod
+    def _project_adaptation(adaptation: InstitutionAdaptation) -> InstitutionAdaptationResponse:
+        solution = adaptation.solution
+        source = solution.source_knowledge if solution and solution.source_knowledge else None
+        return InstitutionAdaptationResponse(
+            id=adaptation.id,
+            user_id=adaptation.user_id,
+            solution_id=adaptation.solution_id,
+            beneficiaries=adaptation.beneficiaries,
+            location=adaptation.location,
+            resources=adaptation.resources,
+            budget=adaptation.budget,
+            constraints=adaptation.constraints,
+            draft_adaptation=adaptation.draft_adaptation,
+            solution_title=solution.title if solution else None,
+            source_url=source.source_url if source else None,
+            created_at=adaptation.created_at,
         )

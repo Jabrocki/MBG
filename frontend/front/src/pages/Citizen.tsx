@@ -1,9 +1,28 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Circle, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { divIcon, type LatLngLiteral } from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { navigate } from '../navigation'
-import { idea, innovations, needs, illustrations, pilot, reportText } from '../data'
+import { illustrations } from '../data'
+import {
+  api,
+  ApiError,
+  getStoredSession,
+  type GeographicMap,
+  type GeographicMarker,
+  type Innovation,
+  type InnovationMatch,
+  type InstitutionAdaptation,
+  type Pilot,
+  type ProblemCandidate,
+  type Report,
+} from '../api'
+import { InnovationDocument, InnovationPreview } from '../components/InnovationText'
+import { getInnovationPreview, getSafeExternalUrl, toReadableInnovationText } from '../innovation-content'
 import {
   Badge,
   ButtonLink,
+  DemoStatus,
   Empty,
   Fact,
   Field,
@@ -17,27 +36,133 @@ import {
 } from '../ui'
 
 type Props = { path: string; state: string; notify: Notify }
+
+const MALOPOLSKA_MAP_CENTER: LatLngLiteral = { lat: 50.0619, lng: 19.9368 }
+
+type ChosenLocation = {
+  lat: number
+  lon: number
+  source: 'map' | 'gps' | 'manual'
+}
+
+const selectedLocationIcon = divIcon({
+  className: 'mbg-leaflet-pin mbg-leaflet-pin--selected',
+  html: '<span aria-hidden="true">●</span>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+})
+
+function MapViewport({ center, zoom }: { center: LatLngLiteral; zoom: number }) {
+  const map = useMap()
+  useEffect(() => {
+    map.setView(center, zoom)
+  }, [center.lat, center.lng, map, zoom])
+  return null
+}
+
+function MapPointPicker({ onPick }: { onPick: (point: LatLngLiteral) => void }) {
+  useMapEvents({
+    click(event) {
+      onPick(event.latlng)
+    },
+  })
+  return null
+}
+
+function LocationPicker({
+  value,
+  onChange,
+  onError,
+}: {
+  value: ChosenLocation
+  onChange: (location: ChosenLocation) => void
+  onError: (message: string) => void
+}) {
+  const [locating, setLocating] = useState(false)
+  const position: LatLngLiteral = { lat: value.lat, lng: value.lon }
+  function pick(point: LatLngLiteral, source: ChosenLocation['source'] = 'map') {
+    onChange({ lat: point.lat, lon: point.lng, source })
+  }
+  function useDeviceLocation() {
+    if (!navigator.geolocation) {
+      onError('Ta przeglądarka nie udostępnia geolokalizacji. Wskaż punkt na mapie lub wpisz współrzędne ręcznie.')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        pick({ lat: position.coords.latitude, lng: position.coords.longitude }, 'gps')
+        onError('')
+        setLocating(false)
+      },
+      () => {
+        onError('Nie udało się pobrać lokalizacji urządzenia. Wskaż miejsce na mapie albo wpisz współrzędne ręcznie.')
+        setLocating(false)
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    )
+  }
+  return (
+    <section className="geographic-picker" aria-label="Wybór lokalizacji problemu">
+      <MapContainer center={position} zoom={10} className="leaflet-map" scrollWheelZoom>
+        <MapViewport center={position} zoom={value.source === 'gps' ? 14 : 10} />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <MapPointPicker onPick={(point) => pick(point)} />
+        <Marker
+          position={position}
+          icon={selectedLocationIcon}
+          draggable
+          eventHandlers={{
+            dragend(event) {
+              const marker = event.target
+              pick(marker.getLatLng())
+            },
+          }}
+        >
+          <Popup>To będzie lokalizacja zgłoszenia.</Popup>
+        </Marker>
+      </MapContainer>
+      <div className="geographic-picker-actions">
+        <button type="button" className="button secondary" onClick={useDeviceLocation} disabled={locating}>
+          <Icon name="MapPin" />
+          {locating ? 'Pobieranie lokalizacji…' : 'Użyj lokalizacji urządzenia'}
+        </button>
+        <p>
+          Kliknij mapę albo przeciągnij znacznik. Wybrany punkt: {value.lat.toFixed(5)}, {value.lon.toFixed(5)}.
+        </p>
+      </div>
+    </section>
+  )
+}
+
 export function Citizen({ path, state, notify }: Props) {
   if (path === '/start') return <Home />
   if (path === '/zgloszenia/nowe') return <ReportForm state={state} />
-  if (/^\/zgloszenia\/[^/]+\/potwierdzenie$/.test(path)) return <Confirmation state={state} />
-  if (/^\/zgloszenia\/[^/]+\/wyniki$/.test(path)) return <Results state={state} />
-  if (path === '/zgloszenia') return <Reports state={state} />
-  if (/^\/zgloszenia\/[^/]+$/.test(path)) return <ReportDetail />
-  if (path === '/innowacje') return <Catalogue state={state} />
-  if (path.startsWith('/innowacje/')) return <Innovation id={path.split('/')[2]} />
+  if (/^\/zgloszenia\/[^/]+\/potwierdzenie$/.test(path))
+    return <Confirmation reportId={Number(path.split('/')[2])} state={state} />
+  if (/^\/zgloszenia\/[^/]+\/wyniki$/.test(path))
+    return <Results problemId={Number(path.split('/')[2])} state={state} />
+  if (path === '/zgloszenia') return <Reports />
+  if (/^\/zgloszenia\/[^/]+$/.test(path)) return <ReportDetail reportId={Number(path.split('/')[2])} />
+  if (path === '/innowacje') return <Catalogue />
+  if (/^\/innowacje\/(?:api\/)?\d+$/.test(path)) return <ApiInnovation id={Number(path.split('/').at(-1))} />
+  if (path.startsWith('/innowacje/')) return <Empty title="Nie znaleźliśmy innowacji." text="Wybierz pozycję z aktualnego katalogu." to="/innowacje" action="Wróć do katalogu" />
   if (path === '/potrzeby' || path === '/potrzeby/najczestsze')
-    return <Needs frequent={path.endsWith('najczestsze')} state={state} />
+    return <Needs frequent={path.endsWith('najczestsze')} />
   if (path.startsWith('/potrzeby/')) return <NeedDetail id={path.split('/')[2]} />
-  if (path === '/pomysly/nowy') return <IdeaForm state={state} />
-  if (path === '/pomysly') return <Ideas state={state} />
-  if (path.endsWith('/dyskusja')) return <Discussion notify={notify} />
-  if (path.startsWith('/pomysly/')) return <IdeaDetail state={state} notify={notify} />
+  if (path === '/pomysly/nowy') return <IdeaForm />
+  if (path === '/pomysly') return <Ideas />
+  if (/^\/pomysly\/\d+\/dyskusja$/.test(path)) return <Discussion ideaId={Number(path.split('/')[2])} notify={notify} />
+  if (/^\/pomysly\/\d+$/.test(path)) return <IdeaDetail ideaId={Number(path.split('/')[2])} notify={notify} />
+  if (path.startsWith('/pomysly/')) return <Empty title="Nie znaleźliśmy pomysłu." text="Wybierz pozycję z dostępnej listy pomysłów." to="/pomysly" action="Wróć do pomysłów" />
   if (path === '/poparcie') return <Support notify={notify} />
   if (path === '/adaptacje/nowa') return <AdaptForm />
   if (path.startsWith('/adaptacje/')) return <Adaptation />
-  if (path === '/pilotaze') return <Pilots state={state} />
-  if (path.startsWith('/pilotaze/')) return <PilotPage path={path} state={state} notify={notify} />
+  if (path === '/pilotaze') return <Pilots />
+  if (path.startsWith('/pilotaze/')) return <PilotPage path={path} notify={notify} />
   if (path === '/powiadomienia') return <Notifications notify={notify} />
   if (path === '/moje-aktywnosci') return <Activities />
   if (['/pomoc', '/prywatnosc', '/dostepnosc'].includes(path)) return <Information path={path} />
@@ -54,11 +179,27 @@ export function Citizen({ path, state, notify }: Props) {
   )
 }
 function Home() {
+  const [reports, setReports] = useState<Report[]>([])
+  const [nearby, setNearby] = useState<GeographicMarker[]>([])
+  useEffect(() => {
+    let active = true
+    Promise.all([api.listMyReports(), api.getMapMarkers(MALOPOLSKA_MAP_CENTER.lat, MALOPOLSKA_MAP_CENTER.lng, 40)])
+      .then(([loadedReports, map]) => {
+        if (!active) return
+        setReports(loadedReports)
+        setNearby(map.markers.filter((marker) => marker.entity_type === 'problem').slice(0, 2))
+      })
+      .catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [])
+  const latestConfirmed = reports.find((report) => report.canonical_problem_id)
   return (
     <>
       <section className="home-welcome">
         <div>
-          <h1 tabIndex={-1}>Dzień dobry, Marto.</h1>
+          <h1 tabIndex={-1}>Dzień dobry.</h1>
           <p>
             Sprawy blisko Ciebie.
             <br />
@@ -66,7 +207,7 @@ function Home() {
           </p>
           <span className="location">
             <Icon name="MapPin" size={17} />
-            Wieliczka i okolice · dane demo
+            Małopolska · dane z Twojej sesji
           </span>
         </div>
         <img src="/images/community.webp" alt="" />
@@ -121,14 +262,18 @@ function Home() {
               <Icon name="ArrowRight" size={16} />
             </Link>
           </div>
-          <Panel>
-            <Badge>Potwierdzona potrzeba</Badge>
-            <h3>Wsparcie w codzienności z demencją</h3>
-            <p>Znaleźliśmy jedną innowację, którą warto sprawdzić.</p>
-            <ButtonLink to="/zgloszenia/1/wyniki" secondary>
-              Zobacz rozwiązanie
-            </ButtonLink>
-          </Panel>
+          {latestConfirmed ? (
+            <Panel>
+              <Badge>Potwierdzona potrzeba</Badge>
+              <h3>{latestConfirmed.text_raw.slice(0, 90)}{latestConfirmed.text_raw.length > 90 ? '…' : ''}</h3>
+              <p>{latestConfirmed.location_name}</p>
+              <ButtonLink to={`/zgloszenia/${latestConfirmed.canonical_problem_id}/wyniki`} secondary>
+                Zobacz rozwiązania
+              </ButtonLink>
+            </Panel>
+          ) : (
+            <Empty title="Nie masz jeszcze potwierdzonej potrzeby." text="Dodaj zgłoszenie, aby otrzymać dopasowania." to="/zgloszenia/nowe" action="Zgłoś potrzebę" />
+          )}
         </section>
         <section>
           <div className="section-heading">
@@ -138,20 +283,7 @@ function Home() {
               <Icon name="ArrowRight" size={16} />
             </Link>
           </div>
-          <Link href="/pilotaze/1" className="photo-teaser">
-            <img
-              src={illustrations.people}
-              alt="Rysunkowi mieszkańcy Małopolski wspólnie rozmawiają."
-            />
-            <div>
-              <Badge tone="yellow">Rekrutacja · demo</Badge>
-              <h3>{pilot.title}</h3>
-              <span>
-                Wieliczka · poznaj rolę wolontariusza
-                <Icon name="ArrowRight" size={16} />
-              </span>
-            </div>
-          </Link>
+          <PilotTeaser />
         </section>
       </div>
       <section className="home-needs">
@@ -162,43 +294,112 @@ function Home() {
             <Icon name="ArrowRight" size={16} />
           </Link>
         </div>
-        {needs.slice(0, 2).map((n) => (
-          <Link href={`/potrzeby/${n.id}`} className="need-row" key={n.id}>
+        {nearby.length ? nearby.map((problem) => (
+          <Link href={`/potrzeby/${problem.entity_id}`} className="need-row" key={problem.id}>
             <span className="row-icon">
               <Icon name="Users" size={25} />
             </span>
             <div>
-              <h3>{n.title}</h3>
+              <h3>{problem.title}</h3>
               <p>
-                {n.place} · {n.people} unikalnych zgłaszających · przykład
+                {problem.location_name} · {problem.reporter_count ?? 0} unikalnych zgłaszających
               </p>
             </div>
             <Icon name="ArrowRight" />
           </Link>
-        ))}
+        )) : <Empty title="Brak potrzeb w pobranym obszarze." text="Po potwierdzeniu zgłoszenia pojawią się tutaj zagregowane potrzeby." to="/zgloszenia/nowe" action="Dodaj zgłoszenie" />}
       </section>
     </>
   )
 }
+
+function PilotTeaser() {
+  const [pilot, setPilot] = useState<Pilot | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    api
+      .listPilots()
+      .then((items) => {
+        if (!active) return
+        setPilot(items.find((item) => item.status === 'recruitment_funding') ?? items[0] ?? null)
+      })
+      .catch((caught: unknown) => {
+        if (active) setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać pilotaży.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="photo-teaser" aria-busy="true">
+        <span>Wczytywanie dostępnych pilotaży…</span>
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <Panel>
+        <p>{error}</p>
+        <ButtonLink to="/pilotaze" secondary>
+          Otwórz pilotaże
+        </ButtonLink>
+      </Panel>
+    )
+  }
+  if (!pilot) {
+    return (
+      <Panel>
+        <p>Nie ma obecnie pilotaży dostępnych do udziału.</p>
+        <ButtonLink to="/pilotaze" secondary>
+          Zobacz pilotaże
+        </ButtonLink>
+      </Panel>
+    )
+  }
+  return (
+    <Link href={`/pilotaze/${pilot.id}`} className="photo-teaser">
+      <img src={illustrations.people} alt="" />
+      <div>
+        <Badge tone={pilotStatusTone(pilot.status)}>{pilotStatusLabel(pilot.status)}</Badge>
+        <h3>{pilot.title}</h3>
+        <span>
+          Zobacz szczegóły i możliwość udziału
+          <Icon name="ArrowRight" size={16} />
+        </span>
+      </div>
+    </Link>
+  )
+}
+
 function ReportForm({ state }: { state: string }) {
   const [step, setStep] = useState(state === 'poza-regionem' ? 2 : 1),
-    [text, setText] = useState(sessionStorage.getItem('mbg-report') ?? reportText),
-    [place, setPlace] = useState(state === 'poza-regionem' ? 'Warszawa' : 'Wieliczka'),
-    [geo, setGeo] = useState(false),
+    [text, setText] = useState(sessionStorage.getItem('mbg-report') ?? ''),
+    [location, setLocation] = useState<ChosenLocation>({
+      lat: MALOPOLSKA_MAP_CENTER.lat,
+      lon: MALOPOLSKA_MAP_CENTER.lng,
+      source: 'map',
+    }),
     [audience, setAudience] = useState('Bliskich / innych osób'),
     [error, setError] = useState(
-      state === 'poza-regionem'
-        ? 'Wybierz miejscowość w Małopolsce. Warszawa znajduje się poza obsługiwanym obszarem.'
-        : '',
-    )
+      state === 'poza-regionem' ? 'Wybierz punkt w Małopolsce.' : '',
+    ),
+    [submitting, setSubmitting] = useState(false)
   const errorSummary = useRef<HTMLDivElement>(null)
   const descriptionField = useRef<HTMLTextAreaElement>(null)
-  const placeField = useRef<HTMLSelectElement>(null)
-  function submit(event: FormEvent) {
+  const locationField = useRef<HTMLInputElement>(null)
+  async function submit(event: FormEvent) {
     event.preventDefault()
     if (step === 1) {
       if (text.trim().length < 30) {
-        setError('Opisz sprawę przynajmniej jednym pełnym zdaniem (30 znaków w demo).')
+      setError('Opisz sprawę przynajmniej jednym pełnym zdaniem (minimum 30 znaków).')
         requestAnimationFrame(() => errorSummary.current?.focus())
         return
       }
@@ -206,16 +407,29 @@ function ReportForm({ state }: { state: string }) {
       setStep(2)
       return
     }
-    if (place !== 'Wieliczka' && place !== 'Kraków' && place !== 'Niepołomice') {
-      setError(
-        'Wybierz miejscowość w Małopolsce. Warszawa znajduje się poza obsługiwanym obszarem.',
-      )
+    setSubmitting(true)
+    try {
+      const submission = await api.createReport({
+        text,
+        location_lat: location.lat,
+        location_lon: location.lon,
+        location_name:
+          location.source === 'gps'
+            ? 'Lokalizacja wskazana przez urządzenie'
+            : location.source === 'manual'
+              ? 'Współrzędne wpisane ręcznie'
+              : 'Punkt wskazany na mapie',
+        location_type: location.source,
+      })
+      sessionStorage.setItem(`mbg-report-${submission.report.id}`, JSON.stringify(submission.report))
+      sessionStorage.setItem(`mbg-candidates-${submission.report.id}`, JSON.stringify(submission.suggested_candidates))
+      navigate(`/zgloszenia/${submission.report.id}/potwierdzenie`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać zgłoszenia.')
       requestAnimationFrame(() => errorSummary.current?.focus())
-      return
+    } finally {
+      setSubmitting(false)
     }
-    sessionStorage.setItem('mbg-report', text)
-    sessionStorage.setItem('mbg-place', place)
-    navigate('/zgloszenia/1/potwierdzenie')
   }
   return (
     <>
@@ -279,47 +493,42 @@ function ReportForm({ state }: { state: string }) {
             ) : (
               <>
                 <h2>Gdzie potrzebna jest zmiana?</h2>
-                <Field
-                  label="Miejscowość w Małopolsce"
-                  hint="Wybierz miejscowość, której dotyczy sprawa."
-                >
-                  <select
-                    id="report-place"
-                    ref={placeField}
-                    aria-invalid={!!error}
-                    aria-describedby={error ? 'report-error' : undefined}
-                    value={place}
-                    onChange={(e) => {
-                      setPlace(e.target.value)
-                      setError('')
-                    }}
-                  >
-                    <option>Wieliczka</option>
-                    <option>Kraków</option>
-                    <option>Niepołomice</option>
-                    <option>Warszawa</option>
-                  </select>
-                </Field>
-                <AreaMap active="1" onSelect={() => setPlace('Wieliczka')} />
-                <button type="button" className="button secondary" onClick={() => setGeo(true)}>
-                  <Icon name="MapPin" />
-                  Użyj przykładowej lokalizacji telefonu
-                </button>
-                {geo && (
-                  <Notice title="Czy to jest miejsce problemu?">
-                    Lokalizacja demo: Wieliczka.{' '}
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => {
-                        setPlace('Wieliczka')
-                        setGeo(false)
-                      }}
-                    >
-                      Potwierdzam lokalizację problemu
-                    </button>
-                  </Notice>
-                )}
+                <p className="muted">Wskaż dokładne miejsce na mapie, użyj lokalizacji urządzenia albo wpisz współrzędne ręcznie.</p>
+                <LocationPicker
+                  value={location}
+                  onChange={(next) => {
+                    setLocation(next)
+                    setError('')
+                  }}
+                  onError={setError}
+                />
+                <div className="form-grid geographic-coordinate-inputs">
+                  <Field label="Szerokość geograficzna">
+                    <input
+                      ref={locationField}
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      value={location.lat}
+                      onChange={(event) => setLocation((current) => ({ ...current, lat: Number(event.target.value), source: 'manual' }))}
+                      aria-invalid={!!error}
+                      aria-describedby={error ? 'report-error' : undefined}
+                      required
+                    />
+                  </Field>
+                  <Field label="Długość geograficzna">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      value={location.lon}
+                      onChange={(event) => setLocation((current) => ({ ...current, lon: Number(event.target.value), source: 'manual' }))}
+                      aria-invalid={!!error}
+                      aria-describedby={error ? 'report-error' : undefined}
+                      required
+                    />
+                  </Field>
+                </div>
                 <label className="checkbox-line">
                   <input type="checkbox" defaultChecked />
                   Ukryj autora przed innymi użytkownikami
@@ -338,7 +547,7 @@ function ReportForm({ state }: { state: string }) {
                     type="button"
                     className="text-button"
                     onClick={() =>
-                      step === 1 ? descriptionField.current?.focus() : placeField.current?.focus()
+                      step === 1 ? descriptionField.current?.focus() : locationField.current?.focus()
                     }
                   >
                     {step === 1 ? 'Popraw opis potrzeby' : 'Popraw miejsce potrzeby'}
@@ -361,8 +570,8 @@ function ReportForm({ state }: { state: string }) {
               ) : (
                 <Link href="/start">Anuluj</Link>
               )}
-              <button className="button" type="submit">
-                {step === 1 ? 'Dalej: miejsce potrzeby' : 'Przejdź do potwierdzenia'}
+              <button className="button" type="submit" disabled={submitting}>
+                {step === 1 ? 'Dalej: miejsce potrzeby' : submitting ? 'Zapisywanie…' : 'Przejdź do potwierdzenia'}
                 <Icon name="ArrowRight" />
               </button>
             </div>
@@ -376,17 +585,52 @@ function ReportForm({ state }: { state: string }) {
             wybierzesz, czy podobna sprawa pasuje do Twojej.
           </p>
           <Notice>
-            W docelowej aplikacji dane identyfikujące mają być usuwane lokalnie przed kontaktem z
-            zewnętrznym AI. Tutaj AI nie jest wywoływane.
+            Dane identyfikujące są usuwane przed przekazaniem opisu do modułu AI. Wynik klasyfikacji
+            sprawdzisz przed potwierdzeniem powiązania.
           </Notice>
         </aside>
       </div>
     </>
   )
 }
-function Confirmation({ state }: { state: string }) {
-  const [categories, setCategories] = useState(['Dla seniorów']),
-    [selected, setSelected] = useState('1')
+function Confirmation({ reportId, state }: { reportId: number; state: string }) {
+  const storedReport = sessionStorage.getItem(`mbg-report-${reportId}`)
+  const storedCandidates = sessionStorage.getItem(`mbg-candidates-${reportId}`)
+  const [report, setReport] = useState<Report | null>(storedReport ? (JSON.parse(storedReport) as Report) : null)
+  const [candidates] = useState<ProblemCandidate[]>(
+    storedCandidates ? (JSON.parse(storedCandidates) as ProblemCandidate[]) : [],
+  )
+  const [categories, setCategories] = useState<string[]>(report?.categories ?? ['Społeczność lokalna'])
+  const [selected, setSelected] = useState<string>('new')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    if (report) return
+    api.getReport(reportId).then(setReport).catch((caught: unknown) => {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszenia.')
+    })
+  }, [report, reportId])
+  async function confirm() {
+    setSaving(true)
+    setError('')
+    try {
+      await api.updateReportCategories(reportId, categories)
+      const selectedCandidate = candidates.find((candidate) => String(candidate.problem_id) === selected)
+      const problem = await api.confirmGrouping(
+        reportId,
+        selectedCandidate?.problem_id ?? null,
+        !selectedCandidate,
+      )
+      navigate(`/zgloszenia/${problem.id}/wyniki`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się potwierdzić powiązania.')
+    } finally {
+      setSaving(false)
+    }
+  }
+  if (!report && !error) {
+    return <DemoStatus state="ladowanie" />
+  }
   return (
     <>
       <Heading
@@ -398,10 +642,10 @@ function Confirmation({ state }: { state: string }) {
         <div className="stack">
           <Panel>
             <h2>Podpowiedzi do sprawdzenia</h2>
-            <Badge tone="blue">Szacunki AI · symulacja</Badge>
+            <Badge tone="blue">Szacunki AI</Badge>
             <fieldset className="chip-fieldset">
               <legend>Kategorie — możesz wybrać kilka</legend>
-              {['Dla seniorów', 'Zdrowie', 'Integracja społeczna', 'Dla rynku pracy'].map((c) => (
+              {[...new Set([...categories, 'Seniorzy', 'Edukacja', 'Dostępność', 'Społeczność lokalna'])].map((c) => (
                 <label className={categories.includes(c) ? 'selected' : ''} key={c}>
                   <input
                     type="checkbox"
@@ -420,19 +664,13 @@ function Confirmation({ state }: { state: string }) {
             </fieldset>
             <div className="facts">
               <Field label="Odbiorcy · szacunek AI">
-                <input defaultValue="Osoby z demencją i ich opiekunowie" />
+                <input value={report?.audience ?? ''} readOnly />
               </Field>
               <Field label="Pilność · szacunek AI">
-                <select defaultValue="Zwykła">
-                  <option>Zwykła</option>
-                  <option>Pilna</option>
-                </select>
+                <input value={report?.urgency ?? ''} readOnly />
               </Field>
               <Field label="Czas trwania · szacunek AI">
-                <select>
-                  <option>Potrzeba długotrwała</option>
-                  <option>Potrzeba jednorazowa</option>
-                </select>
+                <input value={report?.duration ?? ''} readOnly />
               </Field>
             </div>
           </Panel>
@@ -443,22 +681,21 @@ function Confirmation({ state }: { state: string }) {
               zostaną ustalone przed integracją.
             </Notice>
           )}
+          {report?.is_urgent && report.urgent_guidance && (
+            <Notice tone="warning" title="Potencjalnie pilna sprawa.">{report.urgent_guidance}</Notice>
+          )}
           <Panel>
             <h2>Podobna potrzeba w okolicy</h2>
-            <label className={`candidate ${selected === '1' ? 'selected' : ''}`}>
-              <input
-                type="radio"
-                name="match"
-                checked={selected === '1'}
-                onChange={() => setSelected('1')}
-              />
-              <div>
-                <Badge>Do Twojego potwierdzenia</Badge>
-                <h3>{needs[0].title}</h3>
-                <p>{needs[0].description}</p>
-                <span>Wieliczka · 18 unikalnych zgłaszających (demo)</span>
-              </div>
-            </label>
+            {candidates.map((candidate) => (
+              <label className={`candidate ${selected === String(candidate.problem_id) ? 'selected' : ''}`} key={candidate.problem_id}>
+                <input type="radio" name="match" checked={selected === String(candidate.problem_id)} onChange={() => setSelected(String(candidate.problem_id))} />
+                <div>
+                  <Badge>Do Twojego potwierdzenia · {Math.round(candidate.confidence * 100)}%</Badge>
+                  <h3>{candidate.title}</h3>
+                  <p>To podpowiedź na podstawie opisu i miejsca. Możesz zamiast niej utworzyć nową potrzebę.</p>
+                </div>
+              </label>
+            ))}
             <label className={`candidate ${selected === 'new' ? 'selected' : ''}`}>
               <input
                 type="radio"
@@ -473,24 +710,19 @@ function Confirmation({ state }: { state: string }) {
                 </p>
               </div>
             </label>
-            <button
-              className="button"
-              onClick={() => {
-                sessionStorage.setItem('mbg-new-need', selected)
-                navigate('/zgloszenia/1/wyniki')
-              }}
-            >
-              {selected === 'new' ? 'Utwórz nową potrzebę' : 'Potwierdzam tę potrzebę'}
+            {error && <Notice tone="error">{error}</Notice>}
+            <button className="button" onClick={() => void confirm()} disabled={saving || !report}>
+              {saving ? 'Zapisywanie…' : selected === 'new' ? 'Utwórz nową potrzebę' : 'Potwierdzam tę potrzebę'}
               <Icon name="ArrowRight" />
             </button>
           </Panel>
         </div>
         <aside className="context-aside">
           <h2>Twoje zgłoszenie</h2>
-          <p>{sessionStorage.getItem('mbg-report') ?? reportText}</p>
+          <p>{report?.text_raw ?? ''}</p>
           <span className="location">
             <Icon name="MapPin" />
-            {sessionStorage.getItem('mbg-place') ?? 'Wieliczka'}
+            {report?.location_name ?? 'Małopolska'}
           </span>
           <hr />
           <p>Podobieństwo tekstu jest wskazówką. Sprawdź także miejsce i kontekst.</p>
@@ -503,61 +735,50 @@ function Confirmation({ state }: { state: string }) {
     </>
   )
 }
-function InnovationRow({ id, match = false }: { id: string; match?: boolean }) {
-  const item = innovations.find((i) => i.id === id) ?? innovations[0]
-  return (
-    <article className="innovation-row">
-      <div
-        className={`innovation-letter ${item.id === 'bajkala' ? 'blue' : item.id === 'bawita' ? 'green' : 'yellow'}`}
-        aria-hidden="true"
-      >
-        {item.title.slice(0, 1)}
-      </div>
-      <div>
-        <Badge>{item.category}</Badge>
-        <h2>
-          <Link href={`/innowacje/${item.id}`}>{item.title}</Link>
-        </h2>
-        <p>{item.description}</p>
-        {match && (
-          <div className="match-explanation">
-            <strong>Dlaczego może pasować · interpretacja demo</strong>
-            <p>
-              Tablica jest skierowana do osób z wczesnym otępieniem i wspiera aktywności pamięciowe
-              oraz manualne opisane w zgłoszeniu.
-            </p>
-            <strong>Co trzeba sprawdzić</strong>
-            <p>{item.limitation}</p>
-          </div>
-        )}
-        <div className="row-meta">
-          <a href={item.url} target="_blank" rel="noreferrer">
-            Źródło: ROPS <Icon name="ArrowSquareOut" size={16} />
-          </a>
-          <Link href={`/innowacje/${item.id}`}>
-            Poznaj rozwiązanie
-            <Icon name="ArrowRight" size={16} />
-          </Link>
-        </div>
-      </div>
-    </article>
-  )
-}
-function Results({ state }: { state: string }) {
+function Results({ problemId, state }: { problemId: number; state: string }) {
   const [view, setView] = useState('Lista'),
-    [angle, setAngle] = useState(0)
+    [angle, setAngle] = useState(0),
+    [matches, setMatches] = useState<InnovationMatch[]>([]),
+    [coordinates, setCoordinates] = useState<Awaited<ReturnType<typeof api.getCoordinates>> | null>(null),
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(true)
+  useEffect(() => {
+    api.getMatches(problemId)
+      .then((result) => {
+        setMatches(result.matches)
+        return api.getCoordinates(problemId).then(setCoordinates).catch(() => undefined)
+      })
+      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać dopasowań.'))
+      .finally(() => setLoading(false))
+  }, [problemId])
+  const semanticPoints = coordinates?.solution_coords ?? matches.map((match) => ({
+    id: match.solution_id,
+    title: match.title,
+    x: match.coord_x,
+    y: match.coord_y,
+    z: match.coord_z,
+  }))
+  const xValues = [0, ...semanticPoints.map((point) => point.x)]
+  const yValues = [0, ...semanticPoints.map((point) => point.y)]
+  const minX = Math.min(...xValues), maxX = Math.max(...xValues)
+  const minY = Math.min(...yValues), maxY = Math.max(...yValues)
+  const percentage = (value: number, min: number, max: number) =>
+    max === min ? 50 : 16 + ((value - min) / (max - min)) * 68
+  if (loading) return <DemoStatus state="ladowanie" />
   return (
     <>
       <Heading
         title={
-          state === 'pusto'
+          !error && matches.length === 0
             ? 'Nie znaleźliśmy trafnego rozwiązania.'
             : 'Jedno rozwiązanie warte sprawdzenia.'
         }
         description="Dopasowanie to punkt wyjścia. Zobacz źródło, odbiorców i ograniczenia przed podjęciem decyzji."
         back="/zgloszenia"
       />
-      {state === 'pusto' ? (
+      {error ? (
+        <Notice tone="error" title="Nie udało się pobrać wyników.">{error}</Notice>
+      ) : matches.length === 0 ? (
         <>
           <Notice>
             Nie uzupełniamy listy przypadkowymi innowacjami. W docelowej aplikacji wynik może
@@ -582,14 +803,9 @@ function Results({ state }: { state: string }) {
         <>
           <Notice
             tone="success"
-            title={
-              sessionStorage.getItem('mbg-new-need') === 'new'
-                ? 'Utworzono nową potrzebę w demo.'
-                : 'Potwierdzono powiązanie w demo.'
-            }
+            title="Potwierdzono powiązanie zgłoszenia."
           >
-            Wynik prezentacyjny dla potrzeb osób z demencją. Żadne wyszukiwanie AI nie zostało
-            wykonane.
+            Poniższe propozycje pochodzą z backendu. Przed wdrożeniem sprawdź źródło i ograniczenia.
           </Notice>
           <div className="toolbar">
             <div className="segmented">
@@ -600,7 +816,7 @@ function Results({ state }: { state: string }) {
                 </button>
               ))}
             </div>
-            <span>1 trafna innowacja · przykład</span>
+            <span>{matches.length} {matches.length === 1 ? 'trafna innowacja' : 'trafne innowacje'}</span>
           </div>
           {(view === 'Przestrzeń 3D' || state === 'brak-webgl') && (
             <Panel>
@@ -612,7 +828,7 @@ function Results({ state }: { state: string }) {
               ) : (
                 <>
                   <h2>Bliskość znaczeń, nie odległość na mapie.</h2>
-                  <p>Przybliżona projekcja demo. Układ punktów nie wyznacza rankingu.</p>
+                  <p>Wizualizacja korzysta ze współrzędnych semantycznych zwróconych przez backend. Układ nie wyznacza rankingu.</p>
                   <div className="semantic-stage">
                     <div
                       className="semantic-plane"
@@ -621,9 +837,18 @@ function Results({ state }: { state: string }) {
                       <span className="semantic-axis" />
                       <span className="semantic-axis other" />
                       <span className="semantic-point problem">Potrzeba</span>
-                      <Link className="semantic-point solution" href="/innowacje/bawita">
-                        BaWita
-                      </Link>
+                      {semanticPoints.slice(0, 10).map((point) => (
+                        <span
+                          className="semantic-point solution"
+                          key={point.id}
+                          style={{
+                            left: `${percentage(point.x, minX, maxX)}%`,
+                            top: `${percentage(point.y, minY, maxY)}%`,
+                          }}
+                        >
+                          {point.title}
+                        </span>
+                      ))}
                     </div>
                   </div>
                   <Field label="Obróć przestrzeń poglądową">
@@ -636,15 +861,33 @@ function Results({ state }: { state: string }) {
                     />
                   </Field>
                   <small>
-                    Współrzędne są syntetyczne. Finalna wizualizacja będzie korzystać z projekcji
-                    embeddingów i mieć tę samą listę alternatywną.
+                    Punkty pokazują współrzędne zwrócone przez backend. Lista poniżej pozostaje
+                    równoważną, dostępną alternatywą.
                   </small>
                 </>
               )}
             </Panel>
           )}
           <div className="result-list">
-            <InnovationRow id="bawita" match />
+            {matches.map((match) => {
+              const sourceUrl = getSafeExternalUrl(match.source_url)
+              const title = toReadableInnovationText(match.title)
+              return (
+                <article className="innovation-row" key={match.solution_id}>
+                  <div className="innovation-letter green" aria-hidden="true">{title.slice(0, 1)}</div>
+                  <div>
+                    <Badge>Pozycja {match.rank} · dopasowanie {Math.round(match.score * 100)}%</Badge>
+                    <h2><Link href={apiInnovationHref({ id: match.solution_id })}>{title}</Link></h2>
+                    <InnovationPreview description={match.description} />
+                    <div className="match-explanation">
+                      <strong>Dlaczego może pasować</strong><p>{toReadableInnovationText(match.explanation)}</p>
+                      <strong>Co trzeba sprawdzić</strong><p>{toReadableInnovationText(match.limitations)}</p>
+                    </div>
+                    {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer">Źródło innowacji <Icon name="ArrowSquareOut" size={16} /></a>}
+                  </div>
+                </article>
+              )
+            })}
           </div>
           <section className="next-action">
             <h2>A jeśli potrzeba jest inna?</h2>
@@ -663,7 +906,16 @@ function Results({ state }: { state: string }) {
     </>
   )
 }
-function Reports({ state }: { state: string }) {
+function Reports() {
+  const [reports, setReports] = useState<Report[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.listMyReports()
+      .then(setReports)
+      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszeń.'))
+      .finally(() => setLoading(false))
+  }, [])
   return (
     <>
       <Heading
@@ -671,55 +923,53 @@ function Reports({ state }: { state: string }) {
         description="Wróć do sprawy i sprawdź jej dalszy ciąg."
         action={<ButtonLink to="/zgloszenia/nowe">Nowe zgłoszenie</ButtonLink>}
       />
-      {state === 'pusto' ? (
-        <Empty />
+      {loading ? <DemoStatus state="ladowanie" /> : error ? <Notice tone="error">{error}</Notice> : !reports.length ? (
+        <Empty title="Nie masz jeszcze zgłoszeń." text="Opis pierwszej potrzeby trafi do Twojej prywatnej listy." to="/zgloszenia/nowe" action="Nowe zgłoszenie" />
       ) : (
         <Panel>
-          <Link href="/zgloszenia/1" className="activity-row">
-            <span className="row-icon">
-              <Icon name="ClipboardText" size={26} />
-            </span>
-            <div>
-              <Badge>Potrzeba potwierdzona</Badge>
-              <h2>Codzienne aktywności dla osób z demencją</h2>
-              <p>Wieliczka · 3 października 2026 · zgłoszenie demo</p>
-            </div>
-            <Icon name="ArrowRight" />
-          </Link>
-          <Link href="/zgloszenia/1?stan=kolejka" className="activity-row">
-            <span className="row-icon blue">
-              <Icon name="Clock" size={26} />
-            </span>
-            <div>
-              <Badge tone="yellow">W analizie · przykład stanu</Badge>
-              <h2>Spotkania sąsiedzkie blisko domu</h2>
-              <p>Wieliczka · 2 października 2026 · dane demo</p>
-            </div>
-            <Icon name="ArrowRight" />
-          </Link>
+          {reports.map((report) => (
+            <Link href={`/zgloszenia/${report.id}`} className="activity-row" key={report.id}>
+              <span className="row-icon green"><Icon name="ClipboardText" size={26} /></span>
+              <div>
+                <Badge>{report.status === 'confirmed' ? 'Potrzeba potwierdzona' : 'Czeka na potwierdzenie'}</Badge>
+                <h2>{report.text_raw.slice(0, 90)}{report.text_raw.length > 90 ? '…' : ''}</h2>
+                <p>{report.location_name} · zapisane na Twoim koncie</p>
+              </div>
+              <Icon name="ArrowRight" />
+            </Link>
+          ))}
         </Panel>
       )}
     </>
   )
 }
-function ReportDetail() {
+function ReportDetail({ reportId }: { reportId: number }) {
+  const [report, setReport] = useState<Report | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.getReport(reportId).then(setReport).catch((caught: unknown) => {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszenia.')
+    })
+  }, [reportId])
+  if (!report && !error) return <DemoStatus state="ladowanie" />
+  if (error) return <Notice tone="error">{error}</Notice>
   return (
     <>
       <Heading
-        title="Codzienne aktywności dla osób z demencją."
+        title={report?.text_raw.slice(0, 80) ?? 'Zgłoszenie'}
         back="/zgloszenia"
-        description="Zgłoszenie MBG-001 · 3 października 2026 · dane demo"
+        description={`Zgłoszenie MBG-${reportId} · zapisane na Twoim koncie`}
       />
       <div className="detail-layout">
         <div className="stack">
           <Panel>
             <Badge>Potrzeba potwierdzona</Badge>
             <h2>Twój opis</h2>
-            <p>{sessionStorage.getItem('mbg-report') ?? reportText}</p>
+            <p>{report?.text_raw}</p>
             <dl className="facts">
-              <Fact label="Miejsce">Wieliczka</Fact>
+              <Fact label="Miejsce">{report?.location_name}</Fact>
               <Fact label="Widoczność">Autor ukryty przed innymi użytkownikami</Fact>
-              <Fact label="Kategorie">Dla seniorów · Zdrowie</Fact>
+              <Fact label="Kategorie">{report?.categories.join(' · ')}</Fact>
             </dl>
           </Panel>
           <Panel>
@@ -727,26 +977,23 @@ function ReportDetail() {
             <ol className="timeline">
               <li>
                 <strong>Zapis zgłoszenia</strong>
-                <span>Przykładowy opis i lokalizacja.</span>
+                <span>Opis i lokalizacja zostały zapisane na Twoim koncie.</span>
               </li>
               <li>
                 <strong>Potwierdzenie potrzeby</strong>
-                <span>Powiązanie wybrane przez użytkownika.</span>
+                <span>{report?.canonical_problem_id ? 'Powiązanie zostało potwierdzone przez użytkownika.' : 'Zgłoszenie czeka na Twoje potwierdzenie grupowania.'}</span>
               </li>
               <li>
                 <strong>Rozwiązanie do sprawdzenia</strong>
-                <span>BaWita — biblioteka ROPS.</span>
+                <span>{report?.canonical_problem_id ? 'Dopasowania są dostępne dla potwierdzonej potrzeby.' : 'Dopasowania pojawią się po potwierdzeniu potrzeby.'}</span>
               </li>
             </ol>
           </Panel>
         </div>
         <aside className="context-aside">
           <h2>Twoja potrzeba</h2>
-          <p>{needs[0].title}</p>
-          <ButtonLink to="/potrzeby/1" secondary>
-            Poznaj wspólną potrzebę
-          </ButtonLink>
-          <ButtonLink to="/zgloszenia/1/wyniki">Zobacz rozwiązanie</ButtonLink>
+          <p>{report?.canonical_problem_id ? 'Powiązana potrzeba została potwierdzona.' : 'Zgłoszenie czeka na potwierdzenie.'}</p>
+          {report?.canonical_problem_id && <ButtonLink to={`/zgloszenia/${report.canonical_problem_id}/wyniki`}>Zobacz rozwiązania</ButtonLink>}
           <small>
             Powtórne zgłoszenie przez to samo konto liczy się raz. Decyzje moderacji wymagają
             backendu.
@@ -756,23 +1003,34 @@ function ReportDetail() {
     </>
   )
 }
-function Catalogue({ state }: { state: string }) {
+function Catalogue() {
   const params = new URLSearchParams(window.location.search),
     [query, setQuery] = useState(params.get('q') ?? ''),
-    [category, setCategory] = useState(params.get('kategoria') ?? 'Wszystkie')
-  const filtered = innovations.filter(
-    (i) =>
-      (category === 'Wszystkie' || i.category === category) &&
-      (i.title + i.description).toLocaleLowerCase('pl').includes(query.toLocaleLowerCase('pl')),
-  )
+    [category, setCategory] = useState(params.get('kategoria') ?? 'Wszystkie'),
+    [catalogue, setCatalogue] = useState<Awaited<ReturnType<typeof api.searchCatalogue>>>([]),
+    [catalogueError, setCatalogueError] = useState(''),
+    [catalogueLoading, setCatalogueLoading] = useState(true)
+  const categories = [...new Set(catalogue.map((item) => item.category))].filter(Boolean)
+  const hasResults = catalogue.length > 0
   function updateFilters(q: string, c: string) {
     setQuery(q)
     setCategory(c)
+    setCatalogueLoading(true)
+    setCatalogueError('')
     const search = new URLSearchParams()
     if (q) search.set('q', q)
     if (c !== 'Wszystkie') search.set('kategoria', c)
     window.history.replaceState({}, '', `/innowacje${search.size ? '?' + search.toString() : ''}`)
   }
+  useEffect(() => {
+    api.searchCatalogue(query, category)
+      .then((results) => {
+        setCatalogue(results)
+        setCatalogueError('')
+      })
+      .catch((caught: unknown) => setCatalogueError(caught instanceof Error ? caught.message : 'Nie udało się pobrać katalogu.'))
+      .finally(() => setCatalogueLoading(false))
+  }, [category, query])
   return (
     <>
       <Heading
@@ -783,7 +1041,7 @@ function Catalogue({ state }: { state: string }) {
         <div>
           <Icon name="Books" size={40} />
           <h2>Wiedza, od której można zacząć.</h2>
-          <p>Trzy opisane innowacje. Bez niepotwierdzonych kosztów i ocen skuteczności.</p>
+          <p>Wyniki pochodzą z katalogu innowacji zapisanego w bazie danych.</p>
         </div>
         <img src={illustrations.people} alt="Rysunkowa scena wspólnego działania mieszkańców." />
       </div>
@@ -799,16 +1057,17 @@ function Catalogue({ state }: { state: string }) {
         </label>
         <Field label="Kategoria">
           <select value={category} onChange={(e) => updateFilters(query, e.target.value)}>
-            {['Wszystkie', ...innovations.map((i) => i.category)].map((c) => (
+            {['Wszystkie', ...categories].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
         </Field>
       </div>
       <p className="muted">
-        {state === 'pusto' ? 0 : filtered.length} wyników · treści z biblioteki ROPS
+        {catalogue.length} wyników · treści z biblioteki ROPS
       </p>
-      {state === 'pusto' || !filtered.length ? (
+      {catalogueError && <Notice tone="error">{catalogueError}</Notice>}
+      {!catalogueLoading && !catalogueError && !hasResults ? (
         <Empty
           title="Brak wyników dla tych filtrów."
           text="Zmień kategorię albo użyj krótszego zapytania."
@@ -816,176 +1075,200 @@ function Catalogue({ state }: { state: string }) {
           action="Wyczyść filtry"
         />
       ) : (
-        filtered.map((i) => <InnovationRow key={i.id} id={i.id} />)
+        <>
+          {catalogue.map((item) => <ApiInnovationRow item={item} key={`api-${item.id}`} />)}
+        </>
       )}
     </>
   )
 }
-function Innovation({ id }: { id: string }) {
-  const item = innovations.find((i) => i.id === id) ?? innovations[0]
-  const [tab, setTab] = useState('Opis')
+function apiInnovationHref(item: Pick<Innovation, 'id'>): string {
+  return `/innowacje/${item.id}`
+}
+function ApiInnovationRow({ item }: { item: Innovation }) {
+  const sourceUrl = getSafeExternalUrl(item.source_url)
+  const title = toReadableInnovationText(item.title)
+  return (
+    <article className="innovation-row">
+      <div className="innovation-letter blue" aria-hidden="true">{title.slice(0, 1)}</div>
+      <div>
+        <Badge>{toReadableInnovationText(item.category)}</Badge>
+        <h2><Link href={apiInnovationHref(item)}>{title}</Link></h2>
+        <InnovationPreview description={item.description} />
+        <p><strong>Dla kogo:</strong> {toReadableInnovationText(item.target_audience)}</p>
+        <p><strong>Ograniczenia:</strong> {toReadableInnovationText(item.limitations)}</p>
+        <div className="row-meta">
+          {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer">Źródło <Icon name="ArrowSquareOut" size={16} /></a>}
+          <Link href={apiInnovationHref(item)}>Poznaj rozwiązanie <Icon name="ArrowRight" size={16} /></Link>
+        </div>
+      </div>
+    </article>
+  )
+}
+function ApiInnovation({ id }: { id: number }) {
+  const [item, setItem] = useState<Innovation | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.getCatalogueItem(id)
+      .then((result) => {
+        setItem(result)
+        setError('')
+      })
+      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać innowacji.'))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  if (loading) return <DemoStatus state="ladowanie" />
+  if (error) return <Notice tone="error" title="Nie udało się pobrać innowacji.">{error}</Notice>
+  if (!item) {
+    return <Empty title="Nie znaleźliśmy tej innowacji." text="Wróć do katalogu i wybierz pozycję ponownie." to="/innowacje" action="Wróć do katalogu" />
+  }
+
+  const sourceUrl = getSafeExternalUrl(item.source_url)
+  const readableTitle = toReadableInnovationText(item.title)
   return (
     <>
-      <Heading title={item.title} description={item.description} back="/innowacje" />
+      <Heading title={readableTitle} description={getInnovationPreview(item.description)} back="/innowacje" />
       <div className="detail-layout">
         <div>
           <div className="innovation-feature">
-            <div className="innovation-letter large">{item.title.slice(0, 1)}</div>
+            <div className="innovation-letter large">{readableTitle.slice(0, 1)}</div>
             <div>
-              <Badge>{item.category}</Badge>
-              <h2>
-                Narzędzie do rozważenia.
-                <br />
-                Ze źródłem do sprawdzenia.
-              </h2>
-              <a href={item.url} target="_blank" rel="noreferrer">
-                Biblioteka ROPS
-                <Icon name="ArrowSquareOut" size={17} />
-              </a>
+              <Badge>{toReadableInnovationText(item.category)}</Badge>
+              <h2>Opis źródłowy w czytelnej formie.</h2>
+              {sourceUrl ? (
+                <a href={sourceUrl} target="_blank" rel="noreferrer">
+                  Otwórz źródło
+                  <Icon name="ArrowSquareOut" size={17} />
+                </a>
+              ) : (
+                <p className="muted">Materiały są zapisane w lokalnie zaimportowanym katalogu.</p>
+              )}
             </div>
           </div>
-          <div className="segmented section-tabs">
-            {['Opis', 'Testy', 'Materiały'].map((t) => (
-              <button key={t} onClick={() => setTab(t)} aria-pressed={tab === t}>
-                {t}
-              </button>
-            ))}
-          </div>
           <Panel>
-            {tab === 'Opis' ? (
-              <>
-                <h2>Dla kogo?</h2>
-                <p>{item.audience}</p>
-                <h2>Co trzeba uwzględnić?</h2>
-                <p>{item.limitation}</p>
-                <h2>Skąd pochodzi opis?</h2>
-                <p>
-                  Skrót na podstawie {item.file} w zbiorze źródłowym repozytorium. MBG nie
-                  przypisuje sobie autorstwa innowacji.
-                </p>
-              </>
-            ) : tab === 'Testy' ? (
-              <>
-                <h2>Co mówi źródło o testach?</h2>
-                <p>{item.evidence}</p>
-                <Notice>
-                  Nie przenosimy wyniku testów na nowe miejsce lub grupę odbiorców bez sprawdzenia
-                  warunków.
-                </Notice>
-              </>
-            ) : (
-              <>
-                <h2>Materiały źródłowe</h2>
-                <a className="button secondary" href={item.url} target="_blank" rel="noreferrer">
-                  Otwórz oryginalną kartę
-                  <Icon name="ArrowSquareOut" />
-                </a>
-                <p>
-                  Linki do materiałów znajdują się w karcie źródłowej. Dostępność plików i filmów
-                  nie została zweryfikowana w tej wersji aplikacji.
-                </p>
-              </>
-            )}
+            <InnovationDocument description={item.description} />
           </Panel>
         </div>
         <aside className="context-aside">
-          <h2>Przenieś pomysł do swojego miejsca.</h2>
-          <p>Adaptacja bierze pod uwagę odbiorców, zasoby i ograniczenia Twojej organizacji.</p>
-          <ButtonLink to={`/adaptacje/nowa?innowacja=${item.id}`}>Przygotuj adaptację</ButtonLink>
+          <h2>Sprawdź przed adaptacją.</h2>
+          <p>{toReadableInnovationText(item.limitations)}</p>
+          <ButtonLink to="/pomysly/nowy">Rozwiń własny pomysł</ButtonLink>
           <dl>
-            <Fact label="Koszt wdrożenia">Brak danych w skrócie źródłowym</Fact>
-            <Fact label="Lokalna dostępność">Do sprawdzenia</Fact>
-            <Fact label="Pochodzenie">ROPS w Krakowie</Fact>
+            <Fact label="Dla kogo">{toReadableInnovationText(item.target_audience)}</Fact>
+            <Fact label="Szacowany koszt">{toReadableInnovationText(item.cost_estimate)}</Fact>
+            <Fact label="Pochodzenie">{sourceUrl ? 'Link do źródła jest dostępny powyżej.' : 'Katalog lokalny'}</Fact>
           </dl>
         </aside>
       </div>
     </>
   )
 }
-function AreaMap({
-  active = '1',
+function geographicMarkerIcon(marker: GeographicMarker) {
+  const label = marker.entity_type === 'problem' ? 'P' : marker.entity_type === 'report' ? 'Z' : marker.entity_type === 'pilot' ? 'T' : 'I'
+  return divIcon({
+    className: `mbg-leaflet-pin mbg-leaflet-pin--${marker.entity_type}`,
+    html: `<span aria-hidden="true">${label}</span>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  })
+}
+
+function GeographicMapView({
+  data,
+  center,
+  radius,
+  selectedId,
   onSelect,
-  visibleIds = needs.map((n) => n.id),
 }: {
-  active?: string
-  onSelect?: (id: string) => void
-  visibleIds?: string[]
+  data: GeographicMap
+  center: LatLngLiteral
+  radius: number
+  selectedId?: string
+  onSelect: (marker: GeographicMarker) => void
 }) {
   return (
-    <div className="area-map">
-      <svg
-        viewBox="0 0 700 400"
-        role="img"
-        aria-label="Schemat okolic Krakowa, Wieliczki i Niepołomic. Położenia są poglądowe, nie służą nawigacji."
-      >
-        <rect width="700" height="400" fill="#e5ebdf" />
-        <path
-          d="M0 60L190 20 260 110 175 195 0 150ZM360 0L520 20 620 150 490 190 390 100ZM50 260L175 215 270 345 230 400 0 400ZM500 260L700 190 700 400 580 375Z"
-          fill="#cedec0"
+    <div className="geographic-map" aria-label="Mapa zgłoszeń, potrzeb i innowacji z bazy danych">
+      <MapContainer center={center} zoom={11} className="leaflet-map" scrollWheelZoom>
+        <MapViewport center={center} zoom={11} />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <path
-          d="M-10 185C80 155 165 210 240 180S380 115 465 175 600 245 715 195"
-          fill="none"
-          stroke="#afd2dc"
-          strokeWidth="24"
-        />
-        <path
-          d="M90 0L250 175 385 330 550 400M0 310L250 175 495 115 700 35M250 175L515 330 700 355"
-          fill="none"
-          stroke="#fffdf7"
-          strokeWidth="14"
-        />
-        <path
-          d="M90 0L250 175 385 330 550 400M0 310L250 175 495 115 700 35M250 175L515 330 700 355"
-          fill="none"
-          stroke="#c9bd9b"
-          strokeWidth="2"
-        />
-        <g fill="#445951" fontFamily="IBM Plex Sans, sans-serif" fontSize="17">
-          <text x="195" y="145">
-            Kraków
-          </text>
-          <text x="328" y="375">
-            Wieliczka
-          </text>
-          <text x="504" y="303">
-            Niepołomice
-          </text>
-          <text x="64" y="360">
-            Skawina
-          </text>
-        </g>
-      </svg>
-      {[
-        { id: '1', x: 54, y: 78 },
-        { id: '2', x: 44, y: 64 },
-        { id: '3', x: 35, y: 45 },
-        { id: '4', x: 74, y: 72 },
-      ]
-        .filter((p) => visibleIds.includes(p.id))
-        .map((p) => (
-          <button
-            type="button"
-            style={{ left: `${p.x}%`, top: `${p.y}%` }}
-            key={p.id}
-            className={`map-marker ${active === p.id ? 'selected' : ''}`}
-            onClick={() => onSelect?.(p.id)}
-            aria-label={`Wybierz potrzebę: ${needs.find((n) => n.id === p.id)?.title}`}
+        <Circle center={center} radius={radius * 1000} pathOptions={{ color: '#00834a', fillOpacity: 0.06 }} />
+        {data.markers.map((marker) => (
+          <Marker
+            key={marker.id}
+            position={{ lat: marker.lat, lng: marker.lon }}
+            icon={geographicMarkerIcon(marker)}
+            eventHandlers={{ click: () => onSelect(marker) }}
+            opacity={selectedId && selectedId !== marker.id ? 0.72 : 1}
           >
-            <Icon name="MapPin" size={21} />
-          </button>
+            <Popup>
+              <strong>{marker.title}</strong>
+              <br />
+              {marker.location_name}
+              {marker.distance_km !== null && <><br />{marker.distance_km.toFixed(1)} km od środka mapy</>}
+              {marker.reporter_count !== null && <><br />{marker.reporter_count} unikalnych zgłaszających</>}
+            </Popup>
+          </Marker>
         ))}
-      <span className="map-disclaimer">Schemat lokalizacji · dane demo · bez geokodowania</span>
+      </MapContainer>
+      <div className="map-legend" aria-label="Legenda mapy">
+        <span><b>P</b> potrzeba zagregowana</span>
+        <span><b>Z</b> własne zgłoszenie</span>
+        <span><b>I</b> innowacja z rozpoznaną miejscowością</span>
+        <span><b>T</b> pilotaż z zapisaną lokalizacją</span>
+      </div>
+      <p className="map-disclaimer">{data.privacy_note}</p>
     </div>
   )
 }
-function Needs({ frequent, state }: { frequent: boolean; state: string }) {
+
+function Needs({ frequent }: { frequent: boolean }) {
   const params = new URLSearchParams(window.location.search),
     [radius, setRadius] = useState(+(params.get('promien') ?? 20)),
-    [selected, setSelected] = useState('1'),
-    [mode, setMode] = useState(frequent ? 'Lista' : 'Mapa')
-  const filtered = needs.filter((n) => n.distance <= radius)
-  const activeSelected = filtered.some((n) => n.id === selected) ? selected : filtered[0]?.id
+    [center, setCenter] = useState<LatLngLiteral>(MALOPOLSKA_MAP_CENTER),
+    [selected, setSelected] = useState<string | undefined>(),
+    [mode, setMode] = useState(frequent ? 'Lista' : 'Mapa'),
+    [data, setData] = useState<GeographicMap | null>(null),
+    [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    api.getMapMarkers(center.lat, center.lng, radius)
+      .then((result) => {
+        if (!active) return
+        setData(result)
+        setError('')
+      })
+      .catch((caught: unknown) => {
+        if (active) setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać danych mapy.')
+      })
+      .finally(() => active && setLoading(false))
+    return () => {
+      active = false
+    }
+  }, [center.lat, center.lng, radius])
+  const problems = (data?.markers ?? [])
+    .filter((marker) => marker.entity_type === 'problem')
+    .sort((left, right) => frequent
+      ? (right.reporter_count ?? 0) - (left.reporter_count ?? 0)
+      : (left.distance_km ?? Infinity) - (right.distance_km ?? Infinity))
+  function useDeviceLocation() {
+    if (!navigator.geolocation) {
+      setError('Ta przeglądarka nie udostępnia geolokalizacji. Przesuń mapę do wybranego miejsca.')
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => setCenter({ lat: position.coords.latitude, lng: position.coords.longitude }),
+      () => setError('Nie udało się pobrać lokalizacji urządzenia. Możesz nadal przeglądać obszar ustawiony na mapie.'),
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    )
+  }
   return (
     <>
       <Heading
@@ -1004,11 +1287,10 @@ function Needs({ frequent, state }: { frequent: boolean; state: string }) {
         ]}
       />
       <div className="toolbar">
-        <Field label="Obszar">
-          <select>
-            <option>Wieliczka i okolice</option>
-          </select>
-        </Field>
+        <button type="button" className="button secondary" onClick={useDeviceLocation}>
+          <Icon name="MapPin" />
+          Ustaw środek na mojej lokalizacji
+        </button>
         <Field label="Promień odkrywania">
           <select
             value={radius}
@@ -1036,43 +1318,35 @@ function Needs({ frequent, state }: { frequent: boolean; state: string }) {
           ))}
         </div>
       </div>
-      <small>
-        Promień służy odkrywaniu. Nie zmienia grupowania zgłoszeń. Okres zliczania: pełny zbiór
-        demo; okres produkcyjny do ustalenia.
-      </small>
-      {state === 'pusto' ? (
+      <small>Promień służy odkrywaniu. Nie zmienia grupowania zgłoszeń.</small>
+      {error && <Notice tone="error">{error}</Notice>}
+      {loading ? <DemoStatus state="ladowanie" /> : !problems.length ? (
         <Empty
           title="W tym obszarze nie ma jeszcze potrzeb."
           text="Zwiększ promień lub opisz pierwszą sprawę w tej okolicy."
         />
       ) : (
         <div className={mode === 'Mapa' ? 'map-layout' : 'needs-list'}>
-          {mode === 'Mapa' && (
-            <AreaMap
-              active={activeSelected}
-              onSelect={setSelected}
-              visibleIds={filtered.map((n) => n.id)}
-            />
-          )}
+          {mode === 'Mapa' && data && <GeographicMapView data={data} center={center} radius={radius} selectedId={selected} onSelect={(marker) => setSelected(marker.id)} />}
           <div>
-            {filtered.map((n, i) => (
+            {problems.map((problem, i) => (
               <article
-                key={n.id}
-                className={`need-item ${activeSelected === n.id ? 'selected' : ''}`}
+                key={problem.id}
+                className={`need-item ${selected === problem.id ? 'selected' : ''}`}
               >
                 <div className="row-meta">
-                  <Badge>{n.category}</Badge>
-                  <span>{frequent ? `${i + 1}. miejsce w demo` : `${n.distance} km`}</span>
+                  <Badge>{problem.category ?? 'Potrzeba społeczna'}</Badge>
+                  <span>{frequent ? `${i + 1}. miejsce` : `${problem.distance_km?.toFixed(1) ?? '—'} km`}</span>
                 </div>
                 <h2>
-                  <Link href={`/potrzeby/${n.id}`}>{n.title}</Link>
+                  <Link href={`/potrzeby/${problem.entity_id}`}>{problem.title}</Link>
                 </h2>
                 <p>
-                  {n.place} · {n.people} unikalnych zgłaszających
+                  {problem.location_name} · {problem.reporter_count ?? 0} unikalnych zgłaszających
                 </p>
                 <div className="row-meta">
-                  <span>{n.status}</span>
-                  <Link href={`/potrzeby/${n.id}`} aria-label={`Poznaj potrzebę: ${n.title}`}>
+                  <span>{problem.precision === 'aggregate' ? 'Obszar zagregowany' : 'Obszar przybliżony'}</span>
+                  <Link href={`/potrzeby/${problem.entity_id}`} aria-label={`Poznaj potrzebę: ${problem.title}`}>
                     <Icon name="ArrowRight" />
                   </Link>
                 </div>
@@ -1085,22 +1359,34 @@ function Needs({ frequent, state }: { frequent: boolean; state: string }) {
   )
 }
 function NeedDetail({ id }: { id: string }) {
-  const n = needs.find((item) => item.id === id) ?? needs[0]
+  const problemId = Number(id)
+  const [problem, setProblem] = useState<Awaited<ReturnType<typeof api.getProblem>> | null>(null)
+  const [matches, setMatches] = useState<InnovationMatch[]>([])
+  const [error, setError] = useState('')
+  useEffect(() => {
+    Promise.all([api.getProblem(problemId), api.getMatches(problemId)])
+      .then(([loadedProblem, loadedMatches]) => {
+        setProblem(loadedProblem)
+        setMatches(loadedMatches.matches)
+      })
+      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać potrzeby.'))
+  }, [problemId])
+  if (!problem && !error) return <DemoStatus state="ladowanie" />
+  if (error) return <Notice tone="error">{error}</Notice>
   return (
     <>
-      <Heading title={n.title} description={n.description} back="/potrzeby" />
+      <Heading title={problem?.title ?? 'Potrzeba'} description={problem?.generated_description ?? ''} back="/potrzeby" />
       <div className="detail-layout">
         <div className="stack">
           <Panel>
-            <Badge>{n.status}</Badge>
+            <Badge>{problem?.status}</Badge>
             <dl className="facts">
-              <Fact label="Obszar">{n.place}</Fact>
-              <Fact label="Unikalni zgłaszający">{n.people} · dane demo</Fact>
-              <Fact label="Kategorie">{n.category}</Fact>
+              <Fact label="Obszar">{problem?.location_centroid_lat.toFixed(4)}, {problem?.location_centroid_lon.toFixed(4)}</Fact>
+              <Fact label="Unikalni zgłaszający">{problem?.reporter_count}</Fact>
+              <Fact label="Status">{problem?.status}</Fact>
             </dl>
             <p>
-              Podsumowanie jest przykładowe. Nie pokazujemy oryginalnych opisów ani tożsamości
-              innych zgłaszających.
+              Opis jest agregatem potrzeby. Nie pokazujemy oryginalnych opisów ani tożsamości innych zgłaszających.
             </p>
           </Panel>
           <section>
@@ -1111,19 +1397,23 @@ function NeedDetail({ id }: { id: string }) {
                 <Icon name="ArrowRight" size={16} />
               </Link>
             </div>
-            {n.id === '2' ? (
+            {!matches.length ? (
               <Empty
-                title="Brak pasującej innowacji w przykładowej bibliotece."
+                title="Brak pasujących innowacji."
                 text="Dla tej potrzeby sprawdź pomysły społeczności lub zaproponuj własne rozwiązanie."
                 to="/pomysly"
                 action="Poznaj pomysły społeczności"
               />
             ) : (
-              <InnovationRow
-                id={
-                  n.id === '1' ? 'bawita' : n.id === '3' ? 'agencja-pracy-incydentalnej' : 'bajkala'
-                }
-              />
+              <article className="innovation-row">
+                <div className="innovation-letter blue" aria-hidden="true">{matches[0].title.slice(0, 1)}</div>
+                <div>
+                  <Badge>Najwyżej dopasowana innowacja</Badge>
+                  <h3>{matches[0].title}</h3>
+                  <InnovationPreview description={matches[0].description} />
+                  <Link href={`/zgloszenia/${problemId}/wyniki`}>Zobacz wszystkie dopasowania <Icon name="ArrowRight" size={16} /></Link>
+                </div>
+              </article>
             )}
           </section>
           <Panel>
@@ -1149,143 +1439,131 @@ function NeedDetail({ id }: { id: string }) {
     </>
   )
 }
-function IdeaForm({ state }: { state: string }) {
-  const [mode, setMode] = useState('Formularz'),
-    [message, setMessage] = useState(''),
-    [messages, setMessages] = useState<{ author: string; text: string }[]>([
-      {
-        author: 'Asystent · symulacja',
-        text: 'Zacznijmy od potrzeby i odbiorców. Komu ma pomóc Twój pomysł i jakiej zmiany oczekujesz?',
-      },
-    ])
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    sessionStorage.setItem('mbg-idea-title', String(form.get('title') ?? idea.title))
-    sessionStorage.setItem('mbg-idea-text', String(form.get('solution') ?? idea.description))
-    sessionStorage.setItem('mbg-idea-status', state === 'ai-offline' ? 'kolejka' : 'autor')
-    navigate(`/pomysly/1${state === 'ai-offline' ? '?stan=kolejka' : ''}`)
+function ideaTitle(item: { text_refined: string | null; text_raw: string }): string {
+  const text = toReadableInnovationText(item.text_refined || item.text_raw)
+  const ending = text.search(/[.!?]/u)
+  const title = ending > 0 ? text.slice(0, ending + 1) : text
+  return title.length > 100 ? `${title.slice(0, 97).trimEnd()}…` : title
+}
+function ideaStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    private_draft: 'Szkic prywatny',
+    queued: 'Oczekuje na przetworzenie AI',
+    pending_author: 'Czeka na potwierdzenie autora',
+    pending_admin: 'Czeka na decyzję administratora',
+    public: 'Opublikowany pomysł',
   }
-  function chat(event: FormEvent) {
+  return labels[status] ?? status
+}
+function ideaStatusTone(status: string): string {
+  if (status === 'public') return 'green'
+  if (status === 'pending_author') return 'yellow'
+  return 'blue'
+}
+function LoadingState({ label = 'Ładowanie danych…' }: { label?: string }) {
+  return (
+    <div className="loading" role="status">
+      <span className="loader" />
+      <strong>{label}</strong>
+    </div>
+  )
+}
+function IdeaForm() {
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [savedIdeaId, setSavedIdeaId] = useState<number | null>(null)
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!message.trim()) return
-    setMessages([
-      ...messages,
-      { author: 'Ty', text: message },
-      {
-        author: 'Asystent · symulacja',
-        text: 'Doprecyzujmy zasoby: kto udostępni miejsce i kto poprowadzi spotkania? Ten pokazowy asystent nie wywołuje AI. Uporządkowany szkic możesz przygotować w formularzu.',
-      },
-    ])
-    setMessage('')
+    if (savedIdeaId !== null) return
+    const form = new FormData(event.currentTarget)
+    const title = String(form.get('title') ?? '').trim()
+    const need = String(form.get('need') ?? '').trim()
+    const beneficiaries = String(form.get('beneficiaries') ?? '').trim()
+    const solution = String(form.get('solution') ?? '').trim()
+    setSaving(true)
+    setError('')
+    let createdIdeaId: number | null = null
+    try {
+      const saved = await api.createIdea({
+        text_raw: [title, need, solution].filter(Boolean).join('. '),
+        need,
+        beneficiaries,
+        solution,
+        partners: String(form.get('partners') ?? '').trim(),
+        costs: String(form.get('costs') ?? '').trim(),
+        resources: String(form.get('resources') ?? '').trim(),
+        stages: String(form.get('stages') ?? '').trim(),
+      })
+      createdIdeaId = saved.id
+      setSavedIdeaId(saved.id)
+      const job = await api.submitIdea(saved.id)
+      if (job.status === 'failed') {
+        setError('Nie udało się przekazać szkicu do przetworzenia AI. Szkic pozostaje zapisany i nie zostanie opublikowany.')
+        return
+      }
+      navigate(`/pomysly/${saved.id}`)
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Nie udało się zapisać pomysłu.'
+      setError(
+        createdIdeaId === null
+          ? message
+          : `Szkic został zapisany, ale nie udało się przekazać go do przetworzenia AI. ${message}`,
+      )
+    } finally {
+      setSaving(false)
+    }
   }
   return (
     <>
       <Heading
         title="Dobry pomysł potrzebuje kilku konkretów."
-        description="Opisz propozycję albo uporządkuj ją w rozmowie. Szkic pozostaje prywatny do zakończenia całego procesu."
+        description="Szkic pozostaje prywatny, aż AI go uporządkuje, autor potwierdzi treść, a administrator podejmie decyzję."
         back="/pomysly"
       />
-      {state === 'ai-offline' && (
-        <Notice tone="warning" title="AI jest chwilowo niedostępne · przykład.">
-          Formularz pozostaje dostępny. Po zapisaniu pomysł trafi do kolejki przetwarzania, a nie
-          bezpośrednio do publikacji.
-        </Notice>
-      )}
-      <div className="segmented section-tabs">
-        {['Formularz', 'Rozmowa z asystentem'].map((m) => (
-          <button
-            key={m}
-            disabled={state === 'ai-offline' && m !== 'Formularz'}
-            aria-pressed={mode === m}
-            onClick={() => setMode(m)}
-          >
-            {m}
-          </button>
-        ))}
-      </div>
       <div className="detail-layout">
         <Panel>
-          {mode === 'Formularz' ? (
-            <form onSubmit={submit}>
-              <h2>Zapisz sedno pomysłu.</h2>
-              <Field label="Nazwa pomysłu">
-                <input name="title" defaultValue={idea.title} required />
+          <form onSubmit={submit}>
+            <h2>Zapisz sedno pomysłu.</h2>
+            <Field label="Nazwa pomysłu">
+              <input name="title" required />
+            </Field>
+            <Field label="Potrzeba">
+              <textarea name="need" rows={3} required />
+            </Field>
+            <Field label="Odbiorcy">
+              <textarea name="beneficiaries" rows={2} required />
+            </Field>
+            <Field label="Proponowane rozwiązanie">
+              <textarea name="solution" rows={4} required />
+            </Field>
+            <div className="form-grid">
+              <Field label="Partnerzy">
+                <input name="partners" required />
               </Field>
-              <Field label="Potrzeba i odbiorcy">
-                <textarea
-                  name="need"
-                  rows={3}
-                  defaultValue="Mieszkańcy Wieliczki, którzy szukają regularnego kontaktu z sąsiadami blisko domu."
-                  required
-                />
+              <Field label="Koszty" hint="Deklaracja autora, nie zatwierdzony budżet.">
+                <input name="costs" required />
               </Field>
-              <Field label="Proponowane rozwiązanie">
-                <textarea name="solution" rows={4} defaultValue={idea.description} required />
+              <Field label="Zasoby">
+                <input name="resources" required />
               </Field>
-              <div className="form-grid">
-                <Field label="Partnerzy">
-                  <input name="partners" defaultValue="Biblioteka / prowadzący demo" />
-                </Field>
-                <Field label="Koszty i zasoby" hint="Deklaracja autora, nie zatwierdzony budżet.">
-                  <input
-                    name="resources"
-                    defaultValue="Sala i 2 godziny pracy prowadzącego tygodniowo"
-                  />
-                </Field>
-              </div>
-              <Field label="Etapy wdrożenia">
-                <textarea
-                  name="stages"
-                  defaultValue="Uzgodnienie miejsca → zaproszenie mieszkańców → próbne spotkania → zebranie opinii."
-                  rows={3}
-                />
-              </Field>
-              <button className="button" type="submit">
-                {state === 'ai-offline' ? 'Zapisz do kolejki AI' : 'Przygotuj szkic do sprawdzenia'}
-                <Icon name="ArrowRight" />
-              </button>
-            </form>
-          ) : (
-            <div className="chat">
-              <Notice>
-                Rozmowa pokazowa w bieżącej sesji. Brak wznawiania rozmów i rzeczywistego modelu AI.
-              </Notice>
-              <div className="messages">
-                {messages.map((m, i) => (
-                  <div key={i} className={`message ${m.author === 'Ty' ? 'mine' : ''}`}>
-                    <strong>{m.author}</strong>
-                    <p>{m.text}</p>
-                  </div>
-                ))}
-              </div>
-              <form onSubmit={chat}>
-                <Field label="Twoja wiadomość">
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Opisz pomysł…"
-                    rows={2}
-                    required
-                  />
-                </Field>
-                <button className="button">
-                  Wyślij w demo
-                  <Icon name="ArrowRight" />
-                </button>
-                <button
-                  type="button"
-                  className="button secondary"
-                  onClick={() => setMode('Formularz')}
-                >
-                  Przejdź do formularza
-                </button>
-              </form>
             </div>
-          )}
+            <Field label="Etapy wdrożenia">
+              <textarea name="stages" rows={3} required />
+            </Field>
+            {error && <Notice tone="error">{error}</Notice>}
+            {savedIdeaId !== null && (
+              <Notice tone="warning" title="Szkic jest bezpiecznie zapisany.">
+                Otwórz jego kartę, aby sprawdzić status przetwarzania i nie tworzyć kolejnego szkicu.
+                <ButtonLink to={`/pomysly/${savedIdeaId}`} secondary>Otwórz zapisany szkic</ButtonLink>
+              </Notice>
+            )}
+            <button className="button" type="submit" disabled={saving || savedIdeaId !== null}>
+              {saving ? 'Zapisywanie…' : 'Przekaż do przetworzenia AI'}
+              <Icon name="ArrowRight" />
+            </button>
+          </form>
         </Panel>
         <aside className="context-aside">
-          <img src="/images/community.webp" alt="" />
           <h2>Od szkicu do propozycji.</h2>
           <ol className="timeline">
             <li>
@@ -1298,743 +1576,955 @@ function IdeaForm({ state }: { state: string }) {
             </li>
             <li>
               <strong>Decyzja administratora</strong>
-              <span>Dopiero potem publikacja i poparcie.</span>
+              <span>Dopiero potem publikacja i możliwość poparcia.</span>
             </li>
           </ol>
-          <small>
-            Przetwarzanie, koszty i decyzje w tym prototypie są symulowane. Wpisuj wyłącznie dane
-            przykładowe.
-          </small>
         </aside>
       </div>
     </>
   )
 }
-function Ideas({ state }: { state: string }) {
-  const [tab, setTab] = useState('Społeczność')
+function Ideas() {
+  const [tab, setTab] = useState<'public' | 'mine'>('public')
+  const [publicIdeas, setPublicIdeas] = useState<Awaited<ReturnType<typeof api.getPublicIdeas>>>([])
+  const [myIdeas, setMyIdeas] = useState<Awaited<ReturnType<typeof api.listMyIdeas>>>([])
+  const [publicError, setPublicError] = useState('')
+  const [myError, setMyError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    Promise.allSettled([api.getPublicIdeas(), api.listMyIdeas()]).then(([publicResult, mineResult]) => {
+      if (!active) return
+      if (publicResult.status === 'fulfilled') {
+        setPublicIdeas(publicResult.value)
+        setPublicError('')
+      } else {
+        setPublicError('Nie udało się pobrać opublikowanych pomysłów.')
+      }
+      if (mineResult.status === 'fulfilled') {
+        setMyIdeas(mineResult.value)
+        setMyError('')
+      } else {
+        setMyError('Nie udało się pobrać Twoich szkiców.')
+      }
+      setLoading(false)
+    })
+    return () => {
+      active = false
+    }
+  }, [refreshKey])
+
+  const activeIdeas = tab === 'public' ? publicIdeas : myIdeas
+  const activeError = tab === 'public' ? publicError : myError
   return (
     <>
       <Heading
         title="Pomysły, które warto rozwijać."
-        description="Propozycje społeczności oraz Twoje prywatne szkice. Pomysł nie oznacza jeszcze przetestowanej innowacji."
+        description="Opublikowane propozycje społeczności oraz Twoje prywatne szkice."
         action={<ButtonLink to="/pomysly/nowy">Nowy pomysł</ButtonLink>}
       />
       <div className="segmented section-tabs">
-        {['Społeczność', 'Moje szkice'].map((t) => (
-          <button key={t} aria-pressed={tab === t} onClick={() => setTab(t)}>
-            {t}
-          </button>
-        ))}
+        <button aria-pressed={tab === 'public'} onClick={() => setTab('public')}>Społeczność</button>
+        <button aria-pressed={tab === 'mine'} onClick={() => setTab('mine')}>Moje szkice</button>
       </div>
-      {state === 'pusto' ? (
+      {loading ? (
+        <LoadingState label="Ładowanie pomysłów…" />
+      ) : activeError ? (
+        <Notice tone="error" title="Nie udało się pobrać danych.">
+          {activeError}{' '}
+          <button className="text-button" onClick={() => setRefreshKey((value) => value + 1)}>Spróbuj ponownie</button>
+        </Notice>
+      ) : !activeIdeas.length ? (
         <Empty
-          title="Pierwszy pomysł może być Twój."
+          title={tab === 'public' ? 'Nie ma jeszcze opublikowanych pomysłów.' : 'Nie masz jeszcze szkiców.'}
+          text={tab === 'public' ? 'Nowe propozycje pojawią się po potwierdzeniu autora i decyzji administratora.' : 'Dodaj pierwszy pomysł, aby rozpocząć jego przetwarzanie.'}
           to="/pomysly/nowy"
-          action="Przygotuj pomysł"
+          action="Dodaj pomysł"
         />
-      ) : tab === 'Społeczność' ? (
+      ) : tab === 'public' ? (
         <div className="idea-grid">
-          <Link href="/pomysly/1?stan=oferta" className="idea-card">
-            <img src={illustrations.hands} alt="Rysunkowa scena wspólnego działania mieszkańców." />
-            <div>
-              <Badge tone="lavender">Pomysł · zatwierdzony w demo</Badge>
-              <h2>{idea.title}</h2>
-              <p>{idea.description}</p>
-              <div className="row-meta">
-                <span>
-                  <Icon name="MapPin" size={17} />
-                  Wieliczka
-                </span>
-                <span>
-                  <Icon name="Heart" size={18} />
-                  24 poparcia · demo
-                </span>
-              </div>
-            </div>
-          </Link>
-          <section className="idea-invitation">
-            <Icon name="Lightbulb" size={40} />
-            <h2>Masz inną perspektywę?</h2>
-            <p>Potrzeby ludzi mają więcej niż jedną odpowiedź. Dodaj swoją propozycję.</p>
-            <ButtonLink to="/pomysly/nowy">Rozwijaj pomysł</ButtonLink>
-          </section>
+          {publicIdeas.map((item) => <IdeaCard key={item.id} item={item} />)}
         </div>
       ) : (
         <Panel>
-          <Link className="activity-row" href="/pomysly/1">
-            <Icon name="Lightbulb" size={28} />
-            <div>
-              <Badge tone="yellow">Oczekuje na autora · prywatny</Badge>
-              <h2>{sessionStorage.getItem('mbg-idea-title') ?? idea.title}</h2>
-              <p>Sprawdź roboczą treść i potwierdź jej przekazanie.</p>
-            </div>
-            <Icon name="ArrowRight" />
-          </Link>
-          <Link className="activity-row" href="/pomysly/1?stan=kolejka">
-            <Icon name="Clock" size={28} />
-            <div>
-              <Badge tone="blue">Oczekuje na AI · prywatny</Badge>
-              <h2>Drugi szkic · wariant stanu</h2>
-              <p>Treść nie jest dostępna w społeczności.</p>
-            </div>
-            <Icon name="ArrowRight" />
-          </Link>
+          {myIdeas.map((item) => (
+            <Link className="activity-row" href={`/pomysly/${item.id}`} key={item.id}>
+              <Icon name={item.status === 'queued' ? 'Clock' : 'Lightbulb'} size={28} />
+              <div>
+                <Badge tone={ideaStatusTone(item.status)}>{ideaStatusLabel(item.status)}</Badge>
+                <h2>{ideaTitle(item)}</h2>
+                <p>{toReadableInnovationText(item.solution || item.text_refined || item.text_raw)}</p>
+              </div>
+              <Icon name="ArrowRight" />
+            </Link>
+          ))}
         </Panel>
       )}
     </>
   )
 }
-function IdeaDetail({ state, notify }: { state: string; notify: Notify }) {
-  const [status, setStatus] = useState(
-      state === 'kolejka'
-        ? 'kolejka'
-        : state === 'oferta'
-          ? 'publiczny'
-          : (sessionStorage.getItem('mbg-idea-status') ?? 'autor'),
-    ),
-    [edit, setEdit] = useState(false),
-    [text, setText] = useState(
-      state === 'oferta'
-        ? idea.description
-        : (sessionStorage.getItem('mbg-idea-text') ?? idea.description),
-    )
-  const title =
-    status === 'publiczny' ? idea.title : (sessionStorage.getItem('mbg-idea-title') ?? idea.title)
+function IdeaCard({ item }: { item: Awaited<ReturnType<typeof api.getPublicIdeas>>[number] }) {
+  return (
+    <Link href={`/pomysly/${item.id}`} className="idea-card">
+      <div>
+        <Badge tone={ideaStatusTone(item.status)}>{ideaStatusLabel(item.status)}</Badge>
+        <h2>{ideaTitle(item)}</h2>
+        <p>{toReadableInnovationText(item.solution || item.text_refined || item.text_raw)}</p>
+        <div className="row-meta">
+          <span>{item.beneficiaries ? `Dla: ${toReadableInnovationText(item.beneficiaries)}` : 'Odbiorcy do sprawdzenia'}</span>
+          <span>{item.costs ? `Koszty: ${toReadableInnovationText(item.costs)}` : 'Koszty do sprawdzenia'}</span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
+  const [item, setItem] = useState<Awaited<ReturnType<typeof api.getIdea>> | null>(null)
+  const [error, setError] = useState('')
+  const [notFoundIdeaId, setNotFoundIdeaId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    api.getIdea(ideaId)
+      .then((result) => {
+        if (!active) return
+        setItem(result)
+        setError('')
+        setNotFoundIdeaId(null)
+      })
+      .catch((caught: unknown) => {
+        if (!active) return
+        if (caught instanceof ApiError && caught.status === 404) {
+          setItem(null)
+          setNotFoundIdeaId(ideaId)
+          setError('')
+          return
+        }
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać pomysłu.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [ideaId, refreshKey])
+
+  function retryLoad() {
+    setLoading(true)
+    setError('')
+    setNotFoundIdeaId(null)
+    setRefreshKey((value) => value + 1)
+  }
+
+  async function submitForAi() {
+    if (!item) return
+    setSaving(true)
+    setError('')
+    try {
+      const job = await api.submitIdea(item.id)
+      if (job.status === 'failed') {
+        setError('Nie udało się przekazać pomysłu do przetworzenia AI. Pomysł nie został opublikowany.')
+        return
+      }
+      setRefreshKey((value) => value + 1)
+      notify('Pomysł został przekazany do przetworzenia AI.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się przekazać pomysłu do AI.')
+    } finally {
+      setSaving(false)
+    }
+  }
+  async function confirmAuthor(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!item) return
+    const form = new FormData(event.currentTarget)
+    const get = (field: string) => String(form.get(field) ?? '').trim()
+    setSaving(true)
+    setError('')
+    try {
+      const confirmed = await api.authorConfirmIdea(item.id, {
+        text_refined: get('text_refined'),
+        need: get('need'),
+        beneficiaries: get('beneficiaries'),
+        solution: get('solution'),
+        partners: get('partners'),
+        costs: get('costs'),
+        resources: get('resources'),
+        stages: get('stages'),
+      })
+      setItem(confirmed)
+      notify('Potwierdziłeś treść. Pomysł oczekuje teraz na decyzję administratora.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się potwierdzić pomysłu.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <LoadingState label="Ładowanie pomysłu…" />
+  if (notFoundIdeaId === ideaId) return <Empty title="Nie znaleźliśmy pomysłu." to="/pomysly" action="Wróć do pomysłów" />
+  if (error && !item) {
+    return <Notice tone="error" title="Nie udało się pobrać pomysłu.">{error} <button className="text-button" onClick={retryLoad}>Spróbuj ponownie</button></Notice>
+  }
+  if (!item) return <Empty title="Nie znaleźliśmy pomysłu." to="/pomysly" action="Wróć do pomysłów" />
+
+  const text = item.text_refined || item.text_raw
+  const canConfirm = item.status === 'pending_author'
   return (
     <>
-      <Heading
-        title={title}
-        back="/pomysly"
-        description="Pomysł lokalny · Wieliczka · treść i decyzje demo"
-      />
+      <Heading title={ideaTitle(item)} back="/pomysly" description={ideaStatusLabel(item.status)} />
       <div className="detail-layout">
         <div className="stack">
           <Panel>
-            <Badge tone={status === 'publiczny' ? 'green' : 'yellow'}>
-              {status === 'kolejka'
-                ? 'Prywatny · oczekuje na AI'
-                : status === 'autor'
-                  ? 'Prywatny · czeka na Twoje potwierdzenie'
-                  : status === 'ocena'
-                    ? 'Prywatny · u administratora'
-                    : 'Zatwierdzony pomysł · demo'}
-            </Badge>
-            <h2>Propozycja do sprawdzenia</h2>
-            {edit ? (
-              <Field label="Popraw treść szkicu">
-                <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} />
-              </Field>
-            ) : (
-              <p>{text}</p>
+            <Badge tone={ideaStatusTone(item.status)}>{ideaStatusLabel(item.status)}</Badge>
+            <h2>Propozycja</h2>
+            <p>{toReadableInnovationText(text)}</p>
+            {!canConfirm && (
+              <dl className="facts">
+                <Fact label="Potrzeba">{toReadableInnovationText(item.need) || 'Nie określono'}</Fact>
+                <Fact label="Odbiorcy">{toReadableInnovationText(item.beneficiaries) || 'Nie określono'}</Fact>
+                <Fact label="Rozwiązanie">{toReadableInnovationText(item.solution) || 'Nie określono'}</Fact>
+                <Fact label="Partnerzy">{toReadableInnovationText(item.partners) || 'Nie określono'}</Fact>
+                <Fact label="Koszty">{toReadableInnovationText(item.costs) || 'Nie określono'}</Fact>
+                <Fact label="Zasoby">{toReadableInnovationText(item.resources) || 'Nie określono'}</Fact>
+                <Fact label="Etapy">{toReadableInnovationText(item.stages) || 'Nie określono'}</Fact>
+              </dl>
             )}
-            <h3>Odbiorcy i potrzeba</h3>
-            <p>Mieszkańcy szukający regularnych spotkań i kontaktu sąsiedzkiego.</p>
-            <h3>Zasoby i etapy</h3>
-            <p>
-              Sala, prowadzący i ustalenie programu. Następnie próbne spotkania i zebranie opinii.
-              Koszty do przygotowania; nie ma zatwierdzonego budżetu.
-            </p>
-            <Notice>
-              Treść jest przykładową redakcją. AI nie było wywołane; przed wdrożeniem każdy szkic
-              musi przejść rzeczywisty proces z README.
-            </Notice>
           </Panel>
-          {status === 'publiczny' ? (
+          {canConfirm && (
             <Panel>
-              <h2>24 poparcia to sygnał zainteresowania.</h2>
-              <p>To nie satysfakcja po testach ani decyzja o rozpoczęciu pilotażu.</p>
-              <div className="actions">
-                <ButtonLink to="/poparcie">Przejdź do poparcia</ButtonLink>
-                <ButtonLink to="/pomysly/1/dyskusja" secondary>
-                  Dołącz do rozmowy
-                </ButtonLink>
-              </div>
+              <h2>Sprawdź i potwierdź redakcję AI</h2>
+              <form onSubmit={confirmAuthor}>
+                <Field label="Treść uporządkowana przez AI"><textarea name="text_refined" rows={5} defaultValue={text} required /></Field>
+                <Field label="Potrzeba"><textarea name="need" rows={3} defaultValue={item.need ?? ''} required /></Field>
+                <Field label="Odbiorcy"><textarea name="beneficiaries" rows={2} defaultValue={item.beneficiaries ?? ''} required /></Field>
+                <Field label="Rozwiązanie"><textarea name="solution" rows={3} defaultValue={item.solution ?? ''} required /></Field>
+                <Field label="Partnerzy"><input name="partners" defaultValue={item.partners ?? ''} required /></Field>
+                <Field label="Koszty"><input name="costs" defaultValue={item.costs ?? ''} required /></Field>
+                <Field label="Zasoby"><input name="resources" defaultValue={item.resources ?? ''} required /></Field>
+                <Field label="Etapy"><textarea name="stages" rows={3} defaultValue={item.stages ?? ''} required /></Field>
+                <button className="button" disabled={saving}>{saving ? 'Zapisywanie…' : 'Potwierdzam i przekazuję do oceny'} <Icon name="Check" /></button>
+              </form>
             </Panel>
-          ) : status === 'kolejka' ? (
-            <Notice tone="warning" title="Szkic bezpiecznie czeka w demo.">
-              Nie można przekazać go do publikacji bez AI i Twojego potwierdzenia.{' '}
-              <button
-                className="text-button"
-                onClick={() => {
-                  setStatus('autor')
-                  sessionStorage.setItem('mbg-idea-status', 'autor')
-                  notify('Symulacja: przetworzenie AI zakończone. Sprawdź szkic.')
-                }}
-              >
-                Zasymuluj zakończenie AI
-              </button>
-            </Notice>
-          ) : status === 'autor' ? (
-            <div className="actions">
-              <button
-                className="button"
-                onClick={() => {
-                  setStatus('ocena')
-                  sessionStorage.setItem('mbg-idea-status', 'ocena')
-                  notify('Demo: autor potwierdził szkic. Oczekuje na administratora.')
-                }}
-              >
-                Potwierdzam i przekazuję do oceny
-                <Icon name="Check" />
-              </button>
-              <button
-                className="button secondary"
-                onClick={() => {
-                  if (edit) {
-                    sessionStorage.setItem('mbg-idea-text', text)
-                    setStatus('kolejka')
-                    sessionStorage.setItem('mbg-idea-status', 'kolejka')
-                    notify('Zmieniona treść wraca do przetworzenia AI w demo.')
-                  }
-                  setEdit(!edit)
-                }}
-              >
-                {edit ? 'Zapisz i ponów AI' : 'Popraw szkic'}
-              </button>
-            </div>
-          ) : (
-            <Notice tone="success" title="Szkic oczekuje na administratora.">
-              Pozostaje prywatny do czasu potwierdzenia autora i decyzji administratora.
+          )}
+          {item.status === 'private_draft' && (
+            <Notice tone="warning" title="Szkic nie został jeszcze przekazany do AI.">
+              <button className="text-button" disabled={saving} onClick={() => void submitForAi()}>Przekaż do przetworzenia AI</button>
             </Notice>
           )}
+          {item.status === 'queued' && (
+            <Notice tone="warning" title="Pomysł oczekuje na wynik przetwarzania AI.">
+              <button className="text-button" onClick={retryLoad}>Odśwież status</button>
+            </Notice>
+          )}
+          {item.status === 'pending_admin' && <Notice tone="success" title="Pomysł oczekuje na decyzję administratora.">Publikacja nastąpi wyłącznie po zatwierdzeniu.</Notice>}
+          {item.status === 'public' && (
+            <Panel>
+              <h2>Pomysł jest widoczny dla społeczności.</h2>
+              <p>Poparcie jest sygnałem zainteresowania, a nie decyzją o rozpoczęciu pilotażu.</p>
+              <ButtonLink to="/poparcie">Przejdź do poparcia</ButtonLink>
+              <ButtonLink to={`/pomysly/${item.id}/dyskusja`} secondary>Otwórz dyskusję</ButtonLink>
+            </Panel>
+          )}
+          {item.status !== 'public' && (
+            <Panel>
+              <h2>Dyskusja o pomyśle</h2>
+              <p>Wątek jest dostępny dla autora, administratora oraz osób uprawnionych do tego pomysłu.</p>
+              <ButtonLink to={`/pomysly/${item.id}/dyskusja`} secondary>Otwórz dyskusję</ButtonLink>
+            </Panel>
+          )}
+          {error && <Notice tone="error">{error}</Notice>}
         </div>
         <aside className="context-aside">
           <h2>Ścieżka publikacji</h2>
           <ol className="timeline">
-            <li>
-              <strong>AI</strong>
-              <span>
-                {status === 'kolejka'
-                  ? 'Oczekuje na przetworzenie'
-                  : 'Przetworzone w scenariuszu demo'}
-              </span>
-            </li>
-            <li>
-              <strong>Autor</strong>
-              <span>
-                {status === 'autor' || status === 'kolejka'
-                  ? 'Potwierdzenie przed nami'
-                  : 'Potwierdzono w demo'}
-              </span>
-            </li>
-            <li>
-              <strong>Administrator</strong>
-              <span>
-                {status === 'publiczny' ? 'Publikacja dopuszczona w demo' : 'Decyzja przed nami'}
-              </span>
-            </li>
+            <li><strong>AI</strong><span>{item.status === 'private_draft' ? 'Przetwarzanie jeszcze nie zostało uruchomione.' : 'Treść jest w procesie lub po redakcji.'}</span></li>
+            <li><strong>Autor</strong><span>{canConfirm ? 'Czeka na Twoje potwierdzenie.' : 'Etap autora został zakończony albo nie jest jeszcze dostępny.'}</span></li>
+            <li><strong>Administrator</strong><span>{item.status === 'public' ? 'Pomysł został opublikowany.' : 'Publikacja wymaga decyzji administratora.'}</span></li>
           </ol>
-          <small>
-            Nie przechowujemy rozmowy asystenta w celu wznowienia. Tylko zatwierdzona propozycja
-            trafia do poparcia.
-          </small>
         </aside>
       </div>
     </>
   )
 }
-function Discussion({ notify }: { notify: Notify }) {
-  const [text, setText] = useState(''),
-    [comments, setComments] = useState([
-      {
-        author: 'Koordynator demo',
-        text: 'Przed pilotażem sprawdźmy dostępność sali oraz to, kto poprowadzi pierwsze spotkania.',
-      },
-      {
-        author: 'Marta demo',
-        text: 'Możemy zacząć od jednego krótkiego spotkania i zebrać opinie uczestników.',
-      },
-    ])
+function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
+  const [thread, setThread] = useState<Awaited<ReturnType<typeof api.getIdeaThread>> | null>(null)
+  const [text, setText] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const [notFoundIdeaId, setNotFoundIdeaId] = useState<number | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    api.getIdeaThread(ideaId)
+      .then((result) => {
+        if (!active) return
+        setThread(result)
+        setError('')
+        setNotFoundIdeaId(null)
+      })
+      .catch((caught: unknown) => {
+        if (!active) return
+        if (caught instanceof ApiError && caught.status === 404) {
+          setThread(null)
+          setNotFoundIdeaId(ideaId)
+          setError('')
+          return
+        }
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać dyskusji.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [ideaId, refreshKey])
+
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const content = text.trim()
+    if (!thread || !content) return
+    setSending(true)
+    setError('')
+    try {
+      const created = await api.postThreadMessage(thread.id, content)
+      setThread((current) => current && current.id === thread.id
+        ? { ...current, messages: [...current.messages, created] }
+        : current)
+      setText('')
+      notify('Wiadomość została dodana do dyskusji.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się wysłać wiadomości.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function retry() {
+    setLoading(true)
+    setError('')
+    setNotFoundIdeaId(null)
+    setRefreshKey((value) => value + 1)
+  }
+
+  const currentThread = thread?.idea_id === ideaId ? thread : null
+  if (notFoundIdeaId === ideaId) return <Empty title="Nie znaleźliśmy dyskusji." to={`/pomysly/${ideaId}`} action="Wróć do pomysłu" />
+  if (loading || (!currentThread && !error)) return <LoadingState label="Ładowanie dyskusji…" />
+  if (error && !currentThread) {
+    return (
+      <Notice tone="error" title="Nie udało się pobrać dyskusji.">
+        {error} <button className="text-button" onClick={retry}>Spróbuj ponownie</button>
+      </Notice>
+    )
+  }
+  if (!currentThread) return <Empty title="Nie znaleźliśmy dyskusji." to={`/pomysly/${ideaId}`} action="Wróć do pomysłu" />
+
+  const threadTitle = toReadableInnovationText(currentThread.title).replace(/^Dyskusja:\s*/u, '') || 'Pomysł społeczności'
   return (
     <>
       <Heading
-        title="Porozmawiajmy o Sąsiedzkim stole."
-        back="/pomysly"
-        description="Wątek przypięty do zatwierdzonego pomysłu. Wszyscy uczestnicy i komentarze są syntetyczni."
+        title={`Dyskusja o: ${threadTitle}`}
+        back={`/pomysly/${ideaId}`}
+        description="Wątek jest przypięty do tego pomysłu i dostępny dla osób uprawnionych przez platformę."
       />
       <div className="detail-layout">
         <Panel>
           <h2>Rozmowa o pomyśle</h2>
-          {comments.map((c, i) => (
-            <article className="comment" key={i}>
-              <span className="avatar">{c.author.slice(0, 1)}</span>
+          {currentThread.messages.length === 0 ? (
+            <Notice>Wątek nie zawiera jeszcze wiadomości. Możesz rozpocząć rozmowę.</Notice>
+          ) : currentThread.messages.map((message) => (
+            <article className="comment" key={message.id}>
+              <span className="avatar">{message.author_name.slice(0, 1).toLocaleUpperCase('pl-PL')}</span>
               <div>
-                <strong>{c.author}</strong>
-                <p>{c.text}</p>
-                <small>Wiadomość demo · widoczna w tym podglądzie</small>
+                <strong>{message.author_name}</strong>
+                <p>{toReadableInnovationText(message.content)}</p>
+                <small>{formatDiscussionDate(message.created_at)}</small>
               </div>
             </article>
           ))}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (!text.trim()) return
-              setComments([...comments, { author: 'Marta demo', text }])
-              setText('')
-              notify('Komentarz dodany lokalnie w demo.')
-            }}
-          >
+          <form onSubmit={sendMessage}>
             <Field label="Dodaj komentarz">
-              <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} required />
+              <textarea rows={3} value={text} onChange={(event) => setText(event.target.value)} required />
             </Field>
-            <button className="button">
-              Dodaj komentarz
+            <button className="button" disabled={sending || !text.trim()}>
+              {sending ? 'Wysyłanie…' : 'Dodaj komentarz'}
               <Icon name="ChatCircle" />
             </button>
           </form>
+          {error && <Notice tone="error">{error}</Notice>}
         </Panel>
         <aside className="context-aside">
-          <Badge tone="lavender">Zatwierdzony pomysł · demo</Badge>
-          <h2>{idea.title}</h2>
-          <p>{idea.description}</p>
-          <ButtonLink to="/pomysly/1?stan=oferta" secondary>
+          <Badge tone="lavender">Wątek pomysłu</Badge>
+          <h2>{threadTitle}</h2>
+          <p>Możesz podzielić się uwagą albo odpowiedzieć na wiadomość widoczną w tym wątku.</p>
+          <ButtonLink to={`/pomysly/${ideaId}`} secondary>
             Wróć do pomysłu
           </ButtonLink>
-          <Notice>
-            Widoczność wątków i uprawnienia docelowej aplikacji pozostają do ustalenia. Ten ekran
-            prezentuje rozmowę po zalogowaniu.
-          </Notice>
         </aside>
       </div>
     </>
   )
 }
+function formatDiscussionDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Data wiadomości niedostępna'
+  return new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+}
+function supportCardKey(card: Pick<Awaited<ReturnType<typeof api.getSupportCards>>[number], 'problem_id' | 'solution_id'>): string {
+  return `${card.problem_id}:${card.solution_id}`
+}
 function Support({ notify }: { notify: Notify }) {
-  const [index, setIndex] = useState(0),
-    [choices, setChoices] = useState<string[]>([]),
-    [reason, setReason] = useState(''),
-    pointerStart = useRef<number | null>(null)
-  const cards = [
-    {
-      title: idea.title,
-      description: idea.description,
-      type: 'Pomysł',
-      count: 24,
-      photo: illustrations.hands,
-    },
-    {
-      title: pilot.title,
-      description: pilot.description,
-      type: 'W przygotowaniu do testów',
-      count: 12,
-      photo: illustrations.people,
-    },
-  ]
-  function choose(choice: string) {
-    if (index >= cards.length) return
-    setChoices([...choices, choice])
-    setIndex(index + 1)
-    notify(
-      choice === 'support'
-        ? 'Demo: dodano poparcie dla tej propozycji i lokalnej potrzeby.'
-        : 'Demo: pominięto propozycję. Możesz cofnąć wybór.',
-    )
+  const queryProblemId = Number(new URLSearchParams(window.location.search).get('problem'))
+  const [problems, setProblems] = useState<GeographicMarker[]>([])
+  const [problemId, setProblemId] = useState<number | null>(Number.isInteger(queryProblemId) && queryProblemId > 0 ? queryProblemId : null)
+  const [cards, setCards] = useState<Awaited<ReturnType<typeof api.getSupportCards>>>([])
+  const [voteIds, setVoteIds] = useState<Record<string, number>>({})
+  const [reasons, setReasons] = useState<Record<string, string>>({})
+  const [problemsLoading, setProblemsLoading] = useState(true)
+  const [cardsLoading, setCardsLoading] = useState(true)
+  const [problemsError, setProblemsError] = useState('')
+  const [cardsError, setCardsError] = useState('')
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
+  const [actingOn, setActingOn] = useState<Record<string, true>>({})
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    api.getMapMarkers()
+      .then((map) => {
+        if (!active) return
+        const availableProblems = map.markers.filter((marker) => marker.entity_type === 'problem')
+        setProblems(availableProblems)
+        setProblemId((current) =>
+          current !== null && availableProblems.some((problem) => problem.entity_id === current)
+            ? current
+            : availableProblems[0]?.entity_id ?? null,
+        )
+        setProblemsError('')
+      })
+      .catch((caught: unknown) => {
+        if (active) setProblemsError(caught instanceof Error ? caught.message : 'Nie udało się pobrać potrzeb.')
+      })
+      .finally(() => {
+        if (active) setProblemsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [refreshKey])
+
+  useEffect(() => {
+    if (problemId === null) return
+    let active = true
+    api.getSupportCards(problemId)
+      .then((result) => {
+        if (!active) return
+        setCards(result)
+        setCardsError('')
+      })
+      .catch((caught: unknown) => {
+        if (active) setCardsError(caught instanceof Error ? caught.message : 'Nie udało się pobrać kart poparcia.')
+      })
+      .finally(() => {
+        if (active) setCardsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [problemId, refreshKey])
+
+  function selectProblem(nextProblemId: number) {
+    setProblemId(nextProblemId)
+    setVoteIds({})
+    setReasons({})
+    setCardsLoading(true)
+    setCardsError('')
+    window.history.replaceState({}, '', `/poparcie?problem=${nextProblemId}`)
   }
+  async function castVote(card: Awaited<ReturnType<typeof api.getSupportCards>>[number], voteType: 'support' | 'skip') {
+    const cardKey = supportCardKey(card)
+    setActingOn((current) => ({ ...current, [cardKey]: true }))
+    setActionErrors((current) => {
+      const next = { ...current }
+      delete next[cardKey]
+      return next
+    })
+    try {
+      const vote = await api.castVote({
+        solution_id: card.solution_id,
+        local_problem_id: card.problem_id,
+        vote_type: voteType,
+        rejection_reason: voteType === 'skip' ? reasons[cardKey]?.trim() || undefined : undefined,
+      })
+      setVoteIds((current) => ({ ...current, [cardKey]: vote.id }))
+      setCards((current) => current.map((candidate) => {
+        if (candidate.solution_id !== card.solution_id || candidate.problem_id !== card.problem_id) return candidate
+        const countChange = (voteType === 'support' ? 1 : 0) - (candidate.my_vote === 'support' ? 1 : 0)
+        return {
+          ...candidate,
+          my_vote: voteType,
+          my_vote_id: vote.id,
+          support_count: Math.max(0, candidate.support_count + countChange),
+        }
+      }))
+      notify(voteType === 'support' ? 'Dodano poparcie dla tej propozycji.' : 'Pominięto propozycję.')
+    } catch (caught) {
+      setActionErrors((current) => ({
+        ...current,
+        [cardKey]: caught instanceof Error ? caught.message : 'Nie udało się zapisać głosu.',
+      }))
+    } finally {
+      setActingOn((current) => {
+        const next = { ...current }
+        delete next[cardKey]
+        return next
+      })
+    }
+  }
+  async function undoVote(card: Awaited<ReturnType<typeof api.getSupportCards>>[number]) {
+    const cardKey = supportCardKey(card)
+    const voteId = card.my_vote_id ?? voteIds[cardKey]
+    if (!voteId) {
+      setActionErrors((current) => ({ ...current, [cardKey]: 'Brakuje identyfikatora głosu potrzebnego do cofnięcia wyboru.' }))
+      return
+    }
+    setActingOn((current) => ({ ...current, [cardKey]: true }))
+    setActionErrors((current) => {
+      const next = { ...current }
+      delete next[cardKey]
+      return next
+    })
+    try {
+      await api.undoVote(voteId)
+      setVoteIds((current) => {
+        const next = { ...current }
+        delete next[cardKey]
+        return next
+      })
+      setCards((current) => current.map((candidate) => candidate.solution_id === card.solution_id && candidate.problem_id === card.problem_id ? {
+        ...candidate,
+        my_vote: null,
+        my_vote_id: null,
+        support_count: Math.max(0, candidate.support_count - (candidate.my_vote === 'support' ? 1 : 0)),
+      } : candidate))
+      notify('Cofnięto Twój wybór.')
+    } catch (caught) {
+      setActionErrors((current) => ({
+        ...current,
+        [cardKey]: caught instanceof Error ? caught.message : 'Nie udało się cofnąć głosu.',
+      }))
+    } finally {
+      setActingOn((current) => {
+        const next = { ...current }
+        delete next[cardKey]
+        return next
+      })
+    }
+  }
+
+  const selectedProblem = problems.find((problem) => problem.entity_id === problemId)
   return (
     <>
       <Heading
         title="Co zasługuje na wspólny krok?"
-        description="Zatwierdzone propozycje dla nierozwiązanych potrzeb w Wieliczce. Poparcie to sygnał zainteresowania, nie decyzja o pilotażu."
+        description="Poparcie jest sygnałem zainteresowania konkretną propozycją dla wybranej potrzeby. Nie jest decyzją o rozpoczęciu pilotażu."
       />
-      <div className="support-layout">
-        {index >= cards.length ? (
-          <Empty
-            title="To wszystkie propozycje w tym demo."
-            text="Dzięki za wybory. Możesz je cofnąć lub poznać inne potrzeby."
-            to="/potrzeby"
-            action="Wróć do potrzeb"
-          />
-        ) : (
-          <article
-            className="support-card"
-            onPointerDown={(e) => {
-              pointerStart.current = e.clientX
-            }}
-            onPointerUp={(e) => {
-              if (pointerStart.current !== null && Math.abs(e.clientX - pointerStart.current) > 90)
-                choose(e.clientX > pointerStart.current ? 'support' : 'skip')
-              pointerStart.current = null
-            }}
-            onPointerCancel={() => {
-              pointerStart.current = null
-            }}
-          >
-            <img
-              src={cards[index].photo}
-              alt="Rysunkowa ilustracja propozycji demo."
-              draggable={false}
-            />
-            <div>
-              <div className="row-meta">
-                <Badge tone="lavender">{cards[index].type} · demo</Badge>
-                <span>
-                  {index + 1} / {cards.length}
-                </span>
-              </div>
-              <h2>{cards[index].title}</h2>
-              <p>{cards[index].description}</p>
-              <p className="support-context">
-                Potrzeba:{' '}
-                {index === 0
-                  ? 'Spotkania sąsiedzkie blisko domu'
-                  : 'Wsparcie aktywności osób z demencją'}
-              </p>
-              <div className="row-meta">
-                <span>
-                  <Icon name="MapPin" />
-                  Wieliczka
-                </span>
-                <span>
-                  <Icon name="Heart" />
-                  {cards[index].count} poparcia · demo
-                </span>
-              </div>
-              <Link href={index === 0 ? '/pomysly/1?stan=oferta' : '/pilotaze/1'}>
-                Szczegóły i ograniczenia
-                <Icon name="ArrowRight" size={16} />
-              </Link>
-              <div className="vote-actions">
-                <button className="button secondary" onClick={() => choose('skip')}>
-                  <Icon name="X" />
-                  Pomijam
-                </button>
-                <button className="button" onClick={() => choose('support')}>
-                  <Icon name="Heart" />
-                  Popieram
-                </button>
-              </div>
+      {problemsLoading ? <LoadingState label="Ładowanie potrzeb…" /> : problemsError ? (
+        <Notice tone="error" title="Nie udało się pobrać potrzeb.">{problemsError} <button className="text-button" onClick={() => { setProblemsLoading(true); setRefreshKey((value) => value + 1) }}>Spróbuj ponownie</button></Notice>
+      ) : !problems.length ? (
+        <Empty title="Nie ma jeszcze potrzeb, dla których można wyrazić poparcie." text="Po potwierdzeniu potrzeby pojawią się tu dostępne propozycje." to="/zgloszenia/nowe" action="Zgłoś potrzebę" />
+      ) : (
+        <>
+          <Field label="Wybierz potrzebę">
+            <select value={problemId ?? ''} onChange={(event) => selectProblem(Number(event.target.value))}>
+              {problems.map((problem) => <option value={problem.entity_id} key={problem.id}>{problem.title} · {problem.location_name}</option>)}
+            </select>
+          </Field>
+          <div className="support-layout">
+            <div className="stack">
+              {cardsLoading ? <LoadingState label="Ładowanie kart poparcia…" /> : cardsError ? (
+                <Notice tone="error" title="Nie udało się pobrać kart poparcia.">{cardsError} <button className="text-button" onClick={() => { setCardsLoading(true); setRefreshKey((value) => value + 1) }}>Spróbuj ponownie</button></Notice>
+              ) : !cards.length ? (
+                <Empty title="Nie ma jeszcze propozycji dla tej potrzeby." text="Gdy pojawią się rozwiązania, będzie można wyrazić poparcie lub je pominąć." />
+              ) : cards.map((card) => {
+                const cardKey = supportCardKey(card)
+                const currentVote = card.my_vote
+                const actionInProgress = Boolean(actingOn[cardKey])
+                return (
+                  <article className="support-card" key={cardKey}>
+                    <div>
+                      <div className="row-meta">
+                        <Badge tone="lavender">{supportBadgeLabel(card.badge)}</Badge>
+                        <span><Icon name="Heart" /> {card.support_count} {card.support_count === 1 ? 'poparcie' : 'poparcia'}</span>
+                      </div>
+                      <h2>{toReadableInnovationText(card.title)}</h2>
+                      <p>{getInnovationPreview(card.description)}</p>
+                      <p className="support-context">Potrzeba: {selectedProblem?.title ?? `#${card.problem_id}`}</p>
+                      <Link href={`/innowacje/api/${card.solution_id}?tytul=${encodeURIComponent(toReadableInnovationText(card.title))}`}>Szczegóły i ograniczenia <Icon name="ArrowRight" size={16} /></Link>
+                      {currentVote === 'skip' && (
+                        <Field label="Powód pominięcia (opcjonalnie)">
+                          <textarea value={reasons[cardKey] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [cardKey]: event.target.value }))} rows={2} />
+                        </Field>
+                      )}
+                      <div className="vote-actions">
+                        <button className="button secondary" disabled={actionInProgress} onClick={() => void castVote(card, 'skip')}><Icon name="X" /> Pomijam</button>
+                        <button className="button" disabled={actionInProgress} onClick={() => void castVote(card, 'support')}><Icon name="Heart" /> Popieram</button>
+                        {currentVote && <button className="button secondary" disabled={actionInProgress} onClick={() => void undoVote(card)}><Icon name="ArrowCounterClockwise" /> Cofnij wybór</button>}
+                      </div>
+                      {currentVote && <small>Twój bieżący wybór: {currentVote === 'support' ? 'Popieram' : 'Pomijam'}.</small>}
+                      {actionErrors[cardKey] && <Notice tone="error">{actionErrors[cardKey]}</Notice>}
+                    </div>
+                  </article>
+                )
+              })}
             </div>
-          </article>
-        )}
-        <aside className="context-aside">
-          <h2>Twój głos. Twój wybór.</h2>
-          <p>
-            Przesuń kartę w prawo, aby poprzeć, lub w lewo, aby pominąć. Przyciski wykonują ten sam
-            wybór i działają klawiaturą.
-          </p>
-          <button
-            className="button secondary"
-            disabled={!choices.length}
-            onClick={() => {
-              setIndex(Math.max(0, index - 1))
-              setChoices(choices.slice(0, -1))
-              notify('Demo: cofnięto ostatni wybór.')
-            }}
-          >
-            <Icon name="ArrowCounterClockwise" />
-            Cofnij ostatni wybór
-          </button>
-          {choices.at(-1) === 'skip' && (
-            <>
-              <Field label="Dlaczego pomijasz? (opcjonalnie)">
-                <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
-              </Field>
-              <button
-                className="text-button"
-                onClick={() => notify('Powód zachowany wyłącznie w tym widoku demo.')}
-              >
-                Zapisz powód w demo
-              </button>
-            </>
-          )}
-          <small>
-            Jedno bieżące poparcie na propozycję w konkretnej potrzebie. Liczby nie opisują
-            satysfakcji ani skuteczności.
-          </small>
-        </aside>
-      </div>
+            <aside className="context-aside">
+              <h2>Twój głos. Twój wybór.</h2>
+              <p>Możesz poprzeć propozycję, pominąć ją lub cofnąć swój bieżący wybór.</p>
+              <small>Jedno bieżące poparcie przypada na propozycję w konkretnej potrzebie. Liczby nie opisują satysfakcji ani skuteczności.</small>
+            </aside>
+          </div>
+        </>
+      )}
     </>
   )
 }
-type AdaptationDraft = {
-  innovation: string
-  organization: string
-  audience: string
-  place: string
-  budget: string
-  resources: string
-  constraints: string
-}
-const defaultAdaptation: AdaptationDraft = {
-  innovation: 'bawita',
-  organization: 'Placówka dziennego wsparcia demo',
-  audience: innovations[0].audience,
-  place: 'Wieliczka',
-  budget: '4200',
-  resources: 'Dostępna sala, prowadzący i czas na krótkie spotkania.',
-  constraints: 'Niewielka grupa, zróżnicowana sprawność manualna, potrzeba spokojnej przestrzeni.',
-}
-function readAdaptation(): AdaptationDraft {
-  try {
-    const stored: unknown = JSON.parse(sessionStorage.getItem('mbg-adaptation') ?? 'null')
-    if (
-      stored &&
-      typeof stored === 'object' &&
-      Object.keys(defaultAdaptation).every(
-        (k) => typeof (stored as Record<string, unknown>)[k] === 'string',
-      )
-    )
-      return stored as AdaptationDraft
-  } catch {
-    /* An invalid local draft falls back to the synthetic fixture. */
-  }
-  return defaultAdaptation
+function supportBadgeLabel(badge: Awaited<ReturnType<typeof api.getSupportCards>>[number]['badge']): string {
+  if (badge === 'proposed_idea') return 'Pomysł użytkownika'
+  if (badge === 'being_tested') return 'W trakcie testowania'
+  return 'Istniejąca innowacja'
 }
 function AdaptForm() {
-  const id = new URLSearchParams(window.location.search).get('innowacja') ?? 'bawita',
-    item = innovations.find((i) => i.id === id) ?? innovations[0]
-  const stored = readAdaptation()
-  const draft =
-    stored.innovation === item.id
-      ? stored
-      : { ...defaultAdaptation, innovation: item.id, audience: item.audience }
+  const requestedId = Number(new URLSearchParams(window.location.search).get('innowacja'))
+  const [catalogue, setCatalogue] = useState<Innovation[]>([])
+  const [selectedId, setSelectedId] = useState(Number.isInteger(requestedId) && requestedId > 0 ? requestedId : 0)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.searchCatalogue().then((items) => {
+      setCatalogue(items)
+      setSelectedId((current) => current || items[0]?.id || 0)
+    }).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać katalogu.')).finally(() => setLoading(false))
+  }, [])
+  const item = catalogue.find((candidate) => candidate.id === selectedId) ?? null
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedId) return
+    const form = new FormData(event.currentTarget)
+    setSaving(true)
+    setError('')
+    try {
+      const adaptation = await api.createAdaptation({
+        solution_id: selectedId,
+        beneficiaries: String(form.get('beneficiaries') ?? '').trim(),
+        location: String(form.get('location') ?? '').trim(),
+        resources: String(form.get('resources') ?? '').trim(),
+        budget: String(form.get('budget') ?? '').trim(),
+        constraints: String(form.get('constraints') ?? '').trim(),
+      })
+      navigate(`/adaptacje/${adaptation.id}`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się przygotować adaptacji.')
+    } finally {
+      setSaving(false)
+    }
+  }
+  if (loading) return <DemoStatus state="ladowanie" />
   return (
     <>
-      <Heading
-        title="Dobre rozwiązanie. Twoje warunki."
-        description="Przygotuj roboczą adaptację istniejącej innowacji dla swojej placówki lub organizacji."
-        back="/innowacje"
-      />
+      <Heading title="Dobre rozwiązanie. Twoje warunki." description="Przygotuj adaptację istniejącej innowacji dla swojej placówki lub organizacji." back="/innowacje" />
       <div className="detail-layout">
         <Panel>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              const fields = new FormData(e.currentTarget)
-              const values = Object.fromEntries(
-                Object.keys(defaultAdaptation).map((k) => [
-                  k,
-                  k === 'innovation' ? item.id : String(fields.get(k) ?? ''),
-                ]),
-              )
-              sessionStorage.setItem('mbg-adaptation', JSON.stringify(values))
-              navigate('/adaptacje/1')
-            }}
-          >
-            <h2>Co trzeba uwzględnić?</h2>
-            <Field label="Organizacja / placówka (przykładowa)">
-              <input name="organization" defaultValue={draft.organization} required />
+          <form onSubmit={(event) => void submit(event)}>
+            {error && <Notice tone="error">{error}</Notice>}
+            <Field label="Innowacja z katalogu">
+              <select value={selectedId || ''} onChange={(event) => setSelectedId(Number(event.target.value))} required>
+                <option value="" disabled>Wybierz innowację</option>
+                {catalogue.map((candidate) => <option value={candidate.id} key={candidate.id}>{toReadableInnovationText(candidate.title)}</option>)}
+              </select>
             </Field>
-            <Field label="Odbiorcy">
-              <textarea name="audience" defaultValue={draft.audience} rows={3} required />
-            </Field>
-            <div className="form-grid">
-              <Field label="Miejscowość">
-                <select name="place" defaultValue={draft.place}>
-                  <option>Wieliczka</option>
-                  <option>Kraków</option>
-                  <option>Niepołomice</option>
-                </select>
-              </Field>
-              <Field label="Dostępny budżet · deklaracja autora">
-                <input name="budget" type="number" min="0" defaultValue={draft.budget} required />
-              </Field>
-            </div>
-            <Field label="Zasoby">
-              <textarea name="resources" defaultValue={draft.resources} rows={3} />
-            </Field>
-            <Field label="Ograniczenia">
-              <textarea name="constraints" defaultValue={draft.constraints} rows={3} />
-            </Field>
-            <button className="button">
-              Przygotuj roboczą adaptację
-              <Icon name="ArrowRight" />
-            </button>
+            <Field label="Odbiorcy"><textarea name="beneficiaries" rows={3} required /></Field>
+            <Field label="Miejscowość / lokalizacja"><input name="location" required /></Field>
+            <Field label="Deklarowany budżet"><input name="budget" required /></Field>
+            <Field label="Dostępne zasoby"><textarea name="resources" rows={3} required /></Field>
+            <Field label="Ograniczenia"><textarea name="constraints" rows={3} required /></Field>
+            <button className="button" disabled={saving || !item}>{saving ? 'Przygotowywanie…' : 'Przygotuj adaptację'} <Icon name="ArrowRight" /></button>
           </form>
         </Panel>
         <aside className="context-aside">
-          <Badge>Wybrana innowacja</Badge>
-          <h2>{item.title}</h2>
-          <p>{item.description}</p>
-          <a href={item.url}>
-            Sprawdź źródło
-            <Icon name="ArrowSquareOut" size={16} />
-          </a>
-          <Notice>
-            Instytucja korzysta ze zwykłego konta użytkownika. Adaptacja jest szkicem, nie
-            zatwierdzonym wdrożeniem.
-          </Notice>
+          <Badge>Źródło z bazy</Badge>
+          <h2>{item ? toReadableInnovationText(item.title) : 'Wybierz innowację'}</h2>
+          <p>{item ? getInnovationPreview(item.description) : 'Katalog nie zawiera jeszcze pozycji.'}</p>
         </aside>
       </div>
     </>
   )
 }
 function Adaptation() {
-  const draft = readAdaptation()
-  const item = innovations.find((i) => i.id === draft.innovation) ?? innovations[0]
+  const id = Number(window.location.pathname.split('/')[2])
+  const [item, setItem] = useState<InstitutionAdaptation | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.getAdaptation(id).then(setItem).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać adaptacji.'))
+  }, [id])
+  if (error) return <Notice tone="error" title="Nie udało się pobrać adaptacji.">{error}</Notice>
+  if (!item) return <DemoStatus state="ladowanie" />
   return (
     <>
-      <Heading
-        title={`${item.title} w Twojej placówce.`}
-        description="Robocza adaptacja · wariant demonstracyjny · wymagane sprawdzenie przez organizację i administratora"
-        back="/innowacje"
-      />
+      <Heading title={`${item.solution_title ?? 'Innowacja'} w Twojej placówce.`} description="Szkic adaptacji wygenerowany na podstawie zapisanych warunków." back="/innowacje" />
       <div className="detail-layout">
         <div className="stack">
           <Panel>
-            <Badge tone="yellow">Szkic adaptacji · demo</Badge>
-            <h2>Warunki do sprawdzenia</h2>
+            <Badge tone="yellow">Szkic adaptacji</Badge>
+            <h2>Warunki zapisane w bazie</h2>
             <dl className="facts">
-              <Fact label="Placówka / organizacja">{draft.organization}</Fact>
-              <Fact label="Miejsce">{draft.place}</Fact>
-              <Fact label="Odbiorcy">{draft.audience}</Fact>
-              <Fact label="Budżet deklarowany">
-                {Number(draft.budget).toLocaleString('pl-PL')} zł · demo
-              </Fact>
+              <Fact label="Odbiorcy">{item.beneficiaries}</Fact>
+              <Fact label="Miejsce">{item.location}</Fact>
+              <Fact label="Budżet deklarowany">{item.budget}</Fact>
+              <Fact label="Zasoby">{item.resources}</Fact>
+              <Fact label="Ograniczenia">{item.constraints}</Fact>
             </dl>
-            <h3>Dostępne zasoby</h3>
-            <p>{draft.resources || 'Nie wskazano zasobów.'}</p>
-            <h3>Ograniczenia organizacji</h3>
-            <p>{draft.constraints || 'Nie wskazano ograniczeń.'}</p>
-            <h3>Proponowana kolejność</h3>
-            <ol className="timeline">
-              <li>
-                <strong>Sprawdź odbiorców i ograniczenia</strong>
-                <span>{item.limitation}</span>
-              </li>
-              <li>
-                <strong>Ustal zasoby i właściciela</strong>
-                <span>Przygotuj materiały oraz osobę odpowiedzialną za prowadzenie.</span>
-              </li>
-              <li>
-                <strong>Zaplanuj krótki pilotaż</strong>
-                <span>Określ pytania testowe i sposób zebrania opinii.</span>
-              </li>
-            </ol>
+            <h2>Proponowana adaptacja AI</h2>
+            <p>{item.draft_adaptation || 'AI nie zwróciło jeszcze treści adaptacji.'}</p>
           </Panel>
-          <Notice tone="warning" title="Niewiadome przed decyzją">
-            Lokalna dostępność materiałów, koszt, kwalifikacje prowadzących i dopasowanie do
-            odbiorców. Wprowadzone {Number(draft.budget).toLocaleString('pl-PL')} zł to deklaracja
-            demo, a nie koszt zatwierdzony.
-          </Notice>
         </div>
         <aside className="context-aside">
-          <h2>Wciąż to samo źródło.</h2>
-          <p>{item.title} — biblioteka ROPS.</p>
-          <a href={item.url}>
-            Otwórz oryginalną kartę
-            <Icon name="ArrowSquareOut" size={16} />
-          </a>
-          <ButtonLink to={`/adaptacje/nowa?innowacja=${item.id}`} secondary>
-            Zmień warunki adaptacji
-          </ButtonLink>
-          <small>
-            Ten plan adaptacji wymaga weryfikacji. Pilotaż i budżet zatwierdza administrator.
-          </small>
+          {item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">Otwórz źródło <Icon name="ArrowSquareOut" size={16} /></a>}
+          <ButtonLink to={`/adaptacje/nowa?innowacja=${item.solution_id}`} secondary>Zmień warunki</ButtonLink>
+          <small>Adaptacja pozostaje szkicem. Pilotaż i budżet zatwierdza administrator.</small>
         </aside>
       </div>
     </>
   )
 }
-function Pilots({ state }: { state: string }) {
-  const [filter, setFilter] = useState('Wszystkie')
+const pilotFilters = ['Wszystkie', 'Rekrutacja', 'W testach', 'Ewaluacja'] as const
+
+function pilotStatusLabel(status: Pilot['status']) {
+  return {
+    draft: 'Szkic',
+    review: 'Ocena',
+    recruitment_funding: 'Rekrutacja i zasoby',
+    pilot: 'W testach',
+    evaluation: 'Ewaluacja',
+    dissemination: 'Upowszechnienie',
+    unavailable: 'Niedostępny',
+  }[status]
+}
+
+function pilotStatusTone(status: Pilot['status']) {
+  if (status === 'unavailable') return 'neutral'
+  if (status === 'evaluation' || status === 'review') return 'blue'
+  if (status === 'recruitment_funding') return 'yellow'
+  return 'green'
+}
+
+function currency(value: number | null) {
+  return value === null ? 'Nie podano' : `${value.toLocaleString('pl-PL')} zł`
+}
+
+function pilotTabs(id: number): [string, string][] {
+  return [
+    [`/pilotaze/${id}`, 'O pilotażu'],
+    [`/pilotaze/${id}/zasoby`, 'Zasoby'],
+    [`/pilotaze/${id}/udzial`, 'Twój udział'],
+    [`/pilotaze/${id}/ewaluacja`, 'Ewaluacja'],
+  ]
+}
+
+function Pilots() {
+  const [filter, setFilter] = useState<(typeof pilotFilters)[number]>('Wszystkie')
+  const [items, setItems] = useState<Pilot[]>([])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    api
+      .listPilots()
+      .then((pilots) => {
+        if (active) setItems(pilots)
+      })
+      .catch((caught: unknown) => {
+        if (active) setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać pilotaży.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const visible = items.filter((item) => {
+    if (filter === 'Rekrutacja') return item.status === 'recruitment_funding'
+    if (filter === 'W testach') return item.status === 'pilot'
+    if (filter === 'Ewaluacja') return item.status === 'evaluation'
+    return true
+  })
+
   return (
     <>
       <Heading
         title="Sprawdźmy pomysły w codzienności."
-        description="Pilotaże mają właściciela, plan i zatwierdzone warunki. Znajdź inicjatywę, do której możesz dołączyć."
+        description="Wybierz inicjatywę, zobacz jej plan i dołącz, gdy rekrutacja jest otwarta."
       />
       <div className="filter-pills section-tabs">
-        {['Wszystkie', 'Rekrutacja', 'W testach', 'Ewaluacja'].map((f) => (
-          <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
-            {f}
+        {pilotFilters.map((item) => (
+          <button key={item} aria-pressed={filter === item} onClick={() => setFilter(item)}>
+            {item}
           </button>
         ))}
       </div>
-      {state === 'pusto' || !['Wszystkie', 'Rekrutacja'].includes(filter) ? (
+      {loading ? (
+        <div className="loading" role="status">
+          <span className="loader" />
+          <strong>Wczytywanie pilotaży…</strong>
+        </div>
+      ) : error ? (
+        <Notice tone="error" title="Nie udało się pobrać pilotaży.">
+          {error}
+        </Notice>
+      ) : !visible.length ? (
         <Empty
-          title="Brak pilotaży na tym etapie w demo."
-          text="Przejdź do rekrutacji, aby obejrzeć przykładową inicjatywę."
+          title="Brak pilotaży w tym widoku."
+          text="Zmień filtr lub wróć później, gdy administrator opublikuje kolejną inicjatywę."
           to="/pilotaze"
           action="Pokaż wszystkie"
         />
       ) : (
-        <div className="pilot-feature">
-          <img
-            src={illustrations.people}
-            alt="Rysunkowa wizja wspólnego działania, nie dokumentacja pilotażu."
-          />
-          <div>
-            <Badge tone="yellow">Rekrutacja i zasoby · demo</Badge>
-            <h2>{pilot.title}</h2>
-            <p>{pilot.description}</p>
-            <dl className="facts">
-              <Fact label="Miejsce">Wieliczka</Fact>
-              <Fact label="Szukamy">Wolontariuszy do wsparcia aktywności</Fact>
-            </dl>
-            <ButtonLink to="/pilotaze/1">Poznaj pilotaż</ButtonLink>
-          </div>
+        <div className="stack">
+          {visible.map((pilot) => (
+            <article className="pilot-feature" key={pilot.id}>
+              <img src={illustrations.people} alt="" />
+              <div>
+                <Badge tone={pilotStatusTone(pilot.status)}>{pilotStatusLabel(pilot.status)}</Badge>
+                <h2>{pilot.title}</h2>
+                <p>{pilot.description || 'Opis pilotażu nie został jeszcze uzupełniony.'}</p>
+                <dl className="facts">
+                  <Fact label="Zapisani wolontariusze">
+                    {pilot.registered_volunteers_count} / {pilot.max_volunteers}
+                  </Fact>
+                  <Fact label="Lista oczekujących">{pilot.waiting_list_count}</Fact>
+                </dl>
+                <ButtonLink to={`/pilotaze/${pilot.id}`}>Poznaj pilotaż</ButtonLink>
+              </div>
+            </article>
+          ))}
         </div>
       )}
-      <Notice>
-        Wszystkie pilotaże w tym prototypie są syntetyczne. Ilustracje przedstawiają temat, nie
-        pokazują faktycznych uczestników.
-      </Notice>
     </>
   )
 }
-const pilotTabs: [string, string][] = [
-  ['/pilotaze/1', 'O pilotażu'],
-  ['/pilotaze/1/zasoby', 'Zasoby'],
-  ['/pilotaze/1/udzial', 'Twój udział'],
-  ['/pilotaze/1/ewaluacja', 'Ewaluacja'],
-]
-function PilotPage({ path, state, notify }: Props) {
+
+function PilotPage({ path, notify }: Pick<Props, 'path' | 'notify'>) {
+  const pilotId = Number(path.split('/')[2])
+  const [pilot, setPilot] = useState<Pilot | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  async function refresh() {
+    setLoading(true)
+    setError('')
+    try {
+      setPilot(await api.getPilot(pilotId))
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać pilotażu.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!Number.isInteger(pilotId) || pilotId < 1) {
+      setLoading(false)
+      setError('Nieprawidłowy identyfikator pilotażu.')
+      return
+    }
+    void refresh()
+  }, [pilotId])
+
+  if (loading) {
+    return (
+      <div className="loading" role="status">
+        <span className="loader" />
+        <strong>Wczytywanie pilotażu…</strong>
+      </div>
+    )
+  }
+  if (error || !pilot) {
+    return (
+      <>
+        <Heading title="Pilotaż jest niedostępny." back="/pilotaze" />
+        <Notice tone="error">{error || 'Nie znaleziono pilotażu.'}</Notice>
+      </>
+    )
+  }
+
+  const participationHref = `/pilotaze/${pilot.id}/udzial`
+  const resourcesHref = `/pilotaze/${pilot.id}/zasoby`
   return (
     <>
       <Heading
         title={pilot.title}
-        description="Wieliczka · BaWita · inicjatywa demo"
+        description={pilotStatusLabel(pilot.status)}
         back="/pilotaze"
       />
-      <Tabs items={pilotTabs} active={path} />
+      <Tabs items={pilotTabs(pilot.id)} active={path} />
       {path.endsWith('/zasoby') ? (
-        <Resources notify={notify} />
+        <Resources pilot={pilot} />
       ) : path.endsWith('/udzial') ? (
-        <Participation state={state} notify={notify} />
+        <Participation pilot={pilot} onRefresh={refresh} notify={notify} />
       ) : path.endsWith('/ewaluacja') ? (
-        <Evaluation state={state} notify={notify} />
+        <Evaluation pilot={pilot} notify={notify} />
       ) : (
         <div className="detail-layout">
           <div className="stack">
             <div className="pilot-photo">
-              <img
-                src={illustrations.people}
-                alt="Dwie seniorki przy roślinach — ilustracja tematu pilotażu."
-              />
-              <Badge tone="yellow">Rekrutacja i zasoby · demo</Badge>
+              <img src={illustrations.people} alt="" />
+              <Badge tone={pilotStatusTone(pilot.status)}>{pilotStatusLabel(pilot.status)}</Badge>
             </div>
             <Panel>
               <h2>Co chcemy sprawdzić?</h2>
-              <p>
-                {pilot.description} To przykład lokalnego zastosowania, nie udokumentowany projekt.
-              </p>
-              <h3>Plan testów · propozycja demo</h3>
-              <p>
-                Krótka seria spotkań, obserwacja używania narzędzia i opinie odbiorców oraz
-                wolontariuszy. Zasady i daty wymagają zatwierdzenia przed startem.
-              </p>
+              <p>{pilot.description || 'Opis pilotażu nie został jeszcze uzupełniony.'}</p>
+              <h3>Plan testów</h3>
+              <p>{pilot.test_plan || 'Plan testów nie został jeszcze opublikowany.'}</p>
               <dl className="facts">
-                <Fact label="Właściciel">Koordynator demo</Fact>
-                <Fact label="Partner">Placówka wsparcia demo</Fact>
+                <Fact label="Właściciel">{pilot.accountable_owner || 'Nie wskazano'}</Fact>
+                <Fact label="Partnerzy">{pilot.partners || 'Nie wskazano'}</Fact>
                 <Fact label="Źródło rozwiązania">
-                  <Link href="/innowacje/bawita">BaWita · biblioteka ROPS</Link>
+                  {pilot.solution_id ? (
+                    <Link href={`/innowacje/api/${pilot.solution_id}`}>Otwórz kartę innowacji</Link>
+                  ) : (
+                    'Nie wskazano'
+                  )}
                 </Fact>
               </dl>
             </Panel>
           </div>
           <aside className="context-aside">
             <h2>Możesz pomóc na swój sposób.</h2>
-            <p>
-              Czas, sprzęt, miejsce lub zadeklarowany budżet — różne zasoby mogą wspierać jeden cel.
-            </p>
-            <ButtonLink to="/pilotaze/1/udzial">Sprawdź możliwość udziału</ButtonLink>
-            <ButtonLink to="/pilotaze/1/zasoby" secondary>
-              Poznaj potrzebne zasoby
+            <dl>
+              <Fact label="Maksymalna liczba wolontariuszy">{pilot.max_volunteers}</Fact>
+              <Fact label="Zapisani">{pilot.registered_volunteers_count}</Fact>
+              <Fact label="Oczekujący">{pilot.waiting_list_count}</Fact>
+            </dl>
+            <ButtonLink to={participationHref}>Sprawdź możliwość udziału</ButtonLink>
+            <ButtonLink to={resourcesHref} secondary>
+              Zobacz warunki i zasoby
             </ButtonLink>
             <Notice>
-              Start zatwierdza administrator po sprawdzeniu budżetu, właściciela, partnerów, planu i
-              uczestników.
+              Status oraz warunki pilotażu są aktualizowane przez administratora i pobierane z
+              systemu przy każdym otwarciu strony.
             </Notice>
           </aside>
         </div>
@@ -2042,269 +2532,268 @@ function PilotPage({ path, state, notify }: Props) {
     </>
   )
 }
-function Resources({ notify }: { notify: Notify }) {
-  const [type, setType] = useState('Czas'),
-    [saved, setSaved] = useState(false)
+
+function Resources({ pilot }: { pilot: Pilot }) {
   return (
     <div className="detail-layout">
       <div className="stack">
         <Panel>
-          <h2>Co jest potrzebne?</h2>
-          <div className="resource-row">
-            <Icon name="Clock" />
-            <div>
-              <strong>Czas wolontariuszy</strong>
-              <p>Wsparcie podczas aktywności · przykładowo 2 godziny tygodniowo.</p>
-            </div>
-            <Badge tone="yellow">Szukamy</Badge>
-          </div>
+          <h2>Warunki i zasoby</h2>
           <div className="resource-row">
             <Icon name="House" />
             <div>
-              <strong>Spokojna sala</strong>
-              <p>Przykładowa deklaracja placówki; wymaga potwierdzenia.</p>
+              <strong>Partnerzy wdrożeniowi</strong>
+              <p>{pilot.partners || 'Nie wskazano partnerów.'}</p>
             </div>
-            <Badge>Do sprawdzenia</Badge>
           </div>
           <div className="resource-row">
             <Icon name="Gear" />
             <div>
-              <strong>Materiały do pracy</strong>
-              <p>Zestaw narzędzi i przygotowanie prowadzących.</p>
+              <strong>Plan testów</strong>
+              <p>{pilot.test_plan || 'Nie opublikowano jeszcze planu testów.'}</p>
             </div>
-            <Badge tone="yellow">Luka w zasobach</Badge>
           </div>
         </Panel>
-        <Panel>
-          <h2>Zadeklaruj wsparcie.</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              setSaved(true)
-              notify('Deklaracja zapisana lokalnie w demo. Nie wykonano płatności.')
-            }}
-          >
-            <Field label="Rodzaj zasobu">
-              <select value={type} onChange={(e) => setType(e.target.value)}>
-                {['Czas', 'Sprzęt', 'Lokal', 'Budżet'].map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
-            </Field>
-            <Field
-              label={type === 'Budżet' ? 'Kwota deklaracji (zł)' : 'Opis deklarowanego zasobu'}
-            >
-              {type === 'Budżet' ? (
-                <input type="number" min="1" required />
-              ) : (
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Co możesz udostępnić i w jakim zakresie?"
-                />
-              )}
-            </Field>
-            <button className="button">
-              Zapisz deklarację
-              <Icon name="Check" />
-            </button>
-          </form>
-          {saved && (
-            <Notice tone="success">
-              Deklaracja wymaga weryfikacji administratora. To demonstracja bez zapisu na serwerze.
-            </Notice>
-          )}
-        </Panel>
+        <Notice>
+          Moduł deklarowania czasu, sprzętu, lokalu lub środków nie jest jeszcze dostępny w API.
+          Formularz nie jest wyświetlany, aby nie sprawiał wrażenia, że deklaracja została zapisana.
+        </Notice>
       </div>
       <aside className="context-aside">
-        <h2>Budżet i deklaracje osobno.</h2>
+        <h2>Budżet</h2>
         <dl>
-          <Fact label="Budżet zatwierdzony · demo">4 200 zł</Fact>
-          <Fact label="Deklaracje · demo">2 800 zł</Fact>
-          <Fact label="Luka · demo">1 400 zł</Fact>
+          <Fact label="Budżet deklarowany">{currency(pilot.budget_declared)}</Fact>
+          <Fact label="Budżet zatwierdzony">{currency(pilot.budget_approved)}</Fact>
         </dl>
-        <p>Deklaracja nie jest wpłatą ani gwarancją dostępności. Nie ma płatności i zbiórek.</p>
-        <small>Start pilotażu nadal wymaga ostatecznej decyzji administratora.</small>
+        <small>Budżet zatwierdza administrator w ramach obsługi pilotażu.</small>
       </aside>
     </div>
   )
 }
-function Participation({ state, notify }: { state: string; notify: Notify }) {
-  const [status, setStatus] = useState(
-      state === 'kolejka' ? 'waiting' : state === 'oferta' ? 'offer' : 'available',
-    ),
-    [accepted, setAccepted] = useState(false)
+
+function Participation({
+  pilot,
+  onRefresh,
+  notify,
+}: {
+  pilot: Pilot
+  onRefresh: () => Promise<void>
+  notify: Notify
+}) {
+  const [confirmed, setConfirmed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const volunteerStatus = pilot.my_volunteer_status
+
+  async function run(action: () => Promise<unknown>, successMessage: string) {
+    setBusy(true)
+    setError('')
+    try {
+      await action()
+      await onRefresh()
+      notify(successMessage)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać zmiany.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const canCancel = volunteerStatus && volunteerStatus !== 'cancelled'
   return (
     <div className="detail-layout">
       <Panel>
-        <h2>Wesprzyj aktywności uczestników.</h2>
-        <p>
-          Pomoc w przygotowaniu sali i spokojnej pracy z narzędziem. Terminy oraz szczegółowe
-          zadania w demo są propozycją.
-        </p>
+        <h2>Udział w pilotażu</h2>
         <dl className="facts">
-          <Fact label="Miejsce">Placówka demo · Wieliczka</Fact>
-          <Fact label="Zaangażowanie">Przykładowo 2 godziny tygodniowo</Fact>
-          <Fact label="Limit">6 osób · wariant demonstracyjny</Fact>
+          <Fact label="Limit miejsc">{pilot.max_volunteers}</Fact>
+          <Fact label="Zapisani wolontariusze">{pilot.registered_volunteers_count}</Fact>
+          <Fact label="Lista oczekujących">{pilot.waiting_list_count}</Fact>
         </dl>
-        {status === 'available' && (
+        {error && <Notice tone="error">{error}</Notice>}
+        {(!volunteerStatus || volunteerStatus === 'cancelled') && (
           <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              setStatus('registered')
-              notify('Demo: zgłoszenie udziału zapisane do weryfikacji.')
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (!confirmed) return
+              void run(
+                () => api.registerPilotVolunteer(pilot.id),
+                'Zgłoszenie do pilotażu zostało zapisane.',
+              )
             }}
           >
-            <Field label="Umiejętności / doświadczenie (przykładowe)">
-              <textarea
-                rows={3}
-                placeholder="Opisz doświadczenie bez przesyłania dokumentów."
-                required
-              />
-            </Field>
+            <p>Po zapisie system przydzieli miejsce albo pozycję na liście oczekujących.</p>
             <label className="checkbox-line">
               <input
                 type="checkbox"
                 required
-                checked={accepted}
-                onChange={(e) => setAccepted(e.target.checked)}
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
               />
-              Chcę uczestniczyć w tym przykładowym scenariuszu.
+              Chcę zgłosić swój udział w tym pilotażu.
             </label>
-            <button className="button">
-              Zgłoś udział
+            <button className="button" disabled={busy}>
+              {busy ? 'Zapisywanie…' : 'Zgłoś udział'}
               <Icon name="ArrowRight" />
             </button>
           </form>
         )}
-        {status === 'waiting' && (
-          <Notice tone="warning" title="Jesteś na liście oczekujących · demo.">
-            Gdy zwolni się miejsce, oferta pojawi się w aplikacji. Kolejność i ważność ofert są
-            jeszcze do ustalenia.
+        {volunteerStatus === 'waiting' && (
+          <Notice tone="warning" title="Jesteś na liście oczekujących.">
+            {pilot.my_volunteer_position ? `Twoja pozycja: ${pilot.my_volunteer_position}. ` : ''}
+            Gdy zwolni się miejsce, otrzymasz ofertę w aplikacji.
           </Notice>
         )}
-        {status === 'offer' && (
+        {volunteerStatus === 'offered' && (
           <>
-            <Notice tone="success" title="Jest dla Ciebie wolne miejsce · demo.">
-              Oferta wymaga Twojego potwierdzenia. Samo powiadomienie nie zapisuje Cię
-              automatycznie.
+            <Notice tone="success" title="Czeka na Ciebie wolne miejsce.">
+              Przyjmij ofertę, aby potwierdzić udział.
             </Notice>
             <button
               className="button"
-              onClick={() => {
-                setStatus('confirmed')
-                notify('Demo: przyjęto ofertę miejsca.')
-              }}
+              disabled={busy}
+              onClick={() =>
+                void run(
+                  () => api.acceptPilotOffer(pilot.id),
+                  'Miejsce zostało przyjęte. Twój udział jest potwierdzony.',
+                )
+              }
             >
-              Przyjmuję miejsce
+              {busy ? 'Zapisywanie…' : 'Przyjmuję miejsce'}
               <Icon name="Check" />
             </button>
           </>
         )}
-        {status === 'registered' && (
-          <Notice title="Zgłoszenie oczekuje na weryfikację.">
-            Administrator potwierdzi wymagane umiejętności. Nie przesyłaj prawdziwych skanów
-            dokumentów.
+        {volunteerStatus === 'registered' && (
+          <>
+            <Notice title="Zgłoszenie jest zarejestrowane.">
+              Możesz potwierdzić udział, gdy jesteś gotowy/gotowa do rozpoczęcia pilotażu.
+            </Notice>
+            <button
+              className="button"
+              disabled={busy}
+              onClick={() =>
+                void run(
+                  () => api.acceptPilotOffer(pilot.id),
+                  'Udział w pilotażu został potwierdzony.',
+                )
+              }
+            >
+              {busy ? 'Zapisywanie…' : 'Potwierdź udział'}
+              <Icon name="Check" />
+            </button>
+          </>
+        )}
+        {volunteerStatus === 'accepted' && (
+          <Notice tone="success" title="Twój udział jest potwierdzony.">
+            Szczegóły pilotażu pozostają dostępne na tej stronie.
           </Notice>
         )}
-        {status === 'confirmed' && (
-          <Notice tone="success" title="Udział potwierdzony w demo.">
-            Szczegóły pozostają w tym podglądzie. Nie wysłano powiadomień zewnętrznych.
-          </Notice>
-        )}
-        {status !== 'available' && (
+        {canCancel && (
           <button
             className="button secondary"
-            onClick={() => {
-              setStatus('available')
-              notify('Demo: zrezygnowano. Miejsce może zostać zaoferowane osobie z kolejki.')
-            }}
+            disabled={busy}
+            onClick={() =>
+              void run(
+                () => api.cancelPilotVolunteer(pilot.id),
+                'Rezygnacja została zapisana. Wolne miejsce może zostać zaoferowane kolejnej osobie.',
+              )
+            }
           >
-            Zrezygnuj z udziału / oczekiwania
+            {busy ? 'Zapisywanie…' : 'Zrezygnuj z udziału'}
           </button>
         )}
       </Panel>
       <aside className="context-aside">
         <img src={illustrations.people} alt="" />
-        <h2>Warto wiedzieć przed zapisem.</h2>
+        <h2>Co dzieje się po zapisie?</h2>
         <p>
-          Wymagane umiejętności potwierdza administrator. Rezygnacja zwalnia miejsce, które można
-          zaoferować osobie oczekującej.
+          Po rezygnacji system zwalnia miejsce i może skierować ofertę do pierwszej osoby na liście
+          oczekujących.
         </p>
-        <div className="link-list">
-          <Link href="/pilotaze/1/udzial?stan=kolejka">
-            Zobacz wariant kolejki
-            <Icon name="ArrowRight" size={16} />
-          </Link>
-          <Link href="/pilotaze/1/udzial?stan=oferta">
-            Zobacz ofertę miejsca
-            <Icon name="ArrowRight" size={16} />
-          </Link>
-        </div>
-        <small>
-          Obsługa konkurujących zapisów i wygaśnięcia ofert należy do przyszłego backendu.
-        </small>
       </aside>
     </div>
   )
 }
-function Evaluation({ state, notify }: { state: string; notify: Notify }) {
-  const [score, setScore] = useState(0),
-    [saved, setSaved] = useState(false)
+
+function Evaluation({ pilot, notify }: { pilot: Pilot; notify: Notify }) {
+  const [role, setRole] = useState<'beneficiary' | 'volunteer'>('volunteer')
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [improvements, setImprovements] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (!rating) {
+      setError('Wybierz ocenę satysfakcji.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await api.submitPilotFeedback(pilot.id, {
+        role,
+        rating,
+        comment: comment.trim() || undefined,
+        improvements: improvements.trim() || undefined,
+      })
+      setSaved(true)
+      notify('Opinia została zapisana.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać opinii.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="detail-layout">
       <Panel>
         <h2>Jak oceniasz doświadczenie?</h2>
-        <Notice title="Wariant po testach · konto uprawnionego uczestnika demo">
-          Pilotaż bazowy jest w rekrutacji; ten ekran pokazuje odrębny stan ewaluacji po udziale.
-          Skala 1–5 jest propozycją do uzgodnienia.
-        </Notice>
-        {state === 'blokada' ? (
-          <Notice tone="warning">
-            Ocena jest dostępna dopiero dla uprawnionego beneficjenta lub wolontariusza po etapie
-            testów.
-          </Notice>
-        ) : saved ? (
-          <Notice tone="success" title="Dziękujemy za opinię w demo.">
-            Satysfakcja jest oddzielona od poparcia. Nie opublikowano żadnej oceny na serwerze.
+        {saved ? (
+          <Notice tone="success" title="Dziękujemy za opinię.">
+            Została zapisana przy tym pilotażu.
           </Notice>
         ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (!score) {
-                notify('Wybierz ocenę satysfakcji.')
-                return
-              }
-              setSaved(true)
-              notify('Opinia zapisana lokalnie w demo.')
-            }}
-          >
+          <form onSubmit={(event) => void submit(event)}>
+            {error && <Notice tone="error">{error}</Notice>}
+            <Field label="Twoja rola">
+              <select value={role} onChange={(event) => setRole(event.target.value as typeof role)}>
+                <option value="volunteer">Wolontariusz / wolontariuszka</option>
+                <option value="beneficiary">Beneficjent / beneficjentka</option>
+              </select>
+            </Field>
             <fieldset className="rating">
-              <legend>Satysfakcja z udziału · propozycja skali</legend>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <label className={score === n ? 'selected' : ''} key={n}>
+              <legend>Satysfakcja z udziału</legend>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <label className={rating === value ? 'selected' : ''} key={value}>
                   <input
                     type="radio"
                     name="rating"
-                    value={n}
-                    checked={score === n}
-                    onChange={() => setScore(n)}
+                    value={value}
+                    checked={rating === value}
+                    onChange={() => setRating(value)}
                     required
                   />
-                  {n}
+                  {value}
                 </label>
               ))}
               <small>1 — bardzo niska · 5 — bardzo wysoka</small>
             </fieldset>
             <Field label="Co było pomocne?">
-              <textarea rows={3} required />
+              <textarea rows={3} value={comment} onChange={(event) => setComment(event.target.value)} />
             </Field>
             <Field label="Co warto poprawić?">
-              <textarea rows={3} />
+              <textarea
+                rows={3}
+                value={improvements}
+                onChange={(event) => setImprovements(event.target.value)}
+              />
             </Field>
-            <button className="button">
-              Zapisz opinię
+            <button className="button" disabled={busy}>
+              {busy ? 'Zapisywanie…' : 'Zapisz opinię'}
               <Icon name="Check" />
             </button>
           </form>
@@ -2313,18 +2802,25 @@ function Evaluation({ state, notify }: { state: string; notify: Notify }) {
       <aside className="context-aside">
         <h2>Opinie pomagają wyciągnąć wnioski.</h2>
         <p>
-          Ocena dotyczy Twojego doświadczenia, nie liczby poparć. Upowszechnienie wymaga osobnej
-          decyzji administratora.
+          Ocena dotyczy Twojego doświadczenia w tym pilotażu i trafia do danych ewaluacyjnych.
         </p>
-        <small>
-          Uprawnienia, termin i skala docelowej oceny pozostają otwartymi decyzjami produktowymi.
-        </small>
       </aside>
     </div>
   )
 }
 function Notifications({ notify }: { notify: Notify }) {
-  const [read, setRead] = useState(false)
+  const [items, setItems] = useState<Awaited<ReturnType<typeof api.listNotifications>>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.listNotifications().then(setItems).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać powiadomień.')).finally(() => setLoading(false))
+  }, [])
+  async function markAllRead() {
+    const unread = items.filter((item) => !item.is_read)
+    await Promise.all(unread.map((item) => api.markNotificationRead(item.id)))
+    setItems((current) => current.map((item) => ({ ...item, is_read: true })))
+    notify('Powiadomienia oznaczono jako przeczytane.')
+  }
   return (
     <>
       <Heading
@@ -2333,97 +2829,74 @@ function Notifications({ notify }: { notify: Notify }) {
         action={
           <button
             className="button secondary"
-            onClick={() => {
-              setRead(true)
-              notify('Powiadomienia oznaczone jako przeczytane w demo.')
-            }}
+            onClick={() => void markAllRead()}
+            disabled={!items.some((item) => !item.is_read)}
           >
             Oznacz jako przeczytane
           </button>
         }
       />
-      <Panel>
-        {[
-          [
-            '/pilotaze/1/udzial?stan=oferta',
-            'Czeka na Ciebie wolne miejsce',
-            'Przyjmij ofertę udziału w pilotażu Pamięć w dobrych rękach.',
-            'Plant',
-          ],
-          [
-            '/pomysly/1',
-            'Twój szkic jest gotowy do sprawdzenia',
-            'Potwierdź treść przed przekazaniem do administratora.',
-            'Lightbulb',
-          ],
-          [
-            '/pomysly/1/dyskusja',
-            'Nowy komentarz o Sąsiedzkim stole',
-            'Koordynator demo zapytał o miejsce i prowadzącego.',
-            'ChatCircle',
-          ],
-        ].map(([url, title, description, icon]) => (
-          <Link className={`notification-row ${read ? 'read' : ''}`} href={url} key={url}>
+      {loading ? <DemoStatus state="ladowanie" /> : error ? <Notice tone="error">{error}</Notice> : !items.length ? <Empty title="Brak powiadomień." text="Ważne informacje pojawią się tutaj po zapisaniu działań." /> : <Panel>
+        {items.map((item) => (
+          <Link className={`notification-row ${item.is_read ? 'read' : ''}`} href={item.link || '/moje-aktywnosci'} key={item.id}>
             <span className="row-icon">
-              <Icon name={icon as 'Plant'} size={24} />
+              <Icon name="Bell" size={24} />
             </span>
             <div>
-              <Badge tone={read ? 'neutral' : 'green'}>
-                {read ? 'Przeczytane' : 'Nowe'} · demo
-              </Badge>
-              <h2>{title}</h2>
-              <p>{description}</p>
+              <Badge tone={item.is_read ? 'neutral' : 'green'}>{item.is_read ? 'Przeczytane' : 'Nowe'}</Badge>
+              <h2>{item.title}</h2>
+              <p>{item.message}</p>
             </div>
             <Icon name="ArrowRight" />
           </Link>
         ))}
-      </Panel>
+      </Panel>}
     </>
   )
 }
 function Activities() {
+  const session = getStoredSession()
+  const [reports, setReports] = useState<Report[]>([])
+  const [ideas, setIdeas] = useState<Awaited<ReturnType<typeof api.listMyIdeas>>>([])
+  const [pilots, setPilots] = useState<Pilot[]>([])
+  const [adaptations, setAdaptations] = useState<InstitutionAdaptation[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    Promise.all([api.listMyReports(), api.listMyIdeas(), api.listPilots(), api.listMyAdaptations()]).then(([loadedReports, loadedIdeas, loadedPilots, loadedAdaptations]) => {
+      setReports(loadedReports)
+      setIdeas(loadedIdeas)
+      setPilots(loadedPilots.filter((pilot) => pilot.my_volunteer_status))
+      setAdaptations(loadedAdaptations)
+    }).finally(() => setLoading(false))
+  }, [])
+  const links = [
+    { url: '/zgloszenia', title: 'Twoje zgłoszenia', text: `${reports.length} zapisanych zgłoszeń`, icon: 'ClipboardText' as const },
+    { url: '/pomysly', title: 'Twoje pomysły', text: `${ideas.length} zapisanych pomysłów`, icon: 'Lightbulb' as const },
+    { url: '/poparcie', title: 'Twoje poparcie', text: 'Sprawdź zapisane głosy i możliwość cofnięcia', icon: 'Heart' as const },
+    { url: '/pilotaze', title: 'Twój udział', text: `${pilots.length} pilotaży z zapisanym udziałem`, icon: 'Plant' as const },
+    { url: adaptations[0] ? `/adaptacje/${adaptations[0].id}` : '/adaptacje/nowa', title: 'Twoje adaptacje', text: `${adaptations.length} zapisanych szkiców adaptacji`, icon: 'Books' as const },
+  ]
   return (
     <>
       <Heading
         title="Twoje małe kroki. Wspólna sprawa."
-        description="Zgłoszenia, szkice i udział zebrane w jednym miejscu. Konto Marta jest syntetyczne."
+        description="Zgłoszenia, szkice i udział zebrane w jednym miejscu. Dane są pobierane z Twojej sesji."
       />
       <div className="profile-summary">
-        <span className="avatar large">MK</span>
+        <span className="avatar large">{session?.user_name.slice(0, 2).toUpperCase() || 'MB'}</span>
         <div>
-          <h2>Marta demo</h2>
-          <p>Wieliczka · użytkownik · konto przykładowe</p>
+          <h2>{session?.user_name || 'Użytkownik'}</h2>
+          <p>Aktywności zapisane na koncie</p>
         </div>
         <ButtonLink to="/logowanie" secondary>
           Zmień profil
         </ButtonLink>
       </div>
-      <div className="activity-links">
-        {[
-          [
-            '/zgloszenia',
-            'Twoje zgłoszenia',
-            'Codzienne aktywności dla osób z demencją',
-            'ClipboardText',
-          ],
-          ['/pomysly', 'Twoje pomysły', 'Sąsiedzki stół · szkic prywatny', 'Lightbulb'],
-          [
-            '/poparcie',
-            'Twoje poparcie',
-            'Wybierz propozycję i sprawdź możliwość cofnięcia',
-            'Heart',
-          ],
-          [
-            '/pilotaze/1/udzial?stan=kolejka',
-            'Twój udział',
-            'Pamięć w dobrych rękach · lista oczekujących',
-            'Plant',
-          ],
-          ['/adaptacje/1', 'Twoje adaptacje', 'BaWita · robocze warunki placówki', 'Books'],
-        ].map(([url, title, text, icon]) => (
+      {loading ? <DemoStatus state="ladowanie" /> : <div className="activity-links">
+        {links.map(({ url, title, text, icon }) => (
           <Link key={url} href={url} className="activity-row">
             <span className="row-icon">
-              <Icon name={icon as 'Books'} size={28} />
+              <Icon name={icon} size={28} />
             </span>
             <div>
               <h2>{title}</h2>
@@ -2432,7 +2905,7 @@ function Activities() {
             <Icon name="ArrowRight" />
           </Link>
         ))}
-      </div>
+      </div>}
     </>
   )
 }

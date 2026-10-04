@@ -24,5 +24,18 @@ class Settings(BaseSettings):
     # AI thresholds
     GROUPING_CONFIDENCE_THRESHOLD: float = 0.75
     MIN_MATCH_SCORE: float = 0.50
+    AI_PROVIDER: str = "fake"  # fake for tests; ollama on hackyeah
+    OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
+    OLLAMA_CHAT_MODEL: str = "hubmi-synthetic"
+    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
+    OLLAMA_INNOVATIONS_INDEX: str = "../data/embeddings/innovations.jsonl"
+
+    # Optional deployment-only account for testing administrator workflows.  Credentials are
+    # supplied as environment variables on the server and never committed to the repository.
+    TEST_ADMIN_EMAIL: str = ""
+    TEST_ADMIN_PASSWORD: str = ""
+    TEST_ADMIN_NAME: str = "Administrator"
+    TEST_ADMIN_SURNAME: str = "Testowy"
+    ALLOW_DEMO_ADMIN_LOGIN: bool = False
 
 settings = Settings()

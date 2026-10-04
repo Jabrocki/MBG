@@ -132,6 +132,7 @@ class VoteService:
                     badge=badge,
                     support_count=support_count,
                     my_vote=my_vote_rec.vote_type if my_vote_rec else None,
+                    my_vote_id=my_vote_rec.id if my_vote_rec else None,
                 )
             )
 

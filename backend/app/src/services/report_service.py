@@ -15,6 +15,8 @@ from src.schemas.matchmaking import (
     ProblemCandidateResponse,
 )
 from src.adapters.ai_gateway import get_ai_gateway
+from src.adapters.vector_repository import VectorRepositoryAdapter
+from src.services.geo_location_service import EntityGeoLocationService
 
 SIMULATED_URGENT_GUIDANCE = (
     "UWAGA: Zgłoszenie zostało sklasyfikowane jako potencjalnie pilne lub zagrażające bezpieczeństwu. "
@@ -27,6 +29,8 @@ class ReportService:
     def __init__(self, db: Session):
         self.db = db
         self.ai = get_ai_gateway()
+        self.vector_repo = VectorRepositoryAdapter(db)
+        self.geo_locations = EntityGeoLocationService(db)
 
     def validate_malopolska_location(self, lat: float, lon: float) -> None:
         """Enforces geographic scope: Only problems within Małopolska are accepted."""
@@ -74,6 +78,19 @@ class ReportService:
         self.db.add(report)
         self.db.commit()
         self.db.refresh(report)
+        # Keep the map projection separate from the raw report table, while retaining
+        # its exact WGS84 point for the author/admin projection.
+        self.geo_locations.persist_report(report)
+        self.db.commit()
+
+        # Keep the raw report separate from canonical problems: it is embedded first and only
+        # becomes a public aggregate after the reporter explicitly confirms grouping.
+        hyde_result = self.ai.generate_hyde_and_embedding(data.text, classification.categories)
+        self.vector_repo.upsert_vector_record(
+            entity_type="report",
+            entity_id=report.id,
+            embedding=hyde_result.embedding,
+        )
 
         # 4. Find problem candidates (semantic grouping suggestion)
         candidates = self.ai.find_problem_candidates(
@@ -109,6 +126,21 @@ class ReportService:
         self.db.commit()
         self.db.refresh(report)
         return self.project_report(report, viewer=user)
+
+    def get_report(self, report_id: int, user: User) -> ReportResponse:
+        report = self.db.get(Report, report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="Zgłoszenie nie zostało odnalezione")
+        if report.author_id != user.id and user.role != "admin":
+            raise HTTPException(status_code=403, detail="Brak uprawnień do tego zgłoszenia")
+        return self.project_report(report, viewer=user)
+
+    def list_reports(self, user: User) -> List[ReportResponse]:
+        statement = select(Report).order_by(Report.created_at.desc())
+        if user.role != "admin":
+            statement = statement.where(Report.author_id == user.id)
+        reports = self.db.execute(statement).scalars().all()
+        return [self.project_report(report, viewer=user) for report in reports]
 
     def project_report(self, report: Report, viewer: User) -> ReportResponse:
         """Projects report data enforcing anonymity rules:

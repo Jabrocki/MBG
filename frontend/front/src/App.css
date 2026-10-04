@@ -1133,6 +1133,27 @@ small,
   color: var(--muted);
   max-width: 70ch;
 }
+.innovation-description {
+  overflow-wrap: anywhere;
+}
+.innovation-document {
+  display: grid;
+  gap: 24px;
+  max-width: 76ch;
+}
+.innovation-document section + section {
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+.innovation-document h2 {
+  font-size: 21px;
+  margin: 0 0 8px;
+}
+.innovation-document p {
+  color: var(--muted);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .innovation-letter {
   display: flex;
   align-items: center;

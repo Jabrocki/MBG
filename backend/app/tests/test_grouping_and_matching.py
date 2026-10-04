@@ -21,6 +21,17 @@ def test_confirm_grouping_creates_canonical_problem(user_client):
     assert "HyDE" in problem["generated_description"] or len(problem["generated_description"]) > 10
     problem_id = problem["id"]
 
+    # Raw reports are embedded before user confirmation; this vector is separate from the
+    # canonical problem vector created after grouping.
+    from src.adapters.vector_repository import VectorRepositoryAdapter
+    from src.models.geo_location import EntityGeoLocation
+    from conftest import TestingSessionLocal
+    with TestingSessionLocal() as db:
+        assert VectorRepositoryAdapter(db).get_vector_record("report", report_id) is not None
+        report_location = db.query(EntityGeoLocation).filter_by(entity_type="report", entity_id=report_id).one()
+        assert (report_location.latitude, report_location.longitude) == (49.9871, 20.0647)
+        assert db.query(EntityGeoLocation).filter_by(entity_type="problem", entity_id=problem_id).one().precision == "aggregate"
+
     # 3. Drugie zgłoszenie tego samego użytkownika na ten sam problem
     resp2 = user_client.post("/api/v1/reports", json={
         "text": "Dodatkowy komentarz do braku zajęć dla dzieci w Wieliczce.",
@@ -53,6 +64,11 @@ def test_matchmaking_returns_innovations_and_3d_coordinates(user_client):
     report_id = resp.json()["report"]["id"]
     p_resp = user_client.post(f"/api/v1/reports/{report_id}/confirm-grouping", json={"create_new": True})
     problem_id = p_resp.json()["id"]
+
+    detail_resp = user_client.get(f"/api/v1/problems/{problem_id}")
+    assert detail_resp.status_code == 200
+    assert detail_resp.json()["id"] == problem_id
+    assert detail_resp.json()["reporter_count"] == 1
 
     # Pobierz dopasowane innowacje
     matches_resp = user_client.get(f"/api/v1/problems/{problem_id}/matches")

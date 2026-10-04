@@ -24,6 +24,15 @@ def get_nearby_problems(
     service = CatalogueService(db)
     return service.get_nearby_problems(lat=lat, lon=lon, radius_km=radius_km)
 
+
+@router.get("/{problem_id}", response_model=CanonicalProblemResponse, summary="Szczegóły problemu kanonicznego")
+def get_problem(
+    problem_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return CatalogueService(db).get_problem(problem_id)
+
 @router.get("/{problem_id}/matches", response_model=MatchListResponse, summary="Dopasowane innowacje społeczne (do 10 wyników)")
 def get_problem_matches(
     problem_id: int,

@@ -34,6 +34,7 @@ def test_vote_lifecycle_and_uniqueness(user_client):
     voted_card = next(c for c in cards_after if c["solution_id"] == target_solution_id)
     assert voted_card["support_count"] >= 1
     assert voted_card["my_vote"] == "support"
+    assert voted_card["my_vote_id"] == vote_id
 
     # 3. Zmiana głosu na "skip" przez tego samego użytkownika (nie tworzy duplikatu w bazie)
     update_vote_resp = user_client.post("/api/v1/votes", json={
@@ -54,3 +55,4 @@ def test_vote_lifecycle_and_uniqueness(user_client):
     cards_final = user_client.get(f"/api/v1/votes/cards?problem_id={problem_id}").json()
     voted_card_final = next(c for c in cards_final if c["solution_id"] == target_solution_id)
     assert voted_card_final["my_vote"] is None
+    assert voted_card_final["my_vote_id"] is None

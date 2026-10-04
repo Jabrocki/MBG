@@ -1,4 +1,4 @@
-from src.models.user import User, DemoSession
+from src.models.user import User, DemoSession, LocalCredential
 from src.models.source import SourceKnowledge, Solution, ProblemVectorRecord
 from src.models.report import Report
 from src.models.problem import CanonicalProblem, ReportProblemLink
@@ -8,10 +8,12 @@ from src.models.vote import Vote
 from src.models.pilot import Pilot, Volunteer, SatisfactionFeedback
 from src.models.discussion import DiscussionThread, ThreadMessage, Notification
 from src.models.adaptation import InstitutionAdaptation
+from src.models.geo_location import EntityGeoLocation
 
 __all__ = [
     "User",
     "DemoSession",
+    "LocalCredential",
     "SourceKnowledge",
     "Solution",
     "ProblemVectorRecord",
@@ -29,4 +31,5 @@ __all__ = [
     "ThreadMessage",
     "Notification",
     "InstitutionAdaptation",
+    "EntityGeoLocation",
 ]

@@ -90,3 +90,32 @@ Weryfikacja lokalnych embeddingów i ich wymiarów:
 ```bash
 ../scrap/.venv/bin/python ../scrap/load_embeddings_postgres.py --dry-run
 ```
+
+## 7. Trwałe lokalizacje geograficzne
+
+Tabela `entity_geo_locations` jest zgodną wstecz projekcją WGS84 dla raportów,
+problemów kanonicznych, innowacji oraz pilotaży. Nie zmienia istniejących tabel.
+Raporty i problemy kopiują zwalidowane współrzędne, a dla innowacji i pilotaży punkt
+powstaje wyłącznie po rozpoznaniu konkretnej miejscowości Małopolski w zapisanym
+źródle lub opisie. Brak rozpoznanej miejscowości oznacza brak punktu — aplikacja nie
+umieszcza takich rekordów w środku województwa.
+
+Na wdrożeniu zarządzanym migracjami wykonaj przed uruchomieniem aplikacji:
+
+```bash
+alembic upgrade head
+python -m src.scripts.backfill_geo_locations
+```
+
+Na istniejącym wdrożeniu uruchamianym przez `Base.metadata.create_all` wystarczy
+bezpieczna, idempotentna komenda (utworzy tylko nową tabelę, a następnie wykona
+backfill):
+
+```bash
+PYTHONPATH=/root/hubmi/backend/app \
+DATABASE_URL=sqlite:////root/hubmi/hubmi.db \
+/venv/main/bin/python -m src.scripts.backfill_geo_locations
+```
+
+Backfill uruchamia się również przy starcie API. Wynik komendy podaje liczbę rekordów
+`created`, `updated`, `unchanged` i `skipped` dla każdego typu encji.

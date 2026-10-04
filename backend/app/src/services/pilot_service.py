@@ -8,6 +8,7 @@ from sqlalchemy import select, func, and_
 from src.models.user import User
 from src.models.pilot import Pilot, Volunteer, SatisfactionFeedback
 from src.models.discussion import Notification
+from src.services.geo_location_service import EntityGeoLocationService
 from src.schemas.modules import (
     PilotCreateRequest,
     PilotTransitionRequest,
@@ -20,6 +21,7 @@ from src.schemas.modules import (
 class PilotService:
     def __init__(self, db: Session):
         self.db = db
+        self.geo_locations = EntityGeoLocationService(db)
 
     def create_pilot(self, data: PilotCreateRequest, admin: User) -> PilotResponse:
         if admin.role != "admin":
@@ -40,7 +42,45 @@ class PilotService:
         self.db.add(pilot)
         self.db.commit()
         self.db.refresh(pilot)
+        self.geo_locations.persist_pilot(pilot)
+        self.db.commit()
         return self._project_pilot(pilot)
+
+    def list_pilots(self, viewer: User) -> List[PilotResponse]:
+        pilots = self.db.execute(
+            select(Pilot).order_by(Pilot.created_at.desc())
+        ).scalars().all()
+        return [self._project_pilot(pilot, viewer) for pilot in pilots]
+
+    def get_pilot(self, pilot_id: int, viewer: User) -> PilotResponse:
+        pilot = self.db.get(Pilot, pilot_id)
+        if not pilot:
+            raise HTTPException(status_code=404, detail="Pilot nie został odnaleziony")
+        return self._project_pilot(pilot, viewer)
+
+    def get_my_volunteer_registration(self, pilot_id: int, user: User) -> VolunteerResponse:
+        if not self.db.get(Pilot, pilot_id):
+            raise HTTPException(status_code=404, detail="Pilot nie został odnaleziony")
+        volunteer = self.db.execute(
+            select(Volunteer).where(
+                and_(Volunteer.pilot_id == pilot_id, Volunteer.user_id == user.id)
+            )
+        ).scalar_one_or_none()
+        if not volunteer:
+            raise HTTPException(status_code=404, detail="Nie znaleziono Twojego zgłoszenia do pilotażu")
+        return self._project_volunteer(volunteer)
+
+    def list_volunteers(self, pilot_id: int, admin: User) -> List[VolunteerResponse]:
+        if admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Tylko administrator może przeglądać listę wolontariuszy")
+        if not self.db.get(Pilot, pilot_id):
+            raise HTTPException(status_code=404, detail="Pilot nie został odnaleziony")
+        volunteers = self.db.execute(
+            select(Volunteer)
+            .where(Volunteer.pilot_id == pilot_id)
+            .order_by(Volunteer.position.asc(), Volunteer.created_at.asc())
+        ).scalars().all()
+        return [self._project_volunteer(volunteer) for volunteer in volunteers]
 
     def transition_status(self, pilot_id: int, data: PilotTransitionRequest, admin: User) -> PilotResponse:
         """Transitions pilot lifecycle. Enforces preconditions for 'pilot' start."""
@@ -220,6 +260,10 @@ class PilotService:
         if admin.role != "admin":
             raise HTTPException(status_code=403, detail="Tylko administrator może ręcznie promować wolontariusza")
 
+        pilot = self.db.get(Pilot, pilot_id)
+        if not pilot:
+            raise HTTPException(status_code=404, detail="Pilot nie został odnaleziony")
+
         vol = self.db.execute(
             select(Volunteer).where(
                 and_(Volunteer.pilot_id == pilot_id, Volunteer.user_id == target_user_id)
@@ -228,6 +272,19 @@ class PilotService:
 
         if not vol:
             raise HTTPException(status_code=404, detail="Wolontariusz nie został odnaleziony")
+        if vol.status != "waiting":
+            raise HTTPException(status_code=409, detail="Ofertę można przekazać wyłącznie osobie z listy oczekujących")
+
+        active_count = self.db.execute(
+            select(func.count(Volunteer.id)).where(
+                and_(
+                    Volunteer.pilot_id == pilot_id,
+                    Volunteer.status.in_(["accepted", "offered", "registered"]),
+                )
+            )
+        ).scalar() or 0
+        if active_count >= pilot.max_volunteers:
+            raise HTTPException(status_code=409, detail="Brak wolnego miejsca w pilotażu")
 
         vol.status = "offered"
         vol.offered_at = utc_now()
@@ -300,7 +357,7 @@ class PilotService:
             self.db.add(notif)
             self.db.commit()
 
-    def _project_pilot(self, pilot: Pilot) -> PilotResponse:
+    def _project_pilot(self, pilot: Pilot, viewer: Optional[User] = None) -> PilotResponse:
         registered = self.db.execute(
             select(func.count(Volunteer.id)).where(
                 and_(Volunteer.pilot_id == pilot.id, Volunteer.status.in_(["accepted", "registered"]))
@@ -313,8 +370,18 @@ class PilotService:
             )
         ).scalar() or 0
 
+        my_volunteer = None
+        if viewer:
+            my_volunteer = self.db.execute(
+                select(Volunteer).where(
+                    and_(Volunteer.pilot_id == pilot.id, Volunteer.user_id == viewer.id)
+                )
+            ).scalar_one_or_none()
+
         return PilotResponse(
             id=pilot.id,
+            solution_id=pilot.solution_id,
+            idea_id=pilot.idea_id,
             title=pilot.title,
             description=pilot.description,
             status=pilot.status,
@@ -326,6 +393,8 @@ class PilotService:
             max_volunteers=pilot.max_volunteers,
             registered_volunteers_count=registered,
             waiting_list_count=waiting,
+            my_volunteer_status=my_volunteer.status if my_volunteer else None,
+            my_volunteer_position=my_volunteer.position if my_volunteer else None,
             created_at=pilot.created_at,
         )
 

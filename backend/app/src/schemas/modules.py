@@ -74,6 +74,9 @@ class SwipeCardResponse(BaseModel):
     badge: str  # "proposed_idea" | "being_tested" | "established_innovation"
     support_count: int
     my_vote: Optional[str] = None
+    # The persisted vote ID is needed for an undo action after a page refresh.
+    # It is only ever the current authenticated user's own vote.
+    my_vote_id: Optional[int] = None
 
 # Pilot schemas
 class PilotCreateRequest(BaseModel):
@@ -98,6 +101,8 @@ class PromoteVolunteerRequest(BaseModel):
 
 class PilotResponse(BaseModel):
     id: int
+    solution_id: Optional[int] = None
+    idea_id: Optional[int] = None
     title: str
     description: str
     status: str
@@ -109,6 +114,11 @@ class PilotResponse(BaseModel):
     max_volunteers: int
     registered_volunteers_count: int
     waiting_list_count: int
+    # Present on list/detail reads for the current session only.  It lets a refreshed
+    # client render the registration, waiting-list, or offer state without retaining it
+    # in browser storage.
+    my_volunteer_status: Optional[str] = None
+    my_volunteer_position: Optional[int] = None
     created_at: datetime
 
 class VolunteerResponse(BaseModel):
@@ -152,6 +162,41 @@ class SplitProblemRequest(BaseModel):
 class MergeSolutionsRequest(BaseModel):
     target_solution_id: int
     duplicate_solution_ids: List[int] = Field(..., min_length=1)
+
+
+class AdminReportStatusRequest(BaseModel):
+    status: str = Field(..., pattern="^(submitted|confirmed|rejected)$")
+
+
+class AdminCatalogueCreateRequest(BaseModel):
+    title: str = Field(..., min_length=3, max_length=300)
+    description: str = Field(..., min_length=3)
+    category: str = Field(..., min_length=1, max_length=100)
+    source_url: str = Field(..., min_length=3, max_length=500)
+    target_audience: str = Field("", max_length=200)
+    cost_estimate: str = Field("", max_length=100)
+    limitations: str = ""
+
+
+class AdminCatalogueUpdateRequest(BaseModel):
+    title: Optional[str] = Field(None, min_length=3, max_length=300)
+    description: Optional[str] = Field(None, min_length=3)
+    category: Optional[str] = Field(None, min_length=1, max_length=100)
+    source_url: Optional[str] = Field(None, min_length=3, max_length=500)
+    target_audience: Optional[str] = Field(None, max_length=200)
+    cost_estimate: Optional[str] = Field(None, max_length=100)
+    limitations: Optional[str] = None
+
+
+class AdminDashboardCountsResponse(BaseModel):
+    """Counts calculated from persisted data for the administrator overview."""
+
+    reports_total: int
+    reports_waiting_grouping: int
+    ideas_total: int
+    ideas_waiting_admin: int
+    pilots_total: int
+    pilots_waiting_start: int
 
 # Discussion & Notification schemas
 class ThreadMessageCreateRequest(BaseModel):
@@ -199,4 +244,6 @@ class InstitutionAdaptationResponse(BaseModel):
     budget: str
     constraints: str
     draft_adaptation: Optional[str] = None
+    solution_title: Optional[str] = None
+    source_url: Optional[str] = None
     created_at: datetime

@@ -2,7 +2,19 @@ import { useState } from 'react'
 import { screens } from '../routes'
 import { Badge, ButtonLink, Heading, Icon, Link, Logo, Notice } from '../ui'
 
-export function Login() {
+export function Login({
+  onPasswordLogin,
+  onRegister,
+}: {
+  onPasswordLogin: (email: string, password: string, destination: string) => Promise<void>
+  onRegister: (data: {
+    name: string
+    surname: string
+    email: string
+    password: string
+    is_anonymous_by_default: boolean
+  }, destination: string) => Promise<void>
+}) {
   const target = new URLSearchParams(window.location.search).get('cel') ?? ''
   const destination =
     (
@@ -11,6 +23,41 @@ export function Login() {
         string
       >
     )[target] ?? '/start'
+  const [error, setError] = useState('')
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [loading, setLoading] = useState(false)
+  const [name, setName] = useState('')
+  const [surname, setSurname] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [anonymous, setAnonymous] = useState(true)
+  async function login(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await onPasswordLogin(email, password, destination)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się zalogować.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  async function register(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await onRegister(
+        { name, surname, email, password, is_anonymous_by_default: anonymous },
+        destination,
+      )
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się utworzyć konta.')
+    } finally {
+      setLoading(false)
+    }
+  }
   return (
     <div className="login-layout">
       <section className="login-art">
@@ -28,36 +75,70 @@ export function Login() {
       </section>
       <section className="login-content">
         <Heading
-          title="Poznaj MBG od środka."
-          description="Wybierz profil i przejdź do interesującej Cię części MBG."
+          title={mode === 'login' ? 'Zaloguj się do MBG.' : 'Załóż konto w MBG.'}
+          description={
+            mode === 'login'
+              ? 'Użyj konta utworzonego w MBG.'
+              : 'Nowe konto otrzymuje rolę użytkownika. Uprawnienia administratora nadaje serwer.'
+          }
         />
-        <Notice title="Profile przykładowe">
-          Wybrane konto otworzy widok użytkownika lub administratora. Pełne logowanie wymaga
-          podłączenia usługi uwierzytelniania.
-        </Notice>
-        <Link href={destination} className="account-choice">
-          <span className="choice-icon">
-            <Icon name="UserCircle" size={32} />
-          </span>
-          <div>
-            <h3>Marta · użytkownik</h3>
-            <p>Zgłoszenia, innowacje, pomysły i udział.</p>
-          </div>
-          <Icon name="ArrowRight" />
-        </Link>
-        <Link href="/admin" className="account-choice">
-          <span className="choice-icon blue">
-            <Icon name="ShieldCheck" size={32} />
-          </span>
-          <div>
-            <h3>Administrator</h3>
-            <p>Moderacja, decyzje i prowadzenie pilotaży.</p>
-          </div>
-          <Icon name="ArrowRight" />
-        </Link>
+        <div className="auth-tabs" role="tablist" aria-label="Dostęp do konta">
+          <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => setMode('login')}>
+            Logowanie
+          </button>
+          <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => setMode('register')}>
+            Rejestracja
+          </button>
+        </div>
+        {error && <Notice tone="error">{error}</Notice>}
+        {mode === 'login' ? (
+          <form className="auth-form" onSubmit={(event) => void login(event)}>
+            <label>
+              E-mail
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+            </label>
+            <label>
+              Hasło
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
+            </label>
+            <button className="button" type="submit" disabled={loading}>
+              {loading ? 'Logowanie…' : 'Zaloguj się'}
+              <Icon name="ArrowRight" size={17} />
+            </button>
+          </form>
+        ) : (
+          <form className="auth-form" onSubmit={(event) => void register(event)}>
+            <div className="auth-form-grid">
+              <label>
+                Imię
+                <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="given-name" required />
+              </label>
+              <label>
+                Nazwisko
+                <input value={surname} onChange={(event) => setSurname(event.target.value)} autoComplete="family-name" />
+              </label>
+            </div>
+            <label>
+              E-mail
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+            </label>
+            <label>
+              Hasło
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={10} required />
+              <small>Co najmniej 10 znaków, w tym litera i cyfra.</small>
+            </label>
+            <label className="auth-checkbox">
+              <input type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} />
+              <span>Ukrywaj moje imię przy zgłoszeniach przed innymi użytkownikami.</span>
+            </label>
+            <button className="button" type="submit" disabled={loading}>
+              {loading ? 'Tworzenie konta…' : 'Załóż konto'}
+              <Icon name="ArrowRight" size={17} />
+            </button>
+          </form>
+        )}
         <small>
-          Dane i decyzje służą wyłącznie prezentacji. Funkcje docelowej aplikacji wymagają
-          autoryzacji na backendzie.
+          Administrator testowy loguje się tym samym formularzem. Dane syntetyczne są wyraźnie oznaczone w katalogu i widokach aplikacji.
         </small>
       </section>
     </div>

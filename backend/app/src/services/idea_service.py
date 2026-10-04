@@ -14,11 +14,16 @@ from src.schemas.modules import (
     AIJobStatusResponse,
 )
 from src.adapters.ai_gateway import get_ai_gateway
+from src.adapters.vector_repository import VectorRepositoryAdapter
+from src.models.source import SourceKnowledge, Solution
+from src.services.geo_location_service import EntityGeoLocationService
 
 class IdeaService:
     def __init__(self, db: Session):
         self.db = db
         self.ai = get_ai_gateway()
+        self.vector_repo = VectorRepositoryAdapter(db)
+        self.geo_locations = EntityGeoLocationService(db)
 
     def create_draft(self, data: IdeaCreateRequest, user: User) -> IdeaResponse:
         idea = Idea(
@@ -136,6 +141,11 @@ class IdeaService:
         idea.status = "pending_admin"
         self.db.commit()
         self.db.refresh(idea)
+        embedding = self.ai.generate_hyde_and_embedding(
+            idea.text_refined or idea.text_raw,
+            ["Pomysł użytkownika"],
+        ).embedding
+        self.vector_repo.upsert_vector_record("idea", idea.id, embedding)
         return self._project_idea(idea, user)
 
     def admin_approve(self, idea_id: int, admin_user: User) -> IdeaResponse:
@@ -152,8 +162,32 @@ class IdeaService:
             )
 
         idea.status = "public"
+        source = SourceKnowledge(
+            source_url=f"user-idea://{idea.id}",
+            title=idea.text_refined or idea.text_raw[:120],
+            content_summary=idea.solution or idea.text_refined or idea.text_raw,
+            category="Pomysł użytkownika",
+            provenance_metadata={"idea_id": idea.id, "status": "approved"},
+        )
+        self.db.add(source)
+        self.db.flush()
+        solution = Solution(
+            source_knowledge_id=source.id,
+            title=idea.text_refined or idea.text_raw[:120],
+            description=idea.solution or idea.text_refined or idea.text_raw,
+            target_audience=idea.beneficiaries or "Do określenia",
+            cost_estimate=idea.costs or "Nie zadeklarowano",
+            limitations="Pomysł użytkownika wymaga lokalnej weryfikacji i decyzji o pilotażu.",
+        )
+        self.db.add(solution)
         self.db.commit()
         self.db.refresh(idea)
+        self.db.refresh(solution)
+        self.geo_locations.persist_innovation(solution)
+        self.db.commit()
+        idea_vector = self.vector_repo.get_vector_record("idea", idea.id)
+        if idea_vector:
+            self.vector_repo.upsert_vector_record("solution", solution.id, idea_vector.embedding)
         return self._project_idea(idea, admin_user)
 
     def get_public_ideas(self) -> List[IdeaResponse]:
@@ -180,6 +214,32 @@ class IdeaService:
             )
             for i in ideas
         ]
+
+    def get_idea(self, idea_id: int, viewer: User) -> IdeaResponse:
+        """Read one idea without exposing a private draft to another account."""
+        idea = self.db.get(Idea, idea_id)
+        if not idea:
+            raise HTTPException(status_code=404, detail="Pomysł nie został odnaleziony")
+        if idea.status != "public" and idea.author_id != viewer.id and viewer.role != "admin":
+            # A private draft should not reveal its existence, title, or lifecycle to another user.
+            raise HTTPException(status_code=404, detail="Pomysł nie został odnaleziony")
+        return self._project_idea(idea, viewer)
+
+    def list_my_ideas(self, viewer: User) -> List[IdeaResponse]:
+        ideas = self.db.execute(
+            select(Idea)
+            .where(Idea.author_id == viewer.id)
+            .order_by(Idea.created_at.desc())
+        ).scalars().all()
+        return [self._project_idea(idea, viewer) for idea in ideas]
+
+    def list_admin_ideas(self, admin: User) -> List[IdeaResponse]:
+        if admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Wymagane uprawnienia administratora")
+        ideas = self.db.execute(
+            select(Idea).order_by(Idea.created_at.desc())
+        ).scalars().all()
+        return [self._project_idea(idea, admin) for idea in ideas]
 
     def _project_idea(self, idea: Idea, viewer: User) -> IdeaResponse:
         show_author = (viewer.role == "admin") or (idea.author_id == viewer.id)

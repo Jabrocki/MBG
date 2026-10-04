@@ -9,11 +9,29 @@ from src.schemas.matchmaking import (
     ReportSubmissionResult,
     ConfirmGroupingRequest,
     CanonicalProblemResponse,
+    ReportListResponse,
 )
 from src.services.report_service import ReportService
 from src.services.grouping_service import GroupingService
 
 router = APIRouter(prefix="/reports", tags=["Zgłoszenia problemów"])
+
+@router.get("", response_model=ReportListResponse, summary="Lista własnych zgłoszeń; administrator widzi wszystkie")
+def list_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = ReportService(db)
+    return {"reports": service.list_reports(current_user)}
+
+@router.get("/{report_id}", response_model=ReportResponse, summary="Szczegóły własnego zgłoszenia")
+def get_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = ReportService(db)
+    return service.get_report(report_id, current_user)
 
 @router.post("", response_model=ReportSubmissionResult, summary="Zgłoszenie problemu społecznego")
 def submit_report(

@@ -46,6 +46,12 @@ def test_idea_lifecycle_and_publication_gates(user_client, admin_client):
     assert admin_approve_resp.status_code == 200
     assert admin_approve_resp.json()["status"] == "public"
 
+    # Approval turns the user idea into an indexable solution; drafts never enter the catalogue.
+    from src.models.source import Solution
+    from conftest import TestingSessionLocal
+    with TestingSessionLocal() as db:
+        assert db.query(Solution).filter(Solution.source_knowledge.has(source_url=f"user-idea://{idea_id}")).count() == 1
+
     # Teraz pomysł jest w publicznej liście
     pub_resp = user_client.get("/api/v1/ideas/public")
     assert any(i["id"] == idea_id for i in pub_resp.json())

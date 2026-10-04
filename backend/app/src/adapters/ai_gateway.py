@@ -10,6 +10,7 @@ from src.adapters.ai_interface import (
     RefinedIdeaResult,
 )
 from src.adapters.fake_ai_gateway import FakeAIGateway
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,16 @@ class AIGatewayAdapter:
 
     def __init__(self, fallback_to_fake: bool = True):
         self._gateway: AIGatewayProtocol
+        if settings.AI_PROVIDER.lower() == "ollama":
+            from src.adapters.ollama_rag_gateway import OllamaRagGateway
+            self._gateway = OllamaRagGateway(
+                settings.OLLAMA_BASE_URL,
+                settings.OLLAMA_CHAT_MODEL,
+                settings.OLLAMA_EMBEDDING_MODEL,
+                settings.OLLAMA_INNOVATIONS_INDEX,
+            )
+            logger.info("Loaded Ollama RAG gateway")
+            return
         try:
             # Attempt importing the package provided by Person 3 in backend/ai
             import importlib

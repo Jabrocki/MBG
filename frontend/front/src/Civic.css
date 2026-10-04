@@ -262,6 +262,144 @@ html .landing-prototype-banner {
 .login-art {
   background: #fff;
 }
+
+/* Interactive geographic map. The points use WGS84 data returned by the API. */
+.leaflet-map {
+  min-height: 360px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  z-index: 0;
+}
+.geographic-picker,
+.geographic-map {
+  margin: 16px 0;
+}
+.geographic-picker-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.geographic-picker-actions p,
+.map-disclaimer {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+.mbg-leaflet-pin {
+  display: grid;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 7px #0c294166;
+  color: #fff;
+  font: 700 12px/1 var(--body);
+}
+.mbg-leaflet-pin--selected,
+.mbg-leaflet-pin--report {
+  background: #00834a;
+}
+.mbg-leaflet-pin--problem {
+  background: #1e40af;
+}
+.mbg-leaflet-pin--innovation {
+  background: #a8492f;
+}
+.map-legend {
+  display: flex;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+  margin: 12px 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.map-legend b {
+  display: inline-grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  color: #fff;
+  border-radius: 50%;
+  background: #1e40af;
+  margin-right: 4px;
+  font-size: 11px;
+}
+.map-legend span:nth-child(2) b {
+  background: #00834a;
+}
+.map-legend span:nth-child(3) b {
+  background: #a8492f;
+}
+.geographic-coordinate-inputs {
+  margin-top: 12px;
+}
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  gap: 4px;
+  margin: 22px 0;
+}
+.auth-tabs button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 12px 16px;
+  font: inherit;
+  border-bottom: 3px solid transparent;
+}
+.auth-tabs button[aria-selected='true'] {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--green);
+}
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+.auth-form label:not(.auth-checkbox) {
+  display: grid;
+  gap: 7px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.auth-form input:not([type='checkbox']) {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 9px 12px;
+  font: inherit;
+}
+.auth-form small {
+  font-weight: 400;
+  color: var(--muted);
+}
+.auth-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.auth-checkbox {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--muted);
+  font-size: 14px;
+}
+.auth-checkbox input {
+  margin-top: 4px;
+}
+@media (max-width: 600px) {
+  .leaflet-map {
+    min-height: 300px;
+  }
+  .auth-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
 @media (min-width: 761px) and (max-width: 1100px) {
   .landing-nav {
     padding: 16px 22px;

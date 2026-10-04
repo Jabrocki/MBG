@@ -13,6 +13,30 @@ from src.services.idea_service import IdeaService
 
 router = APIRouter(prefix="/ideas", tags=["Kreator pomysłów"])
 
+
+@router.get("/mine", response_model=List[IdeaResponse], summary="Prywatna lista pomysłów bieżącego użytkownika")
+def get_my_ideas(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return IdeaService(db).list_my_ideas(current_user)
+
+
+@router.get("/public", response_model=List[IdeaResponse], summary="Lista opublikowanych pomysłów poddanych dyskusji")
+def get_public_ideas(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return IdeaService(db).get_public_ideas()
+
+
+@router.get("/admin/list", response_model=List[IdeaResponse], summary="Pełna kolejka pomysłów dla administratora")
+def get_admin_ideas(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    return IdeaService(db).list_admin_ideas(admin_user)
+
 @router.post("", response_model=IdeaResponse, summary="Utworzenie wersji roboczej pomysłu")
 def create_idea_draft(
     data: IdeaCreateRequest,
@@ -50,10 +74,10 @@ def admin_approve_idea(
     service = IdeaService(db)
     return service.admin_approve(idea_id, admin_user)
 
-@router.get("/public", response_model=List[IdeaResponse], summary="Lista opublikowanych pomysłów poddanych dyskusji")
-def get_public_ideas(
+@router.get("/{idea_id}", response_model=IdeaResponse, summary="Szczegóły pomysłu autora, administratora albo pomysłu publicznego")
+def get_idea(
+    idea_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    service = IdeaService(db)
-    return service.get_public_ideas()
+    return IdeaService(db).get_idea(idea_id, current_user)

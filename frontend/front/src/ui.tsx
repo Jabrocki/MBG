@@ -293,9 +293,7 @@ export function DemoStatus({ state }: { state: string }) {
   if (state === 'blad')
     return (
       <Notice tone="error" title="Nie udało się wczytać danych.">
-        Pokazowy stan błędu wczytywania. Ten podgląd zastępuje formularz i nie potwierdza zachowania
-        jego niezapisanej treści. <Link href={window.location.pathname}>Spróbuj ponownie</Link>. To
-        pokazowy stan błędu.
+        Wystąpił błąd podczas pobierania danych. <Link href={window.location.pathname}>Spróbuj ponownie</Link>.
       </Notice>
     )
   if (state === 'ladowanie')
@@ -304,7 +302,7 @@ export function DemoStatus({ state }: { state: string }) {
         <span className="loader" />
         <strong>Przygotowujemy widok…</strong>
         <p>
-          Pokazowy stan ładowania. <Link href={window.location.pathname}>Pokaż gotowy widok</Link>
+          Dane są pobierane z serwera. <Link href={window.location.pathname}>Spróbuj ponownie</Link>
         </p>
       </div>
     )

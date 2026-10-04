@@ -22,7 +22,7 @@ def get_idea_thread(
     current_user: User = Depends(get_current_user),
 ):
     service = DiscussionService(db)
-    return service.get_or_create_thread_for_idea(idea_id)
+    return service.get_or_create_thread_for_idea(idea_id, current_user)
 
 @router.post("/threads/{thread_id}/messages", response_model=ThreadMessageResponse, summary="Wysłanie wiadomości w wątku dyskusyjnym")
 def post_thread_message(
@@ -60,3 +60,20 @@ def create_adaptation(
 ):
     service = DiscussionService(db)
     return service.create_adaptation_draft(data, current_user)
+
+
+@router.get("/adaptations/mine", response_model=List[InstitutionAdaptationResponse], summary="Własne szkice adaptacji; administrator widzi wszystkie")
+def list_adaptations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return DiscussionService(db).list_adaptations(current_user)
+
+
+@router.get("/adaptations/{adaptation_id}", response_model=InstitutionAdaptationResponse, summary="Szczegóły własnej adaptacji")
+def get_adaptation(
+    adaptation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return DiscussionService(db).get_adaptation(adaptation_id, current_user)

@@ -61,3 +61,22 @@ def test_report_anonymity_projection(user_client, admin_client):
     admin_resp = admin_client.patch(f"/api/v1/reports/{report_id}/categories", json={"categories": ["Dostępność", "Seniorzy"]})
     assert admin_resp.status_code == 200
     assert "Dostępność" in admin_resp.json()["categories"]
+
+def test_user_can_read_own_report_list_and_detail(user_client):
+    created = user_client.post("/api/v1/reports", json={
+        "text": "Mieszkańcy proszą o sąsiedzkie wsparcie dla samotnych seniorów w Wieliczce.",
+        "location_lat": 49.9871,
+        "location_lon": 20.0647,
+        "location_type": "map",
+        "location_name": "Wieliczka",
+    })
+    assert created.status_code == 200
+    report_id = created.json()["report"]["id"]
+
+    listed = user_client.get("/api/v1/reports")
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()["reports"]] == [report_id]
+
+    detail = user_client.get(f"/api/v1/reports/{report_id}")
+    assert detail.status_code == 200
+    assert detail.json()["location_name"] == "Wieliczka"

@@ -1,11 +1,16 @@
-import { useState } from 'react'
-import { illustrations, innovations, needs } from '../data'
+import { useEffect, useState } from 'react'
+import { illustrations } from '../data'
+import { api, type PublicStats } from '../api'
 import { ButtonLink, Icon, Link, Logo } from '../ui'
 import AnimatedContent from '../components/react-bits/AnimatedContent'
 import CountUp from '../components/react-bits/CountUp'
 
 export default function Landing() {
   const [menu, setMenu] = useState(false)
+  const [stats, setStats] = useState<PublicStats | null>(null)
+  useEffect(() => {
+    api.getPublicStats().then(setStats).catch(() => undefined)
+  }, [])
   return (
     <div className="landing">
       <header className="landing-nav">
@@ -86,12 +91,12 @@ export default function Landing() {
           </div>
         </AnimatedContent>
         <AnimatedContent distance={18} delay={0.35} duration={0.7} className="hero-stats-wrap">
-          <div className="hero-stats" aria-label="Zawartość wersji demonstracyjnej">
+          <div className="hero-stats" aria-label="Statystyki zapisane w bazie">
             {[
-              [innovations.length, 'innowacje w bibliotece', 'Books'],
-              [needs.length, 'przykładowe potrzeby', 'MapPin'],
-              [2, 'konta demonstracyjne', 'Users'],
-              [1, 'przykładowy pilotaż', 'Plant'],
+              [stats?.innovations ?? 0, 'innowacje w bibliotece', 'Books'],
+              [stats?.problems ?? 0, 'potrzeby w bazie', 'MapPin'],
+              [stats?.ideas ?? 0, 'pomysły społeczności', 'Lightbulb'],
+              [stats?.pilots ?? 0, 'pilotaże', 'Plant'],
             ].map(([count, label, icon]) => (
               <div key={String(label)}>
                 <span className="stat-icon">
@@ -107,7 +112,7 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <small className="hero-demo-label">Dane demonstracyjne · poznaj możliwości MBG</small>
+          <small className="hero-demo-label">Liczby aktualizują się na podstawie danych MBG</small>
         </AnimatedContent>
       </section>
       <section className="intro-section" id="inicjatywa">

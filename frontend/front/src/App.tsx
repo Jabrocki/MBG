@@ -9,6 +9,8 @@ import '@fontsource/ibm-plex-sans/latin-600.css'
 import { adminNav, primaryNav, screens } from './routes'
 import { Icon, Link, Logo, Heading, DemoStatus } from './ui'
 import { useRoute } from './navigation'
+import { api, clearSession, getStoredSession, saveSession, type Session } from './api'
+import { navigate } from './navigation'
 import { Login, Atlas, Brand } from './pages/Public'
 import { Citizen } from './pages/Citizen'
 import { Admin } from './pages/Admin'
@@ -22,7 +24,8 @@ export default function App() {
     params = new URLSearchParams(route.split('?')[1]),
     state = params.get('stan') ?? 'gotowy'
   const [toast, setToast] = useState(''),
-    [menuRoute, setMenuRoute] = useState<string | null>(null)
+    [menuRoute, setMenuRoute] = useState<string | null>(null),
+    [session, setSession] = useState<Session | null>(() => getStoredSession())
   const menu = menuRoute === path
   const admin = path.startsWith('/admin'),
     publicPage = ['/', '/logowanie', '/mockupy', '/marka'].includes(path)
@@ -35,7 +38,31 @@ export default function App() {
     const timeout = setTimeout(() => setToast(''), 4500)
     return () => clearTimeout(timeout)
   }, [toast])
+  useEffect(() => {
+    if (!publicPage && !session) navigate('/logowanie')
+    if (session?.role === 'user' && admin) navigate('/start')
+  }, [admin, publicPage, session])
   const notify = (message: string) => setToast(message)
+  function establishSession(nextSession: Session, destination: string) {
+    saveSession(nextSession)
+    setSession(nextSession)
+    navigate(nextSession.role === 'admin' ? '/admin' : destination)
+  }
+  async function loginWithPassword(email: string, password: string, destination: string) {
+    establishSession(await api.login(email, password), destination)
+  }
+  async function register(
+    data: { name: string; surname: string; email: string; password: string; is_anonymous_by_default: boolean },
+    destination: string,
+  ) {
+    establishSession(await api.register(data), destination)
+  }
+  function logout() {
+    void api.logout().catch(() => undefined)
+    clearSession()
+    setSession(null)
+    navigate('/logowanie')
+  }
   const navigation = admin ? adminNav : primaryNav
   let page
   if (path === '/')
@@ -50,7 +77,8 @@ export default function App() {
         <Landing />
       </Suspense>
     )
-  else if (path === '/logowanie') page = <Login />
+  else if (path === '/logowanie')
+    page = <Login onPasswordLogin={loginWithPassword} onRegister={register} />
   else if (path === '/mockupy') page = <Atlas />
   else if (path === '/marka') page = <Brand />
   else if (state === 'blad' || state === 'ladowanie')
@@ -79,8 +107,8 @@ export default function App() {
               <span className="notification-dot" />
             </Link>
             <Link href="/moje-aktywnosci" className="account-link">
-              <span className="avatar">{admin ? 'AD' : 'MK'}</span>
-              <span>{admin ? 'Administrator' : 'Użytkownik'}</span>
+              <span className="avatar">{admin ? 'AD' : session?.user_name.slice(0, 2).toUpperCase()}</span>
+              <span>{admin ? 'Administrator' : session?.user_name}</span>
             </Link>
             <button
               className="icon-button menu-trigger"
@@ -104,7 +132,7 @@ export default function App() {
           <Link href="/zgloszenia">Moje zgłoszenia</Link>
           <Link href="/poparcie">Poparcie</Link>
           <Link href="/pomoc">Pomoc</Link>
-          <Link href="/logowanie">Zmień profil</Link>
+          <Link href="/logowanie" onClick={logout}>Wyloguj się</Link>
         </nav>
       )}
       <div className={!publicPage ? 'app-layout' : ''}>
@@ -156,9 +184,9 @@ export default function App() {
                 <Icon name="Info" />
                 Jak możemy pomóc?
               </Link>
-              <Link href="/logowanie">
+              <Link href="/logowanie" onClick={logout}>
                 <Icon name="SignOut" />
-                Zmień profil
+                Wyloguj się
               </Link>
             </div>
             <img className="sidebar-art" src="/images/community.webp" alt="" />
