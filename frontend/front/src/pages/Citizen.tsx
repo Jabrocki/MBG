@@ -348,7 +348,7 @@ function Home() {
           </div>
           <TopicArt topic="memory" />
         </div>
-        <div className="return-task">
+        <div className="continue-task">
           <h2>Wróć do swojej sprawy</h2>
           <p>
             {latestConfirmed
@@ -395,8 +395,10 @@ function Home() {
             <span className="quick-icon">
               <Icon name={icon as 'Plus'} size={25} />
             </span>
-            <h2>{title}</h2>
-            <p>{text}</p>
+            <div>
+              <h2>{title}</h2>
+              <p>{text}</p>
+            </div>
             <Icon name="ArrowRight" />
           </Link>
         ))}
@@ -758,6 +760,7 @@ function ReportForm({ state }: { state: string }) {
               </div>
             )}
             <div className="form-actions">
+              {step > 1 && <Link href="/start">Zamknij i zachowaj szkic</Link>}
               {step > 1 ? (
                 <button
                   type="button"

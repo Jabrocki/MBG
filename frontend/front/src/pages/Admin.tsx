@@ -359,7 +359,7 @@ function ProblemsQueue() {
                 <th scope="col">Problem</th>
                 <th scope="col">Zgłaszający</th>
                 <th scope="col">Status</th>
-                <th />
+                <th scope="col">Działanie</th>
               </tr>
             </thead>
             <tbody>
@@ -372,7 +372,7 @@ function ProblemsQueue() {
                   <td data-label="Status">
                     <Badge tone={statusTone(problem.status)}>{problem.status}</Badge>
                   </td>
-                  <td data-label="Problem">
+                  <td data-label="Działanie">
                     <ButtonLink to={`/admin/potrzeby/${problem.id}`}>Otwórz</ButtonLink>
                   </td>
                 </tr>
@@ -572,7 +572,7 @@ function CatalogueQueue() {
                 <th scope="col">Nazwa</th>
                 <th scope="col">Kategoria</th>
                 <th scope="col">Źródło</th>
-                <th />
+                <th scope="col">Działanie</th>
               </tr>
             </thead>
             <tbody>
@@ -583,7 +583,7 @@ function CatalogueQueue() {
                   </td>
                   <td data-label="Kategoria">{item.category}</td>
                   <td data-label="Źródło">{item.source_url ?? 'Nie wskazano'}</td>
-                  <td data-label="Nazwa">
+                  <td data-label="Działanie">
                     <ButtonLink to={`/admin/innowacje/${item.id}`}>Edytuj</ButtonLink>
                   </td>
                 </tr>
@@ -858,7 +858,7 @@ function IdeasQueue() {
                 <th scope="col">Pomysł</th>
                 <th scope="col">Autor</th>
                 <th scope="col">Status</th>
-                <th />
+                <th scope="col">Działanie</th>
               </tr>
             </thead>
             <tbody>
@@ -871,7 +871,7 @@ function IdeasQueue() {
                   <td data-label="Status">
                     <Badge tone={statusTone(idea.status)}>{idea.status}</Badge>
                   </td>
-                  <td data-label="Pomysł">
+                  <td data-label="Działanie">
                     <ButtonLink to={`/admin/pomysly/${idea.id}`}>Otwórz</ButtonLink>
                   </td>
                 </tr>
@@ -985,7 +985,7 @@ function PilotsQueue() {
                 <th scope="col">Nazwa</th>
                 <th scope="col">Status</th>
                 <th scope="col">Wolontariusze</th>
-                <th />
+                <th scope="col">Działanie</th>
               </tr>
             </thead>
             <tbody>
@@ -1000,7 +1000,7 @@ function PilotsQueue() {
                   <td data-label="Wolontariusze">
                     {pilot.registered_volunteers_count} / {pilot.max_volunteers}
                   </td>
-                  <td data-label="Nazwa">
+                  <td data-label="Działanie">
                     <ButtonLink to={`/admin/pilotaze/${pilot.id}`}>Otwórz</ButtonLink>
                   </td>
                 </tr>

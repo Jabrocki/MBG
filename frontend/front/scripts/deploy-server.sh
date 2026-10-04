@@ -12,7 +12,7 @@ release="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
 RELEASE_ID="$release" node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("dist/release.json",JSON.stringify({release:process.env.RELEASE_ID,commit:process.env.RELEASE_ID.split("-").at(-1)},null,2))'
 archive="$(mktemp /tmp/mbg-ui-release.XXXXXX)"
 trap 'rm -f "$archive"' EXIT
-COPYFILE_DISABLE=1 tar -czf "$archive" dist src public scripts package.json package-lock.json index.html vite.config.ts tsconfig*.json
+COPYFILE_DISABLE=1 tar --no-xattrs -czf "$archive" dist src public scripts package.json package-lock.json index.html vite.config.ts tsconfig*.json
 scp "$archive" "$ssh_target:/tmp/mbg-ui-$release.tgz"
 ssh "$ssh_target" bash -s -- "$app_dir" "$release" <<'REMOTE'
 set -euo pipefail
