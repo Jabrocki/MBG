@@ -34,7 +34,10 @@ for item in src public scripts package.json package-lock.json index.html vite.co
 done
 install -m 644 "$stage/dist/index.html" "$app_dir/dist/.index-new.html"
 mv "$app_dir/dist/.index-new.html" "$app_dir/dist/index.html"
-curl -fsS http://127.0.0.1:10100/release.json
+if supervisorctl status hubmi-frontend >/dev/null 2>&1; then
+  supervisorctl restart hubmi-frontend
+fi
+curl --retry 5 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:10100/release.json
 curl -fsS http://127.0.0.1:10200/healthz
 printf '\nKopia poprzedniego frontendu: %s\n' "$backup"
 rm -rf "$stage"
