@@ -1,0 +1,32 @@
+{
+  "before": {
+    "file": "index-DrcyMQgW.js",
+    "bytes": 620683,
+    "gzip": 174954
+  },
+  "after": [
+    {
+      "file": "Citizen-Bw7lzjt4.js",
+      "bytes": 246066,
+      "gzip": 69159
+    },
+    {
+      "file": "Landing-Di-ySxBP.js",
+      "bytes": 144792,
+      "gzip": 55381
+    },
+    {
+      "file": "Admin-Dt0-c2yl.js",
+      "bytes": 29065,
+      "gzip": 6643
+    },
+    {
+      "file": "index-i2dimo_1.js",
+      "bytes": 255200,
+      "gzip": 78479
+    }
+  ],
+  "rootReductionPercent": 58.884003589594045,
+  "residentJSWithSpriteBytes": 515466,
+  "residentReductionPercent": 16.951809538846717
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "check": "Szkic zachowuje drugi krok i współrzędne po powrocie przez Start",
+    "passed": true
+  },
+  {
+    "check": "Opis i wybór odbiorców przetrwały nawigację",
+    "passed": true
+  },
+  {
+    "check": "Syntetyczne zgłoszenie zapisane przez rzeczywiste API",
+    "passed": true
+  },
+  {
+    "check": "Korekty kategorii i odbiorców pozostają po ponownym otwarciu potwierdzenia",
+    "passed": true
+  },
+  {
+    "check": "Potwierdzenie API prowadzi do kroku 4 i grafu; czerwony punkt potrzeby pozostaje bez linku",
+    "passed": true
+  },
+  {
+    "check": "Wyszukiwanie BaWita zwraca odpowiednią pozycję z API",
+    "passed": true
+  },
+  {
+    "check": "Mobilne menu zamyka się Escape",
+    "passed": true
+  },
+  {
+    "check": "Za krótki opis pokazuje błąd i prowadzi fokus",
+    "passed": true
+  },
+  {
+    "check": "Reset szkicu przywraca pusty opis i pierwszy krok",
+    "passed": true
+  }
+]

@@ -1,0 +1,204 @@
+[
+  {
+    "route": "/start",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Dzień dobry.",
+    "width": 1280
+  },
+  {
+    "route": "/zgloszenia/nowe",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Co warto zmienić w Twojej okolicy?",
+    "width": 1280
+  },
+  {
+    "route": "/zgloszenia",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Twoje zgłoszenia.",
+    "width": 1280
+  },
+  {
+    "route": "/innowacje",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Biblioteka innowacji",
+    "width": 1280
+  },
+  {
+    "route": "/potrzeby",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Blisko Ciebie. Ważne dla innych.",
+    "width": 1280
+  },
+  {
+    "route": "/pomysly",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Pomysły, które warto rozwijać.",
+    "width": 1280
+  },
+  {
+    "route": "/pilotaze",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Sprawdźmy pomysły w codzienności.",
+    "width": 1280
+  },
+  {
+    "route": "/poparcie",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Co zasługuje na wspólny krok?",
+    "width": 1280
+  },
+  {
+    "route": "/moje-aktywnosci",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Twoje małe kroki. Wspólna sprawa.",
+    "width": 1280
+  },
+  {
+    "route": "/powiadomienia",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Ważne sprawy czekają tutaj.",
+    "width": 1280
+  },
+  {
+    "route": "/pomoc",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Zacznij spokojnie. Pomożemy Ci przejść dalej.",
+    "width": 1280
+  },
+  {
+    "route": "/prywatnosc",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Twoja sprawa nie musi ujawniać Twoich danych.",
+    "width": 1280
+  },
+  {
+    "route": "/dostepnosc",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Różne sposoby korzystania. Ten sam dostęp do treści.",
+    "width": 1280
+  },
+  {
+    "route": "/admin",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Panel decyzji",
+    "width": 1280
+  },
+  {
+    "route": "/admin/zgloszenia",
+    "brokenImages": [],
+    "details": [
+      "/admin/zgloszenia/122",
+      "/admin/zgloszenia/121"
+    ],
+    "overflow": false,
+    "title": "Zgłoszenia do oceny",
+    "width": 1280
+  },
+  {
+    "route": "/admin/potrzeby",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Problemy kanoniczne",
+    "width": 1280
+  },
+  {
+    "route": "/admin/innowacje",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Katalog innowacji",
+    "width": 1280
+  },
+  {
+    "route": "/admin/rozwiazania/duplikaty",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Scalanie duplikatów",
+    "width": 1280
+  },
+  {
+    "route": "/admin/pomysly",
+    "brokenImages": [],
+    "details": [],
+    "overflow": false,
+    "title": "Pomysły społeczności",
+    "width": 1280
+  },
+  {
+    "route": "/admin/pilotaze",
+    "brokenImages": [],
+    "details": [
+      "/admin/pilotaze/13",
+      "/admin/pilotaze/12"
+    ],
+    "overflow": false,
+    "title": "Pilotaże",
+    "width": 1280
+  },
+  {
+    "route": "/admin/zgloszenia/122",
+    "overflow": false,
+    "title": "Ocena zgłoszenia",
+    "width": 1280
+  },
+  {
+    "route": "/admin/zgloszenia/121",
+    "overflow": false,
+    "title": "Ocena zgłoszenia",
+    "width": 1280
+  },
+  {
+    "route": "/admin/pilotaze/13",
+    "overflow": false,
+    "title": "Bezpieczny rowerowy patrol dla seniorów w Gminie Liszki",
+    "width": 1280
+  },
+  {
+    "route": "/admin/pilotaze/12",
+    "overflow": false,
+    "title": "Senior Assistance Program in Wieliczka",
+    "width": 1280
+  },
+  {
+    "route": "/innowacje/1106",
+    "overflow": false,
+    "title": "Projekcja kosmiczna dla młodzieży",
+    "width": 1280
+  },
+  {
+    "route": "/innowacje/1041",
+    "overflow": false,
+    "title": "Hear IT",
+    "width": 1280
+  }
+]

@@ -1,0 +1,133 @@
+[
+  {
+    "path": "/assets/index-i2dimo_1.js",
+    "acceptEncoding": "gzip",
+    "status": 200,
+    "wireBytes": 78479,
+    "decodedBytes": 255200,
+    "elapsedMs": 1416,
+    "headers": {
+      "Vary": "Origin, Accept-Encoding",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Encoding": "gzip",
+      "Content-Type": "text/javascript",
+      "Content-Length": "78479",
+      "Date": "Sun, 04 Oct 2026 06:38:55 GMT",
+      "Connection": "close"
+    },
+    "matchesLocalBuild": true
+  },
+  {
+    "path": "/assets/Citizen-Bw7lzjt4.js",
+    "acceptEncoding": "gzip",
+    "status": 200,
+    "wireBytes": 69159,
+    "decodedBytes": 246066,
+    "elapsedMs": 1358,
+    "headers": {
+      "Vary": "Origin, Accept-Encoding",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Encoding": "gzip",
+      "Content-Type": "text/javascript",
+      "Content-Length": "69159",
+      "Date": "Sun, 04 Oct 2026 06:38:57 GMT",
+      "Connection": "close"
+    },
+    "matchesLocalBuild": true
+  },
+  {
+    "path": "/mbg-icons.svg",
+    "acceptEncoding": "gzip",
+    "status": 200,
+    "wireBytes": 4541,
+    "decodedBytes": 14200,
+    "elapsedMs": 705,
+    "headers": {
+      "Vary": "Origin, Accept-Encoding",
+      "Cache-Control": "no-cache",
+      "Content-Encoding": "gzip",
+      "Content-Type": "image/svg+xml",
+      "Content-Length": "4541",
+      "Date": "Sun, 04 Oct 2026 06:38:58 GMT",
+      "Connection": "close"
+    },
+    "matchesLocalBuild": true
+  },
+  {
+    "path": "/assets/index-i2dimo_1.js",
+    "acceptEncoding": "gzip;q=0",
+    "status": 200,
+    "wireBytes": 255200,
+    "decodedBytes": 255200,
+    "elapsedMs": 2050,
+    "headers": {
+      "Vary": "Origin, Accept-Encoding",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Type": "text/javascript",
+      "Content-Length": "255200",
+      "Date": "Sun, 04 Oct 2026 06:38:59 GMT",
+      "Connection": "close"
+    },
+    "matchesLocalBuild": true
+  },
+  {
+    "path": "/assets/index-i2dimo_1.js",
+    "acceptEncoding": "identity",
+    "status": 200,
+    "wireBytes": 255200,
+    "decodedBytes": 255200,
+    "elapsedMs": 2218,
+    "headers": {
+      "Vary": "Origin, Accept-Encoding",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Type": "text/javascript",
+      "Content-Length": "255200",
+      "Date": "Sun, 04 Oct 2026 06:39:01 GMT",
+      "Connection": "close"
+    },
+    "matchesLocalBuild": true
+  },
+  {
+    "path": "/start",
+    "acceptEncoding": "gzip",
+    "status": 200,
+    "wireBytes": 704,
+    "decodedBytes": 704,
+    "elapsedMs": 660,
+    "headers": {
+      "Vary": "Origin",
+      "Content-Type": "text/html",
+      "Cache-Control": "no-cache",
+      "Etag": "W/\"2c0-T7Pvi4usCRk3D8zXoI3fcvHpI4s\"",
+      "Date": "Sun, 04 Oct 2026 06:39:03 GMT",
+      "Connection": "close",
+      "Transfer-Encoding": "chunked"
+    }
+  },
+  {
+    "path": "/release.json",
+    "acceptEncoding": "gzip",
+    "status": 200,
+    "wireBytes": 66,
+    "decodedBytes": 66,
+    "elapsedMs": 703,
+    "headers": {
+      "Vary": "Origin",
+      "Content-Length": "66",
+      "Content-Type": "application/json",
+      "Last-Modified": "Sun, 04 Oct 2026 06:38:03 GMT",
+      "ETag": "W/\"66-1791095883000\"",
+      "Cache-Control": "no-cache",
+      "Date": "Sun, 04 Oct 2026 06:39:04 GMT",
+      "Connection": "close"
+    }
+  },
+  {
+    "apiHealth": {
+      "status": "ok",
+      "app": "HUBMI API",
+      "version": "0.1.0"
+    },
+    "status": 200
+  }
+]

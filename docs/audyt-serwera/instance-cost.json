@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-04",
+  "source": "Read-only Vast.ai account API via vastai show instance; selected non-secret fields",
+  "gpu": "4 × RTX 5090",
+  "gpuHourlyUSD": 1.8133333333333335,
+  "storageHourlyUSD": 0.14271969160638298,
+  "totalHourlyUSD": 1.9560530249397163,
+  "24hoursUSD": 46.94527259855319,
+  "730hoursUSD": 1427.918708205993,
+  "internetPerTBUSD": 6.666665984000001
+}

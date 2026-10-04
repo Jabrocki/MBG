@@ -1,0 +1,58 @@
+[
+  {
+    "url": "http://179.255.106.231:26260/release.json",
+    "status": 200,
+    "bytes": 66,
+    "totalRequestMs": [
+      938.9,
+      1150.0,
+      1010.9
+    ],
+    "cacheControl": "no-cache",
+    "contentEncoding": null,
+    "sha256": "a62bc5c634afdda05d6a25f28977073875713d16fd010e2a5939d18f14bd5af0",
+    "release": {
+      "release": "20261004T062045Z-9d8e649",
+      "commit": "9d8e649"
+    }
+  },
+  {
+    "url": "http://179.255.106.231:26224/healthz",
+    "status": 200,
+    "bytes": 51,
+    "totalRequestMs": [
+      977.1,
+      1112.8,
+      1392.1
+    ],
+    "cacheControl": null,
+    "contentEncoding": null,
+    "sha256": "2475056832d50599f2e3eaa27cd1ec48e5e1c91218106ed04f3be5f3e3cede57"
+  },
+  {
+    "url": "http://179.255.106.231:26260/assets/index-i2dimo_1.js",
+    "status": 200,
+    "bytes": 255200,
+    "totalRequestMs": [
+      2232.6,
+      4064.3,
+      2659.9
+    ],
+    "cacheControl": "no-cache",
+    "contentEncoding": null,
+    "sha256": "7c1dee1f2a8835533852ff58f530cf921885fabc1c3ddc86bd336d5044c18ebe"
+  },
+  {
+    "url": "http://179.255.106.231:26260/mbg-icons.svg",
+    "status": 200,
+    "bytes": 14200,
+    "totalRequestMs": [
+      2250.0,
+      1296.3,
+      1144.7
+    ],
+    "cacheControl": "no-cache",
+    "contentEncoding": null,
+    "sha256": "f9587948de5d011a0e0eb68685f0de1e3fa630becf101bbca874f9029b609e85"
+  }
+]

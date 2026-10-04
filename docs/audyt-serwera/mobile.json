@@ -1,0 +1,204 @@
+[
+  {
+    "route": "/start",
+    "overflow": false,
+    "tables": [],
+    "title": "Dzień dobry.",
+    "width": 320
+  },
+  {
+    "route": "/zgloszenia/nowe",
+    "overflow": false,
+    "tables": [],
+    "title": "Co warto zmienić w Twojej okolicy?",
+    "width": 320
+  },
+  {
+    "route": "/zgloszenia",
+    "overflow": false,
+    "tables": [],
+    "title": "Twoje zgłoszenia.",
+    "width": 320
+  },
+  {
+    "route": "/innowacje",
+    "overflow": false,
+    "tables": [],
+    "title": "Biblioteka innowacji",
+    "width": 320
+  },
+  {
+    "route": "/potrzeby",
+    "overflow": false,
+    "tables": [],
+    "title": "Blisko Ciebie. Ważne dla innych.",
+    "width": 320
+  },
+  {
+    "route": "/pomysly",
+    "overflow": false,
+    "tables": [],
+    "title": "Pomysły, które warto rozwijać.",
+    "width": 320
+  },
+  {
+    "route": "/pilotaze",
+    "overflow": false,
+    "tables": [],
+    "title": "Sprawdźmy pomysły w codzienności.",
+    "width": 320
+  },
+  {
+    "route": "/poparcie",
+    "overflow": false,
+    "tables": [],
+    "title": "Co zasługuje na wspólny krok?",
+    "width": 320
+  },
+  {
+    "route": "/moje-aktywnosci",
+    "overflow": false,
+    "tables": [],
+    "title": "Twoje małe kroki. Wspólna sprawa.",
+    "width": 320
+  },
+  {
+    "route": "/powiadomienia",
+    "overflow": false,
+    "tables": [],
+    "title": "Ważne sprawy czekają tutaj.",
+    "width": 320
+  },
+  {
+    "route": "/pomoc",
+    "overflow": false,
+    "tables": [],
+    "title": "Zacznij spokojnie. Pomożemy Ci przejść dalej.",
+    "width": 320
+  },
+  {
+    "route": "/prywatnosc",
+    "overflow": false,
+    "tables": [],
+    "title": "Twoja sprawa nie musi ujawniać Twoich danych.",
+    "width": 320
+  },
+  {
+    "route": "/dostepnosc",
+    "overflow": false,
+    "tables": [],
+    "title": "Różne sposoby korzystania. Ten sam dostęp do treści.",
+    "width": 320
+  },
+  {
+    "route": "/admin",
+    "overflow": false,
+    "tables": [],
+    "title": "Panel decyzji",
+    "width": 320
+  },
+  {
+    "route": "/admin/zgloszenia",
+    "overflow": false,
+    "tables": [
+      {
+        "labelled": true,
+        "overflow": false
+      }
+    ],
+    "title": "Zgłoszenia do oceny",
+    "width": 320
+  },
+  {
+    "route": "/admin/potrzeby",
+    "overflow": false,
+    "tables": [
+      {
+        "labelled": true,
+        "overflow": false
+      }
+    ],
+    "title": "Problemy kanoniczne",
+    "width": 320
+  },
+  {
+    "route": "/admin/innowacje",
+    "overflow": false,
+    "tables": [],
+    "title": "Katalog innowacji",
+    "width": 320
+  },
+  {
+    "route": "/admin/rozwiazania/duplikaty",
+    "overflow": false,
+    "tables": [],
+    "title": "Scalanie duplikatów",
+    "width": 320
+  },
+  {
+    "route": "/admin/pomysly",
+    "overflow": false,
+    "tables": [
+      {
+        "labelled": true,
+        "overflow": false
+      }
+    ],
+    "title": "Pomysły społeczności",
+    "width": 320
+  },
+  {
+    "route": "/admin/pilotaze",
+    "overflow": false,
+    "tables": [
+      {
+        "labelled": true,
+        "overflow": false
+      }
+    ],
+    "title": "Pilotaże",
+    "width": 320
+  },
+  {
+    "route": "/admin/zgloszenia/122",
+    "overflow": false,
+    "tables": [],
+    "title": "Ocena zgłoszenia",
+    "width": 320
+  },
+  {
+    "route": "/admin/zgloszenia/121",
+    "overflow": false,
+    "tables": [],
+    "title": "Ocena zgłoszenia",
+    "width": 320
+  },
+  {
+    "route": "/admin/pilotaze/13",
+    "overflow": false,
+    "tables": [],
+    "title": "Bezpieczny rowerowy patrol dla seniorów w Gminie Liszki",
+    "width": 320
+  },
+  {
+    "route": "/admin/pilotaze/12",
+    "overflow": false,
+    "tables": [],
+    "title": "Senior Assistance Program in Wieliczka",
+    "width": 320
+  },
+  {
+    "route": "/innowacje/1106",
+    "overflow": false,
+    "tables": [],
+    "title": "Projekcja kosmiczna dla młodzieży",
+    "width": 320
+  },
+  {
+    "route": "/innowacje/1041",
+    "overflow": false,
+    "tables": [],
+    "title": "Hear IT",
+    "width": 320
+  }
+]
