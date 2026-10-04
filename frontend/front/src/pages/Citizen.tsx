@@ -1483,7 +1483,7 @@ function ideaTitle(item: { text_refined: string | null; text_raw: string }): str
 }
 function readableIdeaTitle(value: string | null | undefined): string {
   return toReadableInnovationText(value)
-    .replace(/^lokal(?:na|ní|ni)\s+odpowiedź\s+dla:\s*/iu, '')
+    .replace(/^lok[áa]l(?:na|ní|ni)\s+odpowiedź\s+dla:\s*/iu, '')
 }
 function ideaStatusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -2180,8 +2180,11 @@ function Support({ notify }: { notify: Notify }) {
                       </div>
                       <h2>{readableIdeaTitle(card.title)}</h2>
                       <p>{getInnovationPreview(card.description)}</p>
-                      <p className="support-context">Przypisano do problemu #{card.problem_id}</p>
-                      <Link href={`/innowacje/api/${card.solution_id}?tytul=${encodeURIComponent(readableIdeaTitle(card.title))}`}>Szczegóły i ograniczenia <Icon name="ArrowRight" size={16} /></Link>
+                      <p className="support-context">Problem: {card.problem_title}</p>
+                      <div className="support-links">
+                        {card.idea_id && <Link href={`/pomysly/${card.idea_id}`}>Szczegóły pomysłu <Icon name="ArrowRight" size={16} /></Link>}
+                        <Link href={`/potrzeby/${card.problem_id}`}>Szczegóły problemu <Icon name="ArrowRight" size={16} /></Link>
+                      </div>
                       <small>{currentVote ? 'Twój wybór został zapisany.' : 'Przesuń kartę w prawo lub lewo, aby oddać głos.'}</small>
                       {actionErrors[cardKey] && <Notice tone="error">{actionErrors[cardKey]}</Notice>}
                     </div>

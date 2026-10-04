@@ -113,7 +113,9 @@ export type IdeaAuthorConfirmation = {
 }
 export type SupportCard = {
   solution_id: number
+  idea_id?: number | null
   problem_id: number
+  problem_title: string
   title: string
   description: string
   badge: 'proposed_idea' | 'being_tested' | 'established_innovation'

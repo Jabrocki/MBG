@@ -72,7 +72,9 @@ class VoteResponse(BaseModel):
 
 class SwipeCardResponse(BaseModel):
     solution_id: int
+    idea_id: Optional[int] = None
     problem_id: int
+    problem_title: str
     title: str
     description: str
     badge: str  # "proposed_idea" | "being_tested" | "established_innovation"

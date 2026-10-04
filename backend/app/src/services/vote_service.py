@@ -110,8 +110,12 @@ class VoteService:
             .distinct()
         ).scalars().all()
         cards = []
+        problem = self.db.get(CanonicalProblem, problem_id)
 
         for sol in solutions:
+            source = self.db.get(SourceKnowledge, sol.source_knowledge_id) if sol.source_knowledge_id else None
+            provenance = source.provenance_metadata if source else {}
+            idea_id = provenance.get("idea_id") if isinstance(provenance, dict) else None
             # Oblicz liczbę poparć
             support_count = self.db.execute(
                 select(func.count(Vote.id)).where(
@@ -157,7 +161,9 @@ class VoteService:
             cards.append(
                 SwipeCardResponse(
                     solution_id=sol.id,
+                    idea_id=idea_id,
                     problem_id=problem_id,
+                    problem_title=problem.title if problem else f"Problem #{problem_id}",
                     title=sol.title,
                     description=sol.description,
                     badge=badge,

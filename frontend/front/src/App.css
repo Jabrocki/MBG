@@ -1536,6 +1536,19 @@ small,
   background: #f3f5ee;
   border-radius: 8px;
 }
+.support-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.support-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 10px;
+  font-size: 14px;
+}
 .vote-counts {
   display: inline-flex;
   align-items: center;
