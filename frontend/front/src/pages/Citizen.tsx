@@ -2148,12 +2148,12 @@ function Support({ notify }: { notify: Notify }) {
     <>
       <Heading
         title="Co zasługuje na wspólny krok?"
-        description="Poparcie jest sygnałem zainteresowania konkretną propozycją dla wybranej potrzeby. Nie jest decyzją o rozpoczęciu pilotażu."
+        description="Poparcie dotyczy konkretnych pomysłów rozwiązania przypisanych do problemów. Nie jest decyzją o rozpoczęciu pilotażu."
       />
       {loading ? <LoadingState label="Ładowanie kart…" /> : error ? (
         <Notice tone="error" title="Nie udało się pobrać kart.">{error}</Notice>
       ) : !card ? (
-        <Empty title="Nie ma jeszcze potrzeb, dla których można wyrazić poparcie." text="Po potwierdzeniu potrzeby pojawią się tu dostępne propozycje." to="/zgloszenia/nowe" action="Zgłoś potrzebę" />
+        <Empty title="Nie ma jeszcze pomysłów do poparcia." text="Opublikowane propozycje rozwiązań pojawią się tu po zatwierdzeniu przez autora i administratora." to="/pomysly" action="Zobacz pomysły" />
       ) : (
         <>
           <div className="support-layout">
