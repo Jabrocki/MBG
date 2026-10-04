@@ -2066,7 +2066,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
                   <Field label="Treść szkicu">
                     <textarea rows={6} value={draftText} onChange={(event) => setDraftText(event.target.value)} maxLength={5000} />
                   </Field>
-                  <p>Po zapisie AI uporządkuje pomysł. Następnie sprawdzisz jego kartę przed przekazaniem do administratora.</p>
+                  <p>Zapis utworzy prywatny szkic. Na jego karcie uruchomisz uporządkowanie przez AI, a potem potwierdzisz treść przed przekazaniem do administratora.</p>
                   <button
                     className="button"
                     type="button"
