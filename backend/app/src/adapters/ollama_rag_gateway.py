@@ -12,7 +12,13 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from src.adapters.ai_interface import ClassificationResult, HyDEResult, ProblemCandidate, SolutionMatch
+from src.adapters.ai_interface import (
+    ClassificationResult,
+    HyDEResult,
+    ProblemCandidate,
+    RefinedIdeaResult,
+    SolutionMatch,
+)
 
 
 class OllamaRagGateway:
@@ -132,3 +138,45 @@ class OllamaRagGateway:
             )
             for index, (score, row) in enumerate(retrieved, start=1)
         ]
+
+    def refine_idea(self, raw_text: str) -> RefinedIdeaResult:
+        clean = self._sanitize(raw_text)
+        data = self._json(
+            "Uporządkuj pomysł społeczny zapisany po polsku. Zwróć wyłącznie JSON z polami: "
+            "text_refined, need, beneficiaries, solution, partners, costs, resources, stages. "
+            "Nie dodawaj danych osobowych ani nie przedstawiaj szacunków jako zatwierdzonych faktów. "
+            f"POMYSŁ: {clean}"
+        )
+        values = {field: str(data.get(field) or "").strip() for field in (
+            "text_refined", "need", "beneficiaries", "solution", "partners", "costs", "resources", "stages"
+        )}
+        values["text_refined"] = values["text_refined"] or clean
+        values["solution"] = values["solution"] or clean
+        return RefinedIdeaResult(**values)
+
+    def adapt_institution_innovation(
+        self,
+        solution_title: str,
+        solution_description: str,
+        beneficiaries: str,
+        location: str,
+        resources: str,
+        budget: str,
+        constraints: str,
+    ) -> str:
+        clean_title = self._sanitize(solution_title)
+        clean_description = self._sanitize(solution_description)
+        clean_beneficiaries = self._sanitize(beneficiaries)
+        clean_location = self._sanitize(location)
+        clean_resources = self._sanitize(resources)
+        clean_budget = self._sanitize(budget)
+        clean_constraints = self._sanitize(constraints)
+        data = self._json(
+            "Przygotuj po polsku roboczy plan adaptacji innowacji społecznej dla instytucji. "
+            "Zwróć JSON z jednym polem adaptation zawierającym czytelny tekst z krokami, "
+            "zasobami, ograniczeniami i pytaniami do weryfikacji. Nie obiecuj efektów i nie zatwierdzaj budżetu. "
+            f"INNOWACJA: {clean_title}\nOPIS: {clean_description}\nODBIORCY: {clean_beneficiaries}\n"
+            f"LOKALIZACJA: {clean_location}\nZASOBY: {clean_resources}\nBUDŻET: {clean_budget}\n"
+            f"OGRANICZENIA: {clean_constraints}"
+        )
+        return str(data.get("adaptation") or data.get("draft_adaptation") or clean_description).strip()
