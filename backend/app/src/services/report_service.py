@@ -57,11 +57,17 @@ class ReportService:
                 detail=classification.revision_reason or "Opis wymaga uzupełnienia przed przetworzeniem.",
             )
 
+        # Persist and index only the HyDE-edited need. The user's free-form input is
+        # used as transient context for the model and is never written as the canonical
+        # report text or vector record.
+        hyde_result = self.ai.generate_hyde_and_embedding(data.text, classification.categories)
+        edited_need = hyde_result.generated_description.strip() or data.text.strip()
+
         # 3. Create Report in DB with ~30 days retention expiry
         expires_at = utc_now() + timedelta(days=settings.REPORT_EXPIRY_DAYS)
         report = Report(
             author_id=user.id,
-            text_raw=data.text,
+            text_raw=edited_need,
             location_lat=data.location_lat,
             location_lon=data.location_lon,
             location_type=data.location_type,
@@ -83,9 +89,8 @@ class ReportService:
         self.geo_locations.persist_report(report)
         self.db.commit()
 
-        # Keep the raw report separate from canonical problems: it is embedded first and only
-        # becomes a public aggregate after the reporter explicitly confirms grouping.
-        hyde_result = self.ai.generate_hyde_and_embedding(data.text, classification.categories)
+        # The edited HyDE text is embedded first and only becomes a public aggregate after
+        # the reporter explicitly confirms grouping.
         self.vector_repo.upsert_vector_record(
             entity_type="report",
             entity_id=report.id,
@@ -94,7 +99,7 @@ class ReportService:
 
         # 4. Find problem candidates (semantic grouping suggestion)
         candidates = self.ai.find_problem_candidates(
-            report_text=data.text,
+            report_text=edited_need,
             lat=data.location_lat,
             lon=data.location_lon,
             categories=classification.categories,
