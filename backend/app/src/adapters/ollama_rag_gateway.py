@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from collections import Counter
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -77,8 +78,25 @@ class OllamaRagGateway:
         return [value / norm for value in vector]
 
     def _nearest(self, text: str, limit: int = 8) -> list[tuple[float, dict[str, Any]]]:
+        """Hybrid retrieval: HyDE embedding + BM25 lexical match + reranking.
+
+        The local JSONL corpus remains the source of truth.  BM25 catches exact
+        locality/category words while Nomic catches paraphrases; the final score
+        is reranked and de-duplicated by title before Ollama explains the match.
+        """
         vector = self._embed(text)
-        scored = [(sum(a * b for a, b in zip(vector, row["embedding"])), row) for row in self.records]
+        query_tokens = self._tokenize(text)
+        documents = [self._tokenize(f"{row['title']} {row['content']}") for row in self.records]
+        avgdl = (sum(len(doc) for doc in documents) / len(documents)) if documents else 1.0
+        doc_freq: Counter[str] = Counter()
+        for doc in documents:
+            doc_freq.update(set(doc))
+        n_docs = max(1, len(documents))
+        scored: list[tuple[float, dict[str, Any]]] = []
+        for row, doc in zip(self.records, documents):
+            dense = sum(a * b for a, b in zip(vector, row["embedding"]))
+            bm25 = self._bm25(query_tokens, doc, doc_freq, n_docs, avgdl)
+            scored.append((0.68 * dense + 0.32 * min(1.0, bm25 / 8.0), row))
         scored.sort(key=lambda item: item[0], reverse=True)
         unique: dict[str, tuple[float, dict[str, Any]]] = {}
         for score, row in scored:
@@ -86,6 +104,27 @@ class OllamaRagGateway:
             if len(unique) == limit:
                 break
         return list(unique.values())
+
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        return re.findall(r"[a-ząćęłńóśźż0-9]{2,}", text.casefold())
+
+    @staticmethod
+    def _bm25(query: list[str], document: list[str], doc_freq: Counter[str], n_docs: int, avgdl: float) -> float:
+        if not query or not document:
+            return 0.0
+        counts = Counter(document)
+        k1, b = 1.5, 0.75
+        score = 0.0
+        for term in set(query):
+            if term not in counts:
+                continue
+            df = doc_freq.get(term, 0)
+            idf = math.log(1 + (n_docs - df + 0.5) / (df + 0.5))
+            tf = counts[term]
+            norm = tf + k1 * (1 - b + b * len(document) / max(avgdl, 1.0))
+            score += idf * (tf * (k1 + 1) / norm)
+        return score
 
     @staticmethod
     def _context(rows: list[tuple[float, dict[str, Any]]]) -> str:
