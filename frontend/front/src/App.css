@@ -1560,11 +1560,11 @@ small,
 .innovation-star { position: relative; min-height: 460px; margin: 24px 0 16px; border: 1px solid var(--line); border-radius: 20px; background: radial-gradient(circle at center, #f1f7ef 0 12%, #fbfcf8 34%, #fff 72%); overflow: visible; }
 .innovation-star::before { content: ''; position: absolute; left: 10%; right: 10%; top: 50%; height: 1px; background: #cbd8cd; }
 .innovation-star::after { content: ''; position: absolute; top: 10%; bottom: 10%; left: 50%; width: 1px; background: #cbd8cd; }
-.innovation-star-center { position: absolute; left: 50%; top: 50%; z-index: 2; transform: translate(-50%, -50%); display: grid; place-items: center; width: 104px; height: 104px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 600; text-align: center; }
+.innovation-star-center { position: absolute; left: 50%; top: 50%; z-index: 2; transform: translate(-50%, -50%); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #c2412d; box-shadow: 0 0 0 8px rgba(194, 65, 45, .16); color: #fff; font-weight: 600; text-align: center; }
 .innovation-star-point { position: absolute; z-index: 3; transform: translate(-50%, -50%); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 8px rgba(0, 132, 82, .12); }
 .innovation-star-dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; }
-.innovation-star-tooltip { position: absolute; left: 50%; bottom: calc(100% + 14px); transform: translateX(-50%); width: max-content; max-width: 260px; padding: 8px 12px; border-radius: 8px; background: var(--navy); color: #fff; font-size: 13px; line-height: 1.25; opacity: 0; pointer-events: none; transition: opacity .15s ease; }
-.innovation-star-point:hover .innovation-star-tooltip, .innovation-star-point:focus-visible .innovation-star-tooltip { opacity: 1; }
+.innovation-star-tooltip { position: absolute; left: 50%; bottom: calc(100% + 14px); transform: translateX(-50%); width: max-content; max-width: 260px; padding: 8px 12px; border: 2px solid var(--green); border-radius: 8px; background: #fff; color: var(--green); font-size: 13px; line-height: 1.25; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .15s ease; }
+.innovation-star-point:hover .innovation-star-tooltip, .innovation-star-point:focus-visible .innovation-star-tooltip, .innovation-star-center:hover .innovation-star-tooltip, .innovation-star-center:focus-visible .innovation-star-tooltip { opacity: 1; }
 @media (max-width: 700px) { .innovation-star { min-height: 360px; } .innovation-star-tooltip { max-width: 190px; white-space: normal; } }
 .vote-counts {
   display: inline-flex;

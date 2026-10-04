@@ -870,7 +870,10 @@ function Results({ problemId }: { problemId: number }) {
             <h2>Najbliższe rozwiązania</h2>
             <p>Najedź na punkt, aby zobaczyć tytuł. Kliknij punkt, aby otworzyć szczegóły innowacji.</p>
             <div className="innovation-star" role="list" aria-label="Najbliższe rozwiązania">
-              <span className="innovation-star-center">Potrzeba</span>
+              <span className="innovation-star-center" tabIndex={0} aria-label="Potrzeba">
+                <span className="innovation-star-dot" aria-hidden="true" />
+                <span className="innovation-star-tooltip">Potrzeba</span>
+              </span>
               {starPoints.map(({ match, left, top }) => {
                 const title = toReadableInnovationText(match.title)
                 return (
