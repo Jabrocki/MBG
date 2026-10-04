@@ -204,7 +204,7 @@ class IdeaService:
         self.db.commit()
         idea_vector = self.vector_repo.get_vector_record("idea", idea.id)
         if idea_vector:
-            self.vector_repo.upsert_vector_record("problem", problem.id, idea_vector.embedding)
+            self.vector_repo.upsert_vector_record("problem", idea.canonical_problem_id, idea_vector.embedding)
             self.vector_repo.upsert_vector_record("solution", solution.id, idea_vector.embedding)
         return self._project_idea(idea, admin_user)
 

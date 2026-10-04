@@ -10,6 +10,7 @@ from src.db.base import Base
 from src.api.deps import get_db
 from src.models.user import User
 from src.models.source import SourceKnowledge, Solution
+from src.models.problem import CanonicalProblem
 from src.services.auth_service import AuthService
 from src.config import settings
 
@@ -53,6 +54,15 @@ def init_test_db():
             limitations="Ograniczony zasięg",
         )
         db.add_all([sol1, sol2])
+        db.add(CanonicalProblem(
+            id=1,
+            title="Przykładowy problem społeczny",
+            generated_description="Problem używany przez testy cyklu pomysłu.",
+            reporter_count=1,
+            location_centroid_lat=50.0619,
+            location_centroid_lon=19.9368,
+            status="active",
+        ))
         db.commit()
     yield
 

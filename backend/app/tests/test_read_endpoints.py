@@ -33,7 +33,8 @@ def test_idea_detail_and_mine_keep_private_drafts_private(user_client, client, d
     created = user_client.post(
         "/api/v1/ideas",
         json={
-            "text_raw": "Sąsiedzki program wspólnych spacerów dla seniorów w Krakowie.",
+                "text_raw": "Sąsiedzki program wspólnych spacerów dla seniorów w Krakowie.",
+                "canonical_problem_id": 1,
             "need": "Mniej samotności seniorów.",
         },
     )

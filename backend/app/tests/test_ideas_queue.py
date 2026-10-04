@@ -2,6 +2,7 @@ def test_idea_lifecycle_and_publication_gates(user_client, admin_client):
     # 1. Tworzenie wersji roboczej (draft)
     draft_resp = user_client.post("/api/v1/ideas", json={
         "text_raw": "Stworzenie międzypokoleniowego ogrodu społecznego na osiedlu w Skawinie.",
+        "canonical_problem_id": 1,
         "need": "Brak integracji mieszkańców i zielonej przestrzeni spotkań.",
     })
     assert draft_resp.status_code == 200

@@ -31,7 +31,7 @@ def test_admin_dashboard_counts_are_database_backed(user_client, admin_client):
         },
     )
     assert report.status_code == 200
-    idea = user_client.post("/api/v1/ideas", json={"text_raw": "Sąsiedzkie spotkania ze wsparciem wolontariuszy."})
+    idea = user_client.post("/api/v1/ideas", json={"text_raw": "Sąsiedzkie spotkania ze wsparciem wolontariuszy.", "canonical_problem_id": 1})
     assert idea.status_code == 200
     counts = admin_client.get("/api/v1/admin/dashboard")
     assert counts.status_code == 200
@@ -131,7 +131,7 @@ def test_admin_operational_reads_and_catalogue_crud(user_client, admin_client):
 def test_admin_can_read_idea_and_volunteer_queues(user_client, admin_client):
     idea = user_client.post(
         "/api/v1/ideas",
-        json={"text_raw": "Propozycja sąsiedzkiego wsparcia dla osób potrzebujących codziennej pomocy."},
+        json={"text_raw": "Propozycja sąsiedzkiego wsparcia dla osób potrzebujących codziennej pomocy.", "canonical_problem_id": 1},
     )
     assert idea.status_code == 200
     ideas = admin_client.get("/api/v1/ideas/admin/list")
