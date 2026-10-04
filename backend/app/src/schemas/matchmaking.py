@@ -184,4 +184,3 @@ class LocalitySearchResult(BaseModel):
     latitude: float
     longitude: float
     display_name: str
-    privacy_note: str
