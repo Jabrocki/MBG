@@ -13,6 +13,9 @@ from sqlalchemy import select
 
 from src.db.session import SessionLocal
 from src.models.problem import CanonicalProblem, ReportProblemLink
+from src.models.idea import Idea
+from src.models.match import MatchResult
+from src.models.source import Solution
 from src.models.report import Report
 from src.models.user import User
 from src.services.geo_location_service import EntityGeoLocationService, LOCALITIES
@@ -170,8 +173,52 @@ def import_records() -> tuple[int, int]:
             EntityGeoLocationService(db).persist_report(report)
             created_reports += 1
 
+        # The public "Pomysły" view reads Idea records, while the generated
+        # catalogue is stored as Solutions. Mirror each generated solution as a
+        # published synthetic idea so it is visible in that view as well. Prefer
+        # an existing semantic match; otherwise attach it to any problem that has
+        # a report. The unique text marker keeps this idempotent.
+        created_ideas = 0
+        fallback_problem = db.execute(
+            select(CanonicalProblem)
+            .where(CanonicalProblem.reporter_count > 0)
+            .order_by(CanonicalProblem.id)
+        ).scalars().first()
+        for solution in db.execute(select(Solution).order_by(Solution.id)).scalars():
+            marker = f"[syntetyczny pomysł dla rozwiązania {solution.id}]"
+            exists = db.execute(
+                select(Idea.id).where(Idea.author_id == synthetic_user.id, Idea.text_raw == marker)
+            ).scalar_one_or_none()
+            if exists is not None:
+                continue
+            matched_problem_id = db.execute(
+                select(MatchResult.problem_id)
+                .where(MatchResult.solution_id == solution.id)
+                .order_by(MatchResult.rank)
+                .limit(1)
+            ).scalar_one_or_none()
+            problem_id = matched_problem_id or (fallback_problem.id if fallback_problem else None)
+            if problem_id is None:
+                continue
+            idea = Idea(
+                author_id=synthetic_user.id,
+                canonical_problem_id=problem_id,
+                text_raw=marker,
+                text_refined=solution.title,
+                need="Rozwiązanie przypisane do zgłoszonego problemu.",
+                beneficiaries=solution.target_audience,
+                solution=solution.description,
+                costs=solution.cost_estimate,
+                resources="Zasoby lokalne i partnerzy społeczni",
+                stages="Analiza, pilotaż, wdrożenie",
+                status="public",
+                created_at=solution.created_at,
+            )
+            db.add(idea)
+            created_ideas += 1
+
         db.commit()
-        return created_problems, created_reports
+        return created_problems, created_reports, created_ideas
 
 
 if __name__ == "__main__":
