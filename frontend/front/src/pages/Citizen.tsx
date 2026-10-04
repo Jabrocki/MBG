@@ -809,13 +809,15 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
 function Results({ problemId }: { problemId: number }) {
   const [matches, setMatches] = useState<InnovationMatch[]>([]),
     [problemTitle, setProblemTitle] = useState(''),
+    [shortProblemTitle, setShortProblemTitle] = useState(''),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true)
   useEffect(() => {
-    Promise.all([api.getMatches(problemId), api.getProblem(problemId)])
-      .then(([result, problem]) => {
+    Promise.all([api.getMatches(problemId), api.getProblem(problemId), api.getProblemShortTitle(problemId)])
+      .then(([result, problem, shortTitle]) => {
         setMatches(result.matches)
         setProblemTitle(problem.title)
+        setShortProblemTitle(shortTitle.short_title)
       })
       .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać dopasowań.'))
       .finally(() => setLoading(false))
@@ -825,6 +827,7 @@ function Results({ problemId }: { problemId: number }) {
     const radius = matches.length === 1 ? 0 : 31
     return { match, left: 50 + Math.cos(angle) * radius, top: 50 + Math.sin(angle) * radius }
   })
+  const displayProblemTitle = shortProblemTitle || problemTitle.trim().split(/\s+/).slice(0, 5).join(' ')
   if (loading) return <DemoStatus state="ladowanie" />
   return (
     <>
@@ -872,9 +875,9 @@ function Results({ problemId }: { problemId: number }) {
             <h2>Najbliższe rozwiązania</h2>
             <p>Najedź na punkt, aby zobaczyć tytuł. Kliknij punkt, aby otworzyć szczegóły innowacji.</p>
             <div className="innovation-star" role="list" aria-label="Najbliższe rozwiązania">
-              <span className="innovation-star-center" tabIndex={0} aria-label={problemTitle || 'Potrzeba'}>
+              <span className="innovation-star-center" tabIndex={0} aria-label={displayProblemTitle || 'Potrzeba'}>
                 <span className="innovation-star-dot" aria-hidden="true" />
-                <span className="innovation-star-tooltip">{problemTitle || 'Potrzeba'}</span>
+                <span className="innovation-star-tooltip">{displayProblemTitle || 'Potrzeba'}</span>
               </span>
               {starPoints.map(({ match, left, top }) => {
                 const title = toReadableInnovationText(match.title)

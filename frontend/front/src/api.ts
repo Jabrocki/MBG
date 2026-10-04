@@ -480,6 +480,9 @@ export const api = {
   getProblem(problemId: number) {
     return request<CanonicalProblem>(`/problems/${problemId}`)
   },
+  getProblemShortTitle(problemId: number) {
+    return request<{ short_title: string }>(`/problems/${problemId}/short-title`)
+  },
   getCoordinates(problemId: number) {
     return request<Coordinates>(`/problems/${problemId}/coordinates`)
   },

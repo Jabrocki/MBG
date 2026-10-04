@@ -35,6 +35,21 @@ def get_problem(
 ):
     return CatalogueService(db).get_problem(problem_id)
 
+@router.get("/{problem_id}/short-title", summary="Krótki tytuł problemu wygenerowany przez Ollamę")
+def get_problem_short_title(
+    problem_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    problem = db.get(CanonicalProblem, problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail="Problem nie został odnaleziony")
+    try:
+        title = get_ai_gateway().generate_short_title(problem.title)
+    except Exception:
+        title = " ".join(problem.title.split()[:5])
+    return {"short_title": title}
+
 @router.get("/{problem_id}/matches", response_model=MatchListResponse, summary="Dopasowane innowacje społeczne (do 10 wyników)")
 def get_problem_matches(
     problem_id: int,

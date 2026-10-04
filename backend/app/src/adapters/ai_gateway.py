@@ -73,6 +73,9 @@ class AIGatewayAdapter:
     def discuss_idea(self, idea_text: str, structured_context: str, question: str) -> str:
         return self._gateway.discuss_idea(idea_text, structured_context, question)
 
+    def generate_short_title(self, title: str) -> str:
+        return self._gateway.generate_short_title(title)
+
     def adapt_institution_innovation(
         self,
         solution_title: str,

@@ -71,6 +71,9 @@ class AIGatewayProtocol(Protocol):
     def discuss_idea(self, idea_text: str, structured_context: str, question: str) -> str:
         ...
 
+    def generate_short_title(self, title: str) -> str:
+        ...
+
     def adapt_institution_innovation(
         self,
         solution_title: str,

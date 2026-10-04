@@ -127,6 +127,9 @@ class FakeAIGateway:
             raise RuntimeError("AI Service unavailable")
         return f"Odnoszę się wyłącznie do tego pomysłu: {idea_text[:180]}. Na pytanie „{question[:180]}” proponuję doprecyzować założenia i sprawdzić je z odbiorcami."
 
+    def generate_short_title(self, title: str) -> str:
+        return " ".join(str(title).split()[:5])
+
     def adapt_institution_innovation(
         self,
         solution_title: str,

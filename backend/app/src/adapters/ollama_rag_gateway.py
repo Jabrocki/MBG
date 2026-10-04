@@ -295,6 +295,18 @@ class OllamaRagGateway:
             answer = self._text(prompt + "\nOdpowiedz bezpośrednio, bez JSON i bez markdownowego nagłówka.")
         return answer or "Nie mam jeszcze wystarczających danych, aby odpowiedzieć."
 
+    def generate_short_title(self, title: str) -> str:
+        clean = self._sanitize(title)
+        data = self._json(
+            "Skróć tytuł problemu społecznego po polsku do maksymalnie pięciu słów. "
+            "Zachowaj jego sens i najważniejszy temat, nie dodawaj lokalizacji ani faktów, których nie ma w tytule. "
+            "Zwróć wyłącznie JSON w formacie {\"short_title\": \"...\"}.\n"
+            f"TYTUŁ: {clean}"
+        )
+        candidate = re.sub(r"\s+", " ", str(data.get("short_title") or "").strip())
+        words = candidate.split()
+        return " ".join(words[:5]) or " ".join(clean.split()[:5])
+
     def adapt_institution_innovation(
         self,
         solution_title: str,
