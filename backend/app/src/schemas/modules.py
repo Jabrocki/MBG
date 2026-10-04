@@ -106,6 +106,7 @@ class PilotResponse(BaseModel):
     id: int
     solution_id: Optional[int] = None
     idea_id: Optional[int] = None
+    canonical_problem_id: Optional[int] = None
     title: str
     description: str
     status: str

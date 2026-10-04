@@ -382,6 +382,7 @@ class PilotService:
             id=pilot.id,
             solution_id=pilot.solution_id,
             idea_id=pilot.idea_id,
+            canonical_problem_id=pilot.idea.canonical_problem_id if pilot.idea else None,
             title=pilot.title,
             description=pilot.description,
             status=pilot.status,

@@ -53,6 +53,9 @@ export type Innovation = {
   limitations: string
   category: string
   source_url: string | null
+  support_count?: number
+  skip_count?: number
+  vote_score?: number
 }
 export type InnovationMatch = Innovation & {
   solution_id: number

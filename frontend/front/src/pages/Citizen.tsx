@@ -1136,6 +1136,10 @@ function ApiInnovationRow({ item }: { item: Innovation }) {
         <InnovationPreview description={item.description} />
         <p><strong>Dla kogo:</strong> {toReadableInnovationText(item.target_audience)}</p>
         <p><strong>Ograniczenia:</strong> {toReadableInnovationText(item.limitations)}</p>
+        <div className="vote-counts" aria-label="Głosy społeczności">
+          <span><Icon name="CaretUp" /> {item.support_count ?? 0}</span>
+          <span><Icon name="CaretDown" /> {item.skip_count ?? 0}</span>
+        </div>
         <div className="row-meta">
           {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer">Źródło <Icon name="ArrowSquareOut" size={16} /></a>}
           <Link href={apiInnovationHref(item)}>Poznaj rozwiązanie <Icon name="ArrowRight" size={16} /></Link>
@@ -1189,6 +1193,10 @@ function ApiInnovation({ id }: { id: number }) {
           </div>
           <Panel>
             <InnovationDocument description={item.description} />
+            <div className="vote-counts" aria-label="Głosy społeczności">
+              <span><Icon name="CaretUp" /> {item.support_count ?? 0}</span>
+              <span><Icon name="CaretDown" /> {item.skip_count ?? 0}</span>
+            </div>
           </Panel>
         </div>
         <aside className="context-aside">
