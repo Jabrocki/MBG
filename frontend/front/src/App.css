@@ -320,7 +320,7 @@ html .demo-banner .prototype-popover label {
 }
 .app-main {
   padding: 42px 46px 64px;
-  max-width: 1420px;
+  max-width: 1800px;
   min-width: 0;
   width: 100%;
   margin: 0 auto;
@@ -1038,17 +1038,17 @@ small,
 }
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
 }
 .quick-action {
   display: flex;
   flex-direction: column;
-  padding: 23px 20px;
+  padding: 32px 30px;
   border-radius: 12px;
   text-decoration: none;
   background: #e5ebdf;
-  min-height: 224px;
+  min-height: 280px;
   transition: transform 0.18s;
 }
 .quick-action:hover {
@@ -1067,12 +1067,12 @@ small,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 45px;
-  height: 45px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: var(--green);
   color: white;
-  margin-bottom: 18px;
+  margin-bottom: 28px;
 }
 .blue .quick-icon {
   background: #335e7b;
@@ -1084,13 +1084,13 @@ small,
   background: #967021;
 }
 .quick-action h2 {
-  font-size: 21px;
-  margin-bottom: 10px;
+  font-size: 27px;
+  margin-bottom: 12px;
 }
 .quick-action p {
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 0 0 18px;
+  font-size: 16px;
+  line-height: 1.55;
+  margin: 0 0 24px;
 }
 .quick-action > svg {
   margin-top: auto;
