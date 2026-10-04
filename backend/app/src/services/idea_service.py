@@ -1,5 +1,6 @@
 from src.utils.datetime_utils import utc_now
 from datetime import datetime
+import re
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -271,8 +272,8 @@ class IdeaService:
             id=idea.id,
             author_id=idea.author_id,
             canonical_problem_id=idea.canonical_problem_id,
-            text_raw=idea.text_raw,
-            text_refined=idea.text_refined,
+            text_raw=self._clean_display_text(idea.text_raw),
+            text_refined=self._clean_display_text(idea.text_refined),
             need=idea.need,
             beneficiaries=idea.beneficiaries,
             solution=idea.solution,
@@ -286,6 +287,17 @@ class IdeaService:
             created_at=idea.created_at,
             author_name=author_name,
         )
+
+    @staticmethod
+    def _clean_display_text(value: Optional[str]) -> Optional[str]:
+        if not value:
+            return value
+        return re.sub(
+            r"^lok[áa]l(?:na|ní|ni)\s+odpowiedź\s+dla:\s*",
+            "",
+            value,
+            flags=re.IGNORECASE,
+        ).strip()
 
     def _vote_counts(self, idea: Idea) -> tuple[int, int]:
         """Read counts from the canonical vote rows shared with swipe cards.
