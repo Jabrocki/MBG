@@ -189,7 +189,7 @@ export function Citizen({ path, state, notify }: Props) {
   if (/^\/zgloszenia\/[^/]+\/potwierdzenie$/.test(path))
     return <Confirmation reportId={Number(path.split('/')[2])} state={state} />
   if (/^\/zgloszenia\/[^/]+\/wyniki$/.test(path))
-    return <Results problemId={Number(path.split('/')[2])} state={state} />
+    return <Results problemId={Number(path.split('/')[2])} />
   if (path === '/zgloszenia') return <Reports />
   if (/^\/zgloszenia\/[^/]+$/.test(path)) return <ReportDetail reportId={Number(path.split('/')[2])} />
   if (path === '/innowacje') return <Catalogue />
@@ -774,35 +774,23 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
     </>
   )
 }
-function Results({ problemId, state }: { problemId: number; state: string }) {
-  const [view, setView] = useState('Lista'),
-    [angle, setAngle] = useState(0),
-    [matches, setMatches] = useState<InnovationMatch[]>([]),
-    [coordinates, setCoordinates] = useState<Awaited<ReturnType<typeof api.getCoordinates>> | null>(null),
+function Results({ problemId }: { problemId: number }) {
+  const [matches, setMatches] = useState<InnovationMatch[]>([]),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true)
   useEffect(() => {
     api.getMatches(problemId)
       .then((result) => {
         setMatches(result.matches)
-        return api.getCoordinates(problemId).then(setCoordinates).catch(() => undefined)
       })
       .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać dopasowań.'))
       .finally(() => setLoading(false))
   }, [problemId])
-  const semanticPoints = coordinates?.solution_coords ?? matches.map((match) => ({
-    id: match.solution_id,
-    title: match.title,
-    x: match.coord_x,
-    y: match.coord_y,
-    z: match.coord_z,
-  }))
-  const xValues = [0, ...semanticPoints.map((point) => point.x)]
-  const yValues = [0, ...semanticPoints.map((point) => point.y)]
-  const minX = Math.min(...xValues), maxX = Math.max(...xValues)
-  const minY = Math.min(...yValues), maxY = Math.max(...yValues)
-  const percentage = (value: number, min: number, max: number) =>
-    max === min ? 50 : 16 + ((value - min) / (max - min)) * 68
+  const starPoints = matches.map((match, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / Math.max(matches.length, 1)
+    const radius = matches.length === 1 ? 0 : 31
+    return { match, left: 50 + Math.cos(angle) * radius, top: 50 + Math.sin(angle) * radius }
+  })
   if (loading) return <DemoStatus state="ladowanie" />
   return (
     <>
@@ -846,88 +834,30 @@ function Results({ problemId, state }: { problemId: number; state: string }) {
           >
             Poniższe propozycje pochodzą z backendu. Przed wdrożeniem sprawdź źródło i ograniczenia.
           </Notice>
-          <div className="toolbar">
-            <div className="segmented">
-              {['Lista', 'Przestrzeń 3D'].map((v) => (
-                <button key={v} onClick={() => setView(v)} aria-pressed={view === v}>
-                  {v === 'Lista' ? <Icon name="List" /> : <Icon name="Cube" />}
-                  {v}
-                </button>
-              ))}
+          <Panel>
+            <h2>Najbliższe rozwiązania</h2>
+            <p>Najedź na punkt, aby zobaczyć tytuł. Kliknij punkt, aby otworzyć szczegóły innowacji.</p>
+            <div className="innovation-star" role="list" aria-label="Najbliższe rozwiązania">
+              <span className="innovation-star-center">Potrzeba</span>
+              {starPoints.map(({ match, left, top }) => {
+                const title = toReadableInnovationText(match.title)
+                return (
+                  <Link
+                    className="innovation-star-point"
+                    key={match.solution_id}
+                    role="listitem"
+                    href={apiInnovationHref({ id: match.solution_id })}
+                    style={{ left: `${left}%`, top: `${top}%` }}
+                    title={`${title} — dopasowanie ${Math.round(match.score * 100)}%`}
+                  >
+                    <span className="innovation-star-dot" aria-hidden="true" />
+                    <span className="innovation-star-tooltip">{title}</span>
+                  </Link>
+                )
+              })}
             </div>
-            <span>{matches.length} {matches.length === 1 ? 'trafna innowacja' : 'trafne innowacje'}</span>
-          </div>
-          {(view === 'Przestrzeń 3D' || state === 'brak-webgl') && (
-            <Panel>
-              {state === 'brak-webgl' ? (
-                <Notice>
-                  Wizualizacja jest niedostępna. Wszystkie informacje pozostają dostępne w liście
-                  poniżej.
-                </Notice>
-              ) : (
-                <>
-                  <h2>Bliskość znaczeń, nie odległość na mapie.</h2>
-                  <p>Wizualizacja korzysta ze współrzędnych semantycznych zwróconych przez backend. Układ nie wyznacza rankingu.</p>
-                  <div className="semantic-stage">
-                    <div
-                      className="semantic-plane"
-                      style={{ transform: `rotateX(52deg) rotateZ(${angle}deg)` }}
-                    >
-                      <span className="semantic-axis" />
-                      <span className="semantic-axis other" />
-                      <span className="semantic-point problem">Potrzeba</span>
-                      {semanticPoints.slice(0, 10).map((point) => (
-                        <span
-                          className="semantic-point solution"
-                          key={point.id}
-                          style={{
-                            left: `${percentage(point.x, minX, maxX)}%`,
-                            top: `${percentage(point.y, minY, maxY)}%`,
-                          }}
-                        >
-                          {point.title}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <Field label="Obróć przestrzeń poglądową">
-                    <input
-                      type="range"
-                      min="-35"
-                      max="35"
-                      value={angle}
-                      onChange={(e) => setAngle(+e.target.value)}
-                    />
-                  </Field>
-                  <small>
-                    Punkty pokazują współrzędne zwrócone przez backend. Lista poniżej pozostaje
-                    równoważną, dostępną alternatywą.
-                  </small>
-                </>
-              )}
-            </Panel>
-          )}
-          <div className="result-list">
-            {matches.map((match) => {
-              const sourceUrl = getSafeExternalUrl(match.source_url)
-              const title = toReadableInnovationText(match.title)
-              return (
-                <article className="innovation-row" key={match.solution_id}>
-                  <div className="innovation-letter green" aria-hidden="true">{title.slice(0, 1)}</div>
-                  <div>
-                    <Badge>Pozycja {match.rank} · dopasowanie {Math.round(match.score * 100)}%</Badge>
-                    <h2><Link href={apiInnovationHref({ id: match.solution_id })}>{title}</Link></h2>
-                    <InnovationPreview description={match.description} />
-                    <div className="match-explanation">
-                      <strong>Dlaczego może pasować</strong><p>{getInnovationPreview(match.explanation, 260)}</p>
-                      <strong>Co trzeba sprawdzić</strong><p>{getInnovationPreview(match.limitations, 260)}</p>
-                    </div>
-                    {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer">Źródło innowacji <Icon name="ArrowSquareOut" size={16} /></a>}
-                  </div>
-                </article>
-              )
-            })}
-          </div>
+            <small>{matches.length} {matches.length === 1 ? 'trafne rozwiązanie' : 'trafnych rozwiązań'}</small>
+          </Panel>
           <section className="next-action">
             <h2>A jeśli potrzeba jest inna?</h2>
             <p>Możesz dalej szukać lub uporządkować nowy pomysł.</p>
