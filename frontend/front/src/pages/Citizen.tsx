@@ -487,6 +487,13 @@ function ReportForm({ state }: { state: string }) {
       </ol>
       <div className="detail-layout">
         <Panel>
+          <h2>Najbliższe sprawdzone innowacje</h2>
+          {currentThread.recommended_innovations.length === 0 ? <Notice>Nie znaleziono wystarczająco podobnych rozwiązań.</Notice> : currentThread.recommended_innovations.map((innovation) => (
+            <article className="comment" key={innovation.solution_id}>
+              <div><strong>{innovation.title}</strong><p>{toReadableInnovationText(innovation.description)}</p><small>Podobieństwo: {Math.round(innovation.similarity * 100)}%</small></div>
+            </article>
+          ))}
+          <h2>Rozmowa o pomyśle</h2>
           <form onSubmit={submit}>
             {step === 1 ? (
               <>

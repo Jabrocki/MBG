@@ -286,6 +286,7 @@ export type DiscussionThread = {
   title: string
   created_at: string
   messages: DiscussionMessage[]
+  recommended_innovations: { solution_id: number; title: string; description: string; similarity: number }[]
 }
 
 export type Notification = {

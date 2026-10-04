@@ -19,6 +19,7 @@ from src.schemas.modules import (
     InstitutionAdaptationResponse,
 )
 from src.adapters.ai_gateway import get_ai_gateway
+from src.services.matching_service import MatchingService
 
 class DiscussionService:
     def __init__(self, db: Session):
@@ -79,7 +80,15 @@ class DiscussionService:
         if not thread:
             raise HTTPException(status_code=404, detail="Wątek nie został odnaleziony")
         self._ensure_idea_visible(thread.idea, author)
-        context = "; ".join(filter(None, [thread.idea.need, thread.idea.beneficiaries, thread.idea.solution, thread.idea.resources, thread.idea.stages]))
+        context_parts = [thread.idea.need, thread.idea.beneficiaries, thread.idea.solution, thread.idea.resources, thread.idea.stages]
+        try:
+            matches = MatchingService(self.db).get_matches_for_problem(thread.idea.canonical_problem_id).matches[:5]
+            context_parts.append("Najbliższe sprawdzone innowacje: " + "; ".join(
+                f"{match.title}: {match.description[:500]}" for match in matches
+            ))
+        except Exception:
+            pass
+        context = "; ".join(filter(None, context_parts))
         answer = self.ai.discuss_idea(thread.idea.text_raw, context, content)
         msg = ThreadMessage(thread_id=thread_id, author_id=author.id, is_ai=True, content=answer, created_at=utc_now())
         self.db.add(msg)
@@ -175,12 +184,22 @@ class DiscussionService:
                 )
             )
 
+        recommended = []
+        try:
+            matches = MatchingService(self.db).get_matches_for_problem(thread.idea.canonical_problem_id).matches[:5]
+            recommended = [
+                {"solution_id": m.solution_id, "title": m.title, "description": m.description,
+                 "similarity": round(float(m.score), 3)} for m in matches
+            ]
+        except Exception:
+            pass
         return DiscussionThreadResponse(
             id=thread.id,
             idea_id=thread.idea_id,
             title=thread.title,
             created_at=thread.created_at,
             messages=messages,
+            recommended_innovations=recommended,
         )
 
     @staticmethod

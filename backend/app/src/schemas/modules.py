@@ -223,6 +223,7 @@ class DiscussionThreadResponse(BaseModel):
     title: str
     created_at: datetime
     messages: List[ThreadMessageResponse] = []
+    recommended_innovations: List[dict] = []
 
 
 class AIDiscussionRequest(BaseModel):
