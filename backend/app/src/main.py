@@ -16,6 +16,7 @@ from src.models.geo_location import EntityGeoLocation
 from src.models.pilot import Pilot
 from src.services.auth_service import AuthService, DEMO_ACCOUNTS
 from src.services.geo_location_service import EntityGeoLocationService
+from src.adapters.vector_repository import VectorRepositoryAdapter
 
 
 def seed_indexed_solutions(db) -> None:
@@ -31,27 +32,32 @@ def seed_indexed_solutions(db) -> None:
         return
     rows = [json.loads(line) for line in index_path.read_text(encoding="utf-8").splitlines() if line]
     by_title = {row["title"]: row for row in rows}
+    vectors = VectorRepositoryAdapter(db)
     for solution_id, title in enumerate(sorted(by_title), start=1001):
-        if db.get(Solution, solution_id):
-            continue
         row = by_title[title]
-        source = SourceKnowledge(
-            source_url=f"local://{row['path']}",
-            title=title,
-            content_summary=row["content"][:1500],
-            category="Katalog ROPS / syntetyczny",
-            provenance_metadata={"path": row["path"], "embedding_id": row["id"]},
-        )
-        db.add(source)
-        db.flush()
-        db.add(Solution(
-            id=solution_id,
-            source_knowledge_id=source.id,
-            title=title,
-            description=row["content"][:4000],
-            target_audience="Sprawdź opis źródłowy",
-            limitations="Wymaga lokalnej weryfikacji warunków oraz źródła.",
-        ))
+        solution = db.get(Solution, solution_id)
+        if not solution:
+            source = SourceKnowledge(
+                source_url=f"local://{row['path']}",
+                title=title,
+                content_summary=row["content"][:1500],
+                category="Katalog ROPS / syntetyczny",
+                provenance_metadata={"path": row["path"], "embedding_id": row["id"]},
+            )
+            db.add(source)
+            db.flush()
+            solution = Solution(
+                id=solution_id,
+                source_knowledge_id=source.id,
+                title=title,
+                description=row["content"][:4000],
+                target_audience="Sprawdź opis źródłowy",
+                limitations="Wymaga lokalnej weryfikacji warunków oraz źródła.",
+            )
+            db.add(solution)
+            db.flush()
+        if row.get("embedding"):
+            vectors.upsert_vector_record("solution", solution.id, row["embedding"])
 
 def seed_initial_demo_data():
     """Initializes synthetic demo users and representative innovations if database is empty."""
