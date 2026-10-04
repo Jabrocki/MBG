@@ -197,8 +197,8 @@ export function Citizen({ path, state, notify }: Props) {
   if (path.startsWith('/innowacje/')) return <Empty title="Nie znaleźliśmy innowacji." text="Wybierz pozycję z aktualnego katalogu." to="/innowacje" action="Wróć do katalogu" />
   if (path === '/potrzeby' || path === '/potrzeby/najczestsze')
     return <Needs frequent={path.endsWith('najczestsze')} />
-  if (path.startsWith('/potrzeby/')) return <NeedDetail id={path.split('/')[2]} />
   if (/^\/potrzeby\/\d+\/pomysl$/.test(path)) return <IdeaForm problemId={Number(path.split('/')[2])} />
+  if (path.startsWith('/potrzeby/')) return <NeedDetail id={path.split('/')[2]} />
   if (path === '/pomysly/nowy') return <Empty title="Wybierz problem, który chcesz rozwiązać." text="Każdy pomysł musi być przypisany do konkretnego problemu. Otwórz jego kartę i wybierz „Zaproponuj pomysł” tam, gdzie ma pomagać." to="/potrzeby" action="Przejdź do problemów" />
   if (path === '/pomysly') return <Ideas />
   if (/^\/pomysly\/\d+\/dyskusja$/.test(path)) return <Discussion ideaId={Number(path.split('/')[2])} notify={notify} />
