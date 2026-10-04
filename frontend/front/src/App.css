@@ -1349,6 +1349,15 @@ small,
   position: sticky;
   top: 20px;
 }
+@media (min-width: 1201px) {
+  .map-layout > div:last-child {
+    height: clamp(360px, 65vh, 680px);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    scrollbar-color: var(--muted) transparent;
+  }
+}
 .map-layout .area-map svg {
   height: 500px;
   object-fit: cover;

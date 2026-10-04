@@ -1388,17 +1388,19 @@ function ApiInnovationRow({ item }: { item: Innovation }) {
   const title = toReadableInnovationText(item.title)
   return (
     <article className="innovation-row">
-      <TopicArt
-        topic={
-          /senior|pamięć|demenc/i.test(item.category + title)
-            ? 'memory'
-            : /język|cudzoziem/i.test(item.category + title)
-              ? 'language'
-              : /prac/i.test(item.category + title)
-                ? 'work'
-                : 'neighbors'
-        }
-      />
+      <figure className="innovation-art">
+        <TopicArt
+          topic={
+            /senior|pamięć|demenc/i.test(item.category + title)
+              ? 'memory'
+              : /język|cudzoziem/i.test(item.category + title)
+                ? 'language'
+                : /prac/i.test(item.category + title)
+                  ? 'work'
+                  : 'neighbors'
+          }
+        />
+      </figure>
       <div>
         <Badge>{toReadableInnovationText(item.category)}</Badge>
         <h2>
