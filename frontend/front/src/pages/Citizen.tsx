@@ -1931,13 +1931,18 @@ function IdeaForm({ problemId }: { problemId: number }) {
         setProposal(result.proposal)
         setProposalSources(result.based_on ?? [])
       })
-      .catch(() => setProposal(''))
+      .catch((caught: unknown) => {
+        setProposal('')
+        setError(caught instanceof Error ? caught.message : 'Nie udało się uzyskać propozycji AI.')
+      })
       .finally(() => setProposalLoading(false))
   }, [problemId])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (savedIdeaId !== null) return
-    const form = new FormData(event.currentTarget)
+    // React clears currentTarget after dispatch; retain the form across the AI request.
+    const formElement = event.currentTarget
+    const form = new FormData(formElement)
     const textRaw = String(form.get('text_raw') ?? '').trim()
     setSaving(true)
     setError('')
@@ -1946,7 +1951,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
       setLastMessage(textRaw)
       setProposal(result.proposal)
       setProposalSources(result.based_on ?? [])
-      event.currentTarget.reset()
+      formElement.reset()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Nie udało się uzyskać odpowiedzi AI.')
     } finally {
@@ -2093,7 +2098,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
             <button
               className="button"
               type="submit"
-              disabled={saving || savedIdeaId !== null || !problem}
+              disabled={saving || proposalLoading || savedIdeaId !== null || !problem}
             >
               {saving ? 'AI odpowiada…' : 'Wyślij wiadomość do AI'}
               <Icon name="ArrowRight" />
