@@ -7,7 +7,7 @@ from sqlalchemy import select, func, and_
 
 from src.models.user import User
 from src.models.vote import Vote
-from src.models.source import Solution
+from src.models.source import Solution, SourceKnowledge
 from src.models.problem import CanonicalProblem
 from src.models.pilot import Pilot
 from src.models.match import MatchResult
@@ -102,7 +102,15 @@ class VoteService:
         solutions = self.db.execute(
             select(Solution)
             .join(MatchResult, MatchResult.solution_id == Solution.id)
-            .where(MatchResult.problem_id == problem_id)
+            .where(
+                MatchResult.problem_id == problem_id,
+                # The support/swipe view is for community proposals only.
+                # Catalogue innovations remain available in the innovation
+                # browser and as AI recommendations, but are not vote cards.
+                # Approved community ideas are marked with user-idea:// sources.
+                SourceKnowledge.source_url.like("user-idea://%"),
+            )
+            .join(SourceKnowledge, Solution.source_knowledge_id == SourceKnowledge.id)
             .distinct()
         ).scalars().all()
         cards = []
