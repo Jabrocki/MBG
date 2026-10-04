@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test:unit": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "icons:build": "node scripts/build-icon-sprite.mjs"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",

@@ -8,14 +8,15 @@ import '@fontsource/ibm-plex-sans/latin-500.css'
 import '@fontsource/ibm-plex-sans/latin-600.css'
 import { adminNav, primaryNav, screens } from './routes'
 import { Icon, Link, Logo, Heading, DemoStatus } from './ui'
-import { useRoute } from './navigation'
+import { useRoute, isActiveSection } from './navigation'
 import { api, clearSession, getStoredSession, saveSession, type Session } from './api'
 import { navigate } from './navigation'
 import { Login, PasswordReset, Atlas, Brand } from './pages/Public'
-import { Citizen } from './pages/Citizen'
-import { Admin } from './pages/Admin'
+const Citizen = lazy(() => import('./pages/Citizen').then((m) => ({ default: m.Citizen })))
+const Admin = lazy(() => import('./pages/Admin').then((m) => ({ default: m.Admin })))
 import './App.css'
 import './Civic.css'
+import './Refinements.css'
 const Landing = lazy(() => import('./pages/Landing'))
 
 export default function App() {
@@ -52,7 +53,13 @@ export default function App() {
     establishSession(await api.login(email, password), destination)
   }
   async function register(
-    data: { name: string; surname: string; email: string; password: string; is_anonymous_by_default: boolean },
+    data: {
+      name: string
+      surname: string
+      email: string
+      password: string
+      is_anonymous_by_default: boolean
+    },
     destination: string,
   ) {
     establishSession(await api.register(data), destination)
@@ -63,6 +70,17 @@ export default function App() {
     setSession(null)
     navigate('/logowanie')
   }
+  useEffect(() => {
+    if (!menu) return
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuRoute(null)
+        document.querySelector<HTMLButtonElement>('.menu-trigger')?.focus()
+      }
+    }
+    document.addEventListener('keydown', close)
+    return () => document.removeEventListener('keydown', close)
+  }, [menu])
   const navigation = admin ? adminNav : primaryNav
   let page
   if (path === '/')
@@ -108,13 +126,16 @@ export default function App() {
               <span className="notification-dot" />
             </Link>
             <Link href="/moje-aktywnosci" className="account-link">
-              <span className="avatar">{admin ? 'AD' : session?.user_name.slice(0, 2).toUpperCase()}</span>
+              <span className="avatar">
+                {admin ? 'AD' : session?.user_name.slice(0, 2).toUpperCase()}
+              </span>
               <span>{admin ? 'Administrator' : session?.user_name}</span>
             </Link>
             <button
               className="icon-button menu-trigger"
               onClick={() => setMenuRoute(menu ? null : path)}
-              aria-label="Otwórz menu"
+              aria-label={menu ? 'Zamknij menu' : 'Otwórz menu'}
+              aria-controls="mobile-menu"
               aria-expanded={menu}
             >
               <Icon name="List" />
@@ -123,7 +144,7 @@ export default function App() {
         </header>
       )}
       {!publicPage && menu && (
-        <nav className="mobile-menu" aria-label="Menu dodatkowe">
+        <nav id="mobile-menu" className="mobile-menu" aria-label="Menu dodatkowe">
           {navigation.map(([url, title]) => (
             <Link key={url} href={url}>
               {title}
@@ -133,7 +154,9 @@ export default function App() {
           <Link href="/zgloszenia">Moje zgłoszenia</Link>
           <Link href="/poparcie">Poparcie</Link>
           <Link href="/pomoc">Pomoc</Link>
-          <Link href="/logowanie" onClick={logout}>Wyloguj się</Link>
+          <Link href="/logowanie" onClick={logout}>
+            Wyloguj się
+          </Link>
         </nav>
       )}
       <div className={!publicPage ? 'app-layout' : ''}>
@@ -144,13 +167,8 @@ export default function App() {
                 <Link
                   key={url}
                   href={url}
-                  className={
-                    path === url ||
-                    (url !== '/admin' && path.startsWith(url + '/')) ||
-                    (url === '/start' && path.startsWith('/zgloszenia'))
-                      ? 'active'
-                      : ''
-                  }
+                  aria-current={isActiveSection(path, url) ? 'page' : undefined}
+                  className={isActiveSection(path, url) ? 'active' : ''}
                 >
                   <Icon name={icon} />
                   {text}
@@ -197,7 +215,7 @@ export default function App() {
           className={publicPage ? 'public-main' : `app-main ${admin ? 'admin-main' : ''}`}
           key={route}
         >
-          {page}
+          <Suspense fallback={<p role="status">Wczytywanie widoku…</p>}>{page}</Suspense>
         </main>
       </div>
       {!publicPage && (
@@ -216,8 +234,8 @@ export default function App() {
             <Link
               key={url}
               href={url}
-              aria-current={path.startsWith(url) ? 'page' : undefined}
-              className={path.startsWith(url) ? 'active' : ''}
+              aria-current={isActiveSection(path, url) ? 'page' : undefined}
+              className={isActiveSection(path, url) ? 'active' : ''}
             >
               <Icon name={icon} size={22} />
               {text}

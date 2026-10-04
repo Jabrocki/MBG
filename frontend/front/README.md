@@ -1,32 +1,9 @@
-# React + TypeScript + Vite
+# MBG — frontend z API
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React, TypeScript i Vite; baza tej wersji to aktualna integracja serwerowa. Logowanie, katalog, mapa, raporty i graf dopasowań korzystają z istniejącego API. Zmiany po audycie dodają szkic w sesji przypisany do konta, wspólny postęp, mobilne tabele, ilustracje, lazy loading oraz debounce wyszukiwania.
 
-Currently, two official plugins are available:
+Rozwój: `npm ci`, `npm run dev`; backend na porcie 8000 według `../../backend/app/README.md`. Weryfikacja: `npm run test:unit`, `npm run lint`, `npm run build`. Ikony: `npm run icons:build` regeneruje oryginalne kształty Phosphor regular wraz z licencją.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+[Instrukcja serwerowa](../../docs/URUCHOMIENIE_SERWER.md). Aktualizacja działającego serwera: `bash scripts/deploy-server.sh`. Nie używaj starszego lokalnego prototypu do nadpisania wersji z API.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+[Audyt na serwerze](../../docs/audyt-serwera/AUDYT.md), [kosztorys](../../docs/KOSZTORYS.md). Sesyjny szkic nie zastępuje trwałego zapisu konta; po wysłaniu API odpowiada za zapis raportu. Widoczność autora wynika z istniejącego ustawienia konta; frontend nie obiecuje nieobsługiwanego przez API ustawienia pojedynczego raportu.

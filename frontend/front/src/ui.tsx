@@ -1,88 +1,27 @@
 import {
   cloneElement,
+  useEffect,
+  useRef,
   isValidElement,
   useId,
   type AnchorHTMLAttributes,
   type ReactNode,
 } from 'react'
-import { navigate } from './navigation'
-import {
-  ArrowRight,
-  ArrowLeft,
-  Check,
-  WarningCircle,
-  Info,
-  X,
-  House,
-  MapPin,
-  Books,
-  Lightbulb,
-  Plant,
-  SquaresFour,
-  Tray,
-  Intersect,
-  Bell,
-  UserCircle,
-  List,
-  CaretDown,
-  CaretUp,
-  MagnifyingGlass,
-  Clock,
-  Heart,
-  ChatCircle,
-  Users,
-  ClipboardText,
-  ShieldCheck,
-  ArrowSquareOut,
-  ArrowCounterClockwise,
-  SlidersHorizontal,
-  Plus,
-  CaretRight,
-  CheckCircle,
-  Cube,
-  Gear,
-  SignOut,
-} from '@phosphor-icons/react'
-const icons = {
-  ArrowRight,
-  ArrowLeft,
-  Check,
-  WarningCircle,
-  Info,
-  X,
-  House,
-  MapPin,
-  Books,
-  Lightbulb,
-  Plant,
-  SquaresFour,
-  Tray,
-  Intersect,
-  Bell,
-  UserCircle,
-  List,
-  CaretDown,
-  CaretUp,
-  MagnifyingGlass,
-  Clock,
-  Heart,
-  ChatCircle,
-  Users,
-  ClipboardText,
-  ShieldCheck,
-  ArrowSquareOut,
-  ArrowCounterClockwise,
-  SlidersHorizontal,
-  Plus,
-  CaretRight,
-  CheckCircle,
-  Cube,
-  Gear,
-  SignOut,
-}
-export function Icon({ name, size = 20 }: { name: keyof typeof icons; size?: number }) {
-  const Component = icons[name]
-  return <Component size={size} weight="regular" aria-hidden="true" />
+import { navigate, focusRouteHeading } from './navigation'
+import type { IconName } from './components/iconNames'
+export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <use href={`/mbg-icons.svg#${name}`} />
+    </svg>
+  )
 }
 export function Link({
   href = '#',
@@ -168,6 +107,7 @@ export function Heading({
   back?: string
   action?: ReactNode
 }) {
+  useEffect(focusRouteHeading, [title])
   return (
     <header className="page-heading">
       {back && (
@@ -295,7 +235,8 @@ export function DemoStatus({ state }: { state: string }) {
   if (state === 'blad')
     return (
       <Notice tone="error" title="Nie udało się wczytać danych.">
-        Wystąpił błąd podczas pobierania danych. <Link href={window.location.pathname}>Spróbuj ponownie</Link>.
+        Wystąpił błąd podczas pobierania danych.{' '}
+        <Link href={window.location.pathname}>Spróbuj ponownie</Link>.
       </Notice>
     )
   if (state === 'ladowanie')
@@ -309,4 +250,44 @@ export function DemoStatus({ state }: { state: string }) {
       </div>
     )
   return null
+}
+export function ReportProgress({ current }: { current: number }) {
+  const labels = ['Opis potrzeby', 'Miejsce i widoczność', 'Potwierdzenie', 'Rozwiązania']
+  return (
+    <nav className="report-progress" aria-label="Postęp zgłoszenia">
+      <p className="progress-summary">
+        Krok {current} z 4 <span>· {labels[current - 1]}</span>
+      </p>
+      <ol className="stepper">
+        {labels.map((label, index) => (
+          <li
+            key={label}
+            className={index + 1 === current ? 'current' : index + 1 < current ? 'complete' : ''}
+            aria-current={index + 1 === current ? 'step' : undefined}
+          >
+            <span aria-hidden="true">
+              {index + 1 < current ? <Icon name="Check" size={15} /> : index + 1}
+            </span>
+            <span className="step-label">{label}</span>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}
+
+export function StepTitle({ step, children }: { step: number; children: ReactNode }) {
+  const ref = useRef<HTMLHeadingElement>(null)
+  const previous = useRef(step)
+  useEffect(() => {
+    if (previous.current === step) return
+    previous.current = step
+    ref.current?.focus({ preventScroll: true })
+    ref.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
+  }, [step])
+  return (
+    <h2 ref={ref} tabIndex={-1} className="step-title">
+      {children}
+    </h2>
+  )
 }

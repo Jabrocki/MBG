@@ -1,9 +1,25 @@
-import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
+import {
+  Circle,
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  Tooltip,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet'
 import { divIcon, type LatLngLiteral } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { navigate } from '../navigation'
-import { illustrations } from '../data'
+import { readSession, useSessionState, clearReportDraft } from '../session'
+import { TopicArt } from '../components/TopicArt'
 import {
   api,
   ApiError,
@@ -18,8 +34,14 @@ import {
   type Report,
 } from '../api'
 import { InnovationDocument, InnovationPreview } from '../components/InnovationText'
-import { getInnovationPreview, getSafeExternalUrl, toReadableInnovationText } from '../innovation-content'
 import {
+  getInnovationPreview,
+  getSafeExternalUrl,
+  toReadableInnovationText,
+} from '../innovation-content'
+import {
+  ReportProgress,
+  StepTitle,
   Badge,
   ButtonLink,
   DemoStatus,
@@ -39,10 +61,10 @@ type Props = { path: string; state: string; notify: Notify }
 
 const MALOPOLSKA_MAP_CENTER: LatLngLiteral = { lat: 50.0619, lng: 19.9368 }
 // Commercial-friendly provider configured at deploy time; no Google or OSM tiles.
-const MAP_TILE_URL = import.meta.env.VITE_MAP_TILE_URL
-  ?? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
-const MAP_ATTRIBUTION = import.meta.env.VITE_MAP_ATTRIBUTION
-  ?? '© Esri, HERE, Garmin'
+const MAP_TILE_URL =
+  import.meta.env.VITE_MAP_TILE_URL ??
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
+const MAP_ATTRIBUTION = import.meta.env.VITE_MAP_ATTRIBUTION ?? '© Esri, HERE, Garmin'
 
 type ChosenLocation = {
   lat: number
@@ -93,11 +115,19 @@ function LocationPicker({
       return
     }
     const timer = window.setTimeout(() => {
-      api.searchLocalities(query).then((items) => {
-        const unique = new Map<string, (typeof items)[number]>()
-        items.forEach((item) => unique.set(`${item.display_name.trim().toLocaleLowerCase()}|${item.latitude.toFixed(4)}|${item.longitude.toFixed(4)}`, item))
-        setLocalities([...unique.values()])
-      }).catch(() => setLocalities([]))
+      api
+        .searchLocalities(query)
+        .then((items) => {
+          const unique = new Map<string, (typeof items)[number]>()
+          items.forEach((item) =>
+            unique.set(
+              `${item.display_name.trim().toLocaleLowerCase()}|${item.latitude.toFixed(4)}|${item.longitude.toFixed(4)}`,
+              item,
+            ),
+          )
+          setLocalities([...unique.values()])
+        })
+        .catch(() => setLocalities([]))
     }, 350)
     return () => window.clearTimeout(timer)
   }, [localityQuery])
@@ -107,7 +137,9 @@ function LocationPicker({
   }
   function useDeviceLocation() {
     if (!navigator.geolocation) {
-      onError('Ta przeglądarka nie udostępnia geolokalizacji. Wskaż punkt na mapie lub wpisz współrzędne ręcznie.')
+      onError(
+        'Ta przeglądarka nie udostępnia geolokalizacji. Wskaż punkt na mapie lub wpisz współrzędne ręcznie.',
+      )
       return
     }
     setLocating(true)
@@ -118,7 +150,9 @@ function LocationPicker({
         setLocating(false)
       },
       () => {
-        onError('Nie udało się pobrać lokalizacji urządzenia. Wskaż miejsce na mapie albo wpisz współrzędne ręcznie.')
+        onError(
+          'Nie udało się pobrać lokalizacji urządzenia. Wskaż miejsce na mapie albo wpisz współrzędne ręcznie.',
+        )
         setLocating(false)
       },
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
@@ -126,7 +160,10 @@ function LocationPicker({
   }
   return (
     <section className="geographic-picker" aria-label="Wybór lokalizacji problemu">
-      <Field label="Miejscowość w Małopolsce" hint="Wyszukiwanie korzysta z geokodera ArcGIS, bez Google Maps i kafelków OSM.">
+      <Field
+        label="Miejscowość w Małopolsce"
+        hint="Wyszukiwanie korzysta z geokodera ArcGIS, bez Google Maps i kafelków OSM."
+      >
         <input
           value={localityQuery}
           onChange={(event) => setLocalityQuery(event.target.value)}
@@ -147,7 +184,8 @@ function LocationPicker({
                   onError('')
                 }}
               >
-                <strong>{locality.name}</strong><span>{locality.display_name}</span>
+                <strong>{locality.name}</strong>
+                <span>{locality.display_name}</span>
               </button>
             ))}
           </div>
@@ -155,10 +193,7 @@ function LocationPicker({
       </Field>
       <MapContainer center={position} zoom={10} className="leaflet-map" scrollWheelZoom>
         <MapViewport center={position} zoom={value.source === 'gps' ? 14 : 10} />
-        <TileLayer
-          attribution={MAP_ATTRIBUTION}
-          url={MAP_TILE_URL}
-        />
+        <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_URL} />
         <MapPointPicker onPick={(point) => pick(point)} />
         <Marker
           position={position}
@@ -175,12 +210,18 @@ function LocationPicker({
         </Marker>
       </MapContainer>
       <div className="geographic-picker-actions">
-        <button type="button" className="button secondary" onClick={useDeviceLocation} disabled={locating}>
+        <button
+          type="button"
+          className="button secondary"
+          onClick={useDeviceLocation}
+          disabled={locating}
+        >
           <Icon name="MapPin" />
           {locating ? 'Pobieranie lokalizacji…' : 'Użyj lokalizacji urządzenia'}
         </button>
         <p>
-          Kliknij mapę albo przeciągnij znacznik. Wybrany punkt: {value.lat.toFixed(5)}, {value.lon.toFixed(5)}.
+          Kliknij mapę albo przeciągnij znacznik. Wybrany punkt: {value.lat.toFixed(5)},{' '}
+          {value.lon.toFixed(5)}.
         </p>
       </div>
     </section>
@@ -189,25 +230,54 @@ function LocationPicker({
 
 export function Citizen({ path, state, notify }: Props) {
   if (path === '/start') return <Home />
-  if (path === '/zgloszenia/nowe') return <ReportForm state={state} />
+  if (path === '/zgloszenia/nowe') return <ReportForm key={window.location.search} state={state} />
   if (/^\/zgloszenia\/[^/]+\/potwierdzenie$/.test(path))
     return <Confirmation reportId={Number(path.split('/')[2])} state={state} />
   if (/^\/zgloszenia\/[^/]+\/wyniki$/.test(path))
     return <Results problemId={Number(path.split('/')[2])} />
   if (path === '/zgloszenia') return <Reports />
-  if (/^\/zgloszenia\/[^/]+$/.test(path)) return <ReportDetail reportId={Number(path.split('/')[2])} />
+  if (/^\/zgloszenia\/[^/]+$/.test(path))
+    return <ReportDetail reportId={Number(path.split('/')[2])} />
   if (path === '/innowacje') return <Catalogue />
-  if (/^\/innowacje\/(?:api\/)?\d+$/.test(path)) return <ApiInnovation id={Number(path.split('/').at(-1))} />
-  if (path.startsWith('/innowacje/')) return <Empty title="Nie znaleźliśmy innowacji." text="Wybierz pozycję z aktualnego katalogu." to="/innowacje" action="Wróć do katalogu" />
+  if (/^\/innowacje\/(?:api\/)?\d+$/.test(path))
+    return <ApiInnovation id={Number(path.split('/').at(-1))} />
+  if (path.startsWith('/innowacje/'))
+    return (
+      <Empty
+        title="Nie znaleźliśmy innowacji."
+        text="Wybierz pozycję z aktualnego katalogu."
+        to="/innowacje"
+        action="Wróć do katalogu"
+      />
+    )
   if (path === '/potrzeby' || path === '/potrzeby/najczestsze')
     return <Needs frequent={path.endsWith('najczestsze')} />
-  if (/^\/potrzeby\/\d+\/pomysl$/.test(path)) return <IdeaForm problemId={Number(path.split('/')[2])} />
+  if (/^\/potrzeby\/\d+\/pomysl$/.test(path))
+    return <IdeaForm problemId={Number(path.split('/')[2])} />
   if (path.startsWith('/potrzeby/')) return <NeedDetail id={path.split('/')[2]} />
-  if (path === '/pomysly/nowy') return <Empty title="Wybierz problem, który chcesz rozwiązać." text="Każdy pomysł musi być przypisany do konkretnego problemu. Otwórz jego kartę i wybierz „Zaproponuj pomysł” tam, gdzie ma pomagać." to="/potrzeby" action="Przejdź do problemów" />
+  if (path === '/pomysly/nowy')
+    return (
+      <Empty
+        title="Wybierz problem, który chcesz rozwiązać."
+        text="Każdy pomysł musi być przypisany do konkretnego problemu. Otwórz jego kartę i wybierz „Zaproponuj pomysł” tam, gdzie ma pomagać."
+        to="/potrzeby"
+        action="Przejdź do problemów"
+      />
+    )
   if (path === '/pomysly') return <Ideas />
-  if (/^\/pomysly\/\d+\/dyskusja$/.test(path)) return <Discussion ideaId={Number(path.split('/')[2])} notify={notify} />
-  if (/^\/pomysly\/\d+$/.test(path)) return <IdeaDetail ideaId={Number(path.split('/')[2])} notify={notify} />
-  if (path.startsWith('/pomysly/')) return <Empty title="Nie znaleźliśmy pomysłu." text="Wybierz pozycję z dostępnej listy pomysłów." to="/pomysly" action="Wróć do pomysłów" />
+  if (/^\/pomysly\/\d+\/dyskusja$/.test(path))
+    return <Discussion ideaId={Number(path.split('/')[2])} notify={notify} />
+  if (/^\/pomysly\/\d+$/.test(path))
+    return <IdeaDetail ideaId={Number(path.split('/')[2])} notify={notify} />
+  if (path.startsWith('/pomysly/'))
+    return (
+      <Empty
+        title="Nie znaleźliśmy pomysłu."
+        text="Wybierz pozycję z dostępnej listy pomysłów."
+        to="/pomysly"
+        action="Wróć do pomysłów"
+      />
+    )
   if (path === '/poparcie') return <Support notify={notify} />
   if (path === '/adaptacje/nowa') return <AdaptForm />
   if (path.startsWith('/adaptacje/')) return <Adaptation />
@@ -233,7 +303,10 @@ function Home() {
   const [nearby, setNearby] = useState<GeographicMarker[]>([])
   useEffect(() => {
     let active = true
-    Promise.all([api.listMyReports(), api.getMapMarkers(MALOPOLSKA_MAP_CENTER.lat, MALOPOLSKA_MAP_CENTER.lng, 40)])
+    Promise.all([
+      api.listMyReports(),
+      api.getMapMarkers(MALOPOLSKA_MAP_CENTER.lat, MALOPOLSKA_MAP_CENTER.lng, 40),
+    ])
       .then(([loadedReports, map]) => {
         if (!active) return
         setReports(loadedReports)
@@ -244,10 +317,11 @@ function Home() {
       active = false
     }
   }, [])
+  const hasDraft = !!readSession('mbg-draft-description', '')
   const latestConfirmed = reports.find((report) => report.canonical_problem_id)
   return (
     <>
-      <section className="home-welcome">
+      <section className="home-welcome compact-welcome">
         <div>
           <h1 tabIndex={-1}>Dzień dobry.</h1>
           <p>
@@ -260,16 +334,47 @@ function Home() {
             Małopolska · dane z Twojej sesji
           </span>
         </div>
-        <img src="/images/community.webp" alt="" />
+        <TopicArt topic="neighbors" />
       </section>
-      <div className="quick-actions">
+      <section className="start-priorities">
+        <div className="primary-task">
+          <div>
+            <span className="eyebrow">Zacznij od potrzeby</span>
+            <h2>{hasDraft ? 'Dokończ swoje zgłoszenie' : 'Co warto zmienić w Twojej okolicy?'}</h2>
+            <p>Opisz sprawę, sprawdź podpowiedzi i poznaj możliwe rozwiązania.</p>
+            <ButtonLink to="/zgloszenia/nowe">
+              {hasDraft ? 'Kontynuuj szkic' : 'Zgłoś potrzebę'}
+            </ButtonLink>
+          </div>
+          <TopicArt topic="memory" />
+        </div>
+        <div className="return-task">
+          <h2>Wróć do swojej sprawy</h2>
+          <p>
+            {latestConfirmed
+              ? latestConfirmed.text_raw.slice(0, 90)
+              : 'Twoje zgłoszenia i następne kroki znajdziesz w jednym miejscu.'}
+          </p>
+          <ButtonLink
+            to={
+              latestConfirmed
+                ? `/zgloszenia/${latestConfirmed.canonical_problem_id}/wyniki`
+                : '/zgloszenia'
+            }
+            secondary
+          >
+            {latestConfirmed ? 'Zobacz rozwiązania' : 'Moje zgłoszenia'}
+          </ButtonLink>
+        </div>
+      </section>
+      <div className="quick-actions secondary-shortcuts">
         {[
           [
-            '/zgloszenia/nowe',
-            'Zgłoś potrzebę',
-            'Opisz sprawę. Znajdź możliwe rozwiązania.',
-            'Plus',
-            'green',
+            '/pomysly',
+            'Rozwijaj pomysł',
+            'Przejdź od potrzeby do propozycji działania.',
+            'Lightbulb',
+            'purple',
           ],
           [
             '/innowacje',
@@ -308,14 +413,25 @@ function Home() {
           {latestConfirmed ? (
             <Panel>
               <Badge>Potwierdzona potrzeba</Badge>
-              <h3>{latestConfirmed.text_raw.slice(0, 90)}{latestConfirmed.text_raw.length > 90 ? '…' : ''}</h3>
+              <h3>
+                {latestConfirmed.text_raw.slice(0, 90)}
+                {latestConfirmed.text_raw.length > 90 ? '…' : ''}
+              </h3>
               <p>{latestConfirmed.location_name}</p>
-              <ButtonLink to={`/zgloszenia/${latestConfirmed.canonical_problem_id}/wyniki`} secondary>
+              <ButtonLink
+                to={`/zgloszenia/${latestConfirmed.canonical_problem_id}/wyniki`}
+                secondary
+              >
                 Zobacz rozwiązania
               </ButtonLink>
             </Panel>
           ) : (
-            <Empty title="Nie masz jeszcze potwierdzonej potrzeby." text="Dodaj zgłoszenie, aby otrzymać dopasowania." to="/zgloszenia/nowe" action="Zgłoś potrzebę" />
+            <Empty
+              title="Nie masz jeszcze potwierdzonej potrzeby."
+              text="Dodaj zgłoszenie, aby otrzymać dopasowania."
+              to="/zgloszenia/nowe"
+              action="Zgłoś potrzebę"
+            />
           )}
         </section>
         <section>
@@ -337,20 +453,29 @@ function Home() {
             <Icon name="ArrowRight" size={16} />
           </Link>
         </div>
-        {nearby.length ? nearby.map((problem) => (
-          <Link href={`/potrzeby/${problem.entity_id}`} className="need-row" key={problem.id}>
-            <span className="row-icon">
-              <Icon name="Users" size={25} />
-            </span>
-            <div>
-              <h3>{problem.title}</h3>
-              <p>
-                {problem.location_name} · {problem.reporter_count ?? 0} unikalnych zgłaszających
-              </p>
-            </div>
-            <Icon name="ArrowRight" />
-          </Link>
-        )) : <Empty title="Brak potrzeb w pobranym obszarze." text="Po potwierdzeniu zgłoszenia pojawią się tutaj zagregowane potrzeby." to="/zgloszenia/nowe" action="Dodaj zgłoszenie" />}
+        {nearby.length ? (
+          nearby.map((problem) => (
+            <Link href={`/potrzeby/${problem.entity_id}`} className="need-row" key={problem.id}>
+              <span className="row-icon">
+                <Icon name="Users" size={25} />
+              </span>
+              <div>
+                <h3>{problem.title}</h3>
+                <p>
+                  {problem.location_name} · {problem.reporter_count ?? 0} unikalnych zgłaszających
+                </p>
+              </div>
+              <Icon name="ArrowRight" />
+            </Link>
+          ))
+        ) : (
+          <Empty
+            title="Brak potrzeb w pobranym obszarze."
+            text="Po potwierdzeniu zgłoszenia pojawią się tutaj zagregowane potrzeby."
+            to="/zgloszenia/nowe"
+            action="Dodaj zgłoszenie"
+          />
+        )}
       </section>
     </>
   )
@@ -370,7 +495,8 @@ function PilotTeaser() {
         setPilot(items.find((item) => item.status === 'recruitment_funding') ?? items[0] ?? null)
       })
       .catch((caught: unknown) => {
-        if (active) setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać pilotaży.')
+        if (active)
+          setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać pilotaży.')
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -409,7 +535,7 @@ function PilotTeaser() {
   }
   return (
     <Link href={`/pilotaze/${pilot.id}`} className="photo-teaser">
-      <img src={illustrations.people} alt="" />
+      <TopicArt topic="volunteer" />
       <div>
         <Badge tone={pilotStatusTone(pilot.status)}>{pilotStatusLabel(pilot.status)}</Badge>
         <h3>{pilot.title}</h3>
@@ -423,17 +549,18 @@ function PilotTeaser() {
 }
 
 function ReportForm({ state }: { state: string }) {
-  const [step, setStep] = useState(state === 'poza-regionem' ? 2 : 1),
-    [text, setText] = useState(sessionStorage.getItem('mbg-report') ?? ''),
-    [location, setLocation] = useState<ChosenLocation>({
+  const [step, setStep] = useSessionState('mbg-draft-step', state === 'poza-regionem' ? 2 : 1),
+    [text, setText, textSaved] = useSessionState('mbg-draft-description', ''),
+    [location, setLocation, locationSaved] = useSessionState<ChosenLocation>('mbg-draft-location', {
       lat: MALOPOLSKA_MAP_CENTER.lat,
       lon: MALOPOLSKA_MAP_CENTER.lng,
       source: 'map',
     }),
-    [audience, setAudience] = useState('Bliskich / innych osób'),
-    [error, setError] = useState(
-      state === 'poza-regionem' ? 'Wybierz punkt w Małopolsce.' : '',
+    [audience, setAudience, audienceSaved] = useSessionState(
+      'mbg-draft-audience',
+      'Bliskich / innych osób',
     ),
+    [error, setError] = useState(state === 'poza-regionem' ? 'Wybierz punkt w Małopolsce.' : ''),
     [submitting, setSubmitting] = useState(false)
   const errorSummary = useRef<HTMLDivElement>(null)
   const descriptionField = useRef<HTMLTextAreaElement>(null)
@@ -464,8 +591,18 @@ function ReportForm({ state }: { state: string }) {
               : 'Punkt wskazany na mapie',
         location_type: location.source,
       })
-      sessionStorage.setItem(`mbg-report-${submission.report.id}`, JSON.stringify(submission.report))
-      sessionStorage.setItem(`mbg-candidates-${submission.report.id}`, JSON.stringify(submission.suggested_candidates))
+      try {
+        sessionStorage.setItem(
+          `mbg-report-${submission.report.id}`,
+          JSON.stringify(submission.report),
+        )
+        sessionStorage.setItem(
+          `mbg-candidates-${submission.report.id}`,
+          JSON.stringify(submission.suggested_candidates),
+        )
+      } catch {
+        /* Report is already saved by API; caches are optional. */
+      }
       navigate(`/zgloszenia/${submission.report.id}/potwierdzenie`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać zgłoszenia.')
@@ -481,20 +618,30 @@ function ReportForm({ state }: { state: string }) {
         description="Nie musisz znać rozwiązania. Zacznij od opisania potrzeby."
         back="/start"
       />
-      <ol className="stepper">
-        {['Opis potrzeby', 'Miejsce i widoczność', 'Potwierdzenie', 'Rozwiązania'].map((s, i) => (
-          <li key={s} className={i + 1 === step ? 'current' : ''}>
-            <span>{i + 1}</span>
-            {s}
-          </li>
-        ))}
-      </ol>
+      <ReportProgress current={step} />
+      <div className="draft-status" role="status">
+        {textSaved && locationSaved && audienceSaved
+          ? 'Szkic zachowywany w tej sesji'
+          : 'Nie udało się zachować szkicu w pamięci przeglądarki.'}
+        <button
+          className="text-button"
+          type="button"
+          onClick={() => {
+            if (clearReportDraft()) navigate(`/zgloszenia/nowe?nowy=${Date.now()}`)
+            else setError('Nie udało się usunąć szkicu.')
+          }}
+        >
+          Usuń szkic i zacznij od nowa
+        </button>
+      </div>
       <div className="detail-layout">
         <Panel>
           <form onSubmit={submit}>
+            <StepTitle step={step}>
+              {step === 1 ? 'Powiedz nam, czego brakuje.' : 'Gdzie potrzebna jest zmiana?'}
+            </StepTitle>
             {step === 1 ? (
               <>
-                <h2>Powiedz nam, czego brakuje.</h2>
                 <Field
                   label="Opis potrzeby"
                   hint="Wpisuj wyłącznie dane przykładowe. Pomiń nazwiska, numery telefonów i dane medyczne konkretnych osób."
@@ -535,8 +682,10 @@ function ReportForm({ state }: { state: string }) {
               </>
             ) : (
               <>
-                <h2>Gdzie potrzebna jest zmiana?</h2>
-                <p className="muted">Wskaż dokładne miejsce na mapie, użyj lokalizacji urządzenia albo wpisz współrzędne ręcznie.</p>
+                <p className="muted">
+                  Wskaż dokładne miejsce na mapie, użyj lokalizacji urządzenia albo wpisz
+                  współrzędne ręcznie.
+                </p>
                 <LocationPicker
                   value={location}
                   onChange={(next) => {
@@ -553,7 +702,13 @@ function ReportForm({ state }: { state: string }) {
                       inputMode="decimal"
                       step="any"
                       value={location.lat}
-                      onChange={(event) => setLocation((current) => ({ ...current, lat: Number(event.target.value), source: 'manual' }))}
+                      onChange={(event) =>
+                        setLocation((current) => ({
+                          ...current,
+                          lat: Number(event.target.value),
+                          source: 'manual',
+                        }))
+                      }
                       aria-invalid={!!error}
                       aria-describedby={error ? 'report-error' : undefined}
                       required
@@ -565,21 +720,23 @@ function ReportForm({ state }: { state: string }) {
                       inputMode="decimal"
                       step="any"
                       value={location.lon}
-                      onChange={(event) => setLocation((current) => ({ ...current, lon: Number(event.target.value), source: 'manual' }))}
+                      onChange={(event) =>
+                        setLocation((current) => ({
+                          ...current,
+                          lon: Number(event.target.value),
+                          source: 'manual',
+                        }))
+                      }
                       aria-invalid={!!error}
                       aria-describedby={error ? 'report-error' : undefined}
                       required
                     />
                   </Field>
                 </div>
-                <label className="checkbox-line">
-                  <input type="checkbox" defaultChecked />
-                  Ukryj autora przed innymi użytkownikami
-                </label>
-                <small>
-                  Administrator widzi syntetyczną tożsamość autora. To ustawienie nie anonimizuje
-                  wszystkich informacji zawartych w opisie.
-                </small>
+                <Notice>
+                  Widoczność autora jest ustalana przez ustawienie anonimowości Twojego konta. Nie
+                  umieszczaj danych identyfikujących innych osób w opisie.
+                </Notice>
               </>
             )}
             {error && (
@@ -590,7 +747,9 @@ function ReportForm({ state }: { state: string }) {
                     type="button"
                     className="text-button"
                     onClick={() =>
-                      step === 1 ? descriptionField.current?.focus() : locationField.current?.focus()
+                      step === 1
+                        ? descriptionField.current?.focus()
+                        : locationField.current?.focus()
                     }
                   >
                     {step === 1 ? 'Popraw opis potrzeby' : 'Popraw miejsce potrzeby'}
@@ -611,21 +770,25 @@ function ReportForm({ state }: { state: string }) {
                   Wróć do opisu
                 </button>
               ) : (
-                <Link href="/start">Anuluj</Link>
+                <Link href="/start">Zamknij i zachowaj szkic</Link>
               )}
               <button className="button" type="submit" disabled={submitting}>
-                {step === 1 ? 'Dalej: miejsce potrzeby' : submitting ? 'Zapisywanie…' : 'Przejdź do potwierdzenia'}
+                {step === 1
+                  ? 'Dalej: miejsce potrzeby'
+                  : submitting
+                    ? 'Zapisywanie…'
+                    : 'Przejdź do potwierdzenia'}
                 <Icon name="ArrowRight" />
               </button>
             </div>
           </form>
         </Panel>
         <aside className="context-aside">
-          <img src="/images/community.webp" alt="" />
+          <TopicArt topic="memory" />
           <h2>Zobacz zgłoszenia innych mieszkańców.</h2>
           <p>
-            Opisz swoją sprawę, a później porównamy ją z podobnymi zgłoszeniami w okolicy.
-            Możesz potwierdzić istniejące zgłoszenie albo opisać sprawę osobno.
+            Opisz swoją sprawę, a później porównamy ją z podobnymi zgłoszeniami w okolicy. Możesz
+            potwierdzić istniejące zgłoszenie albo opisać sprawę osobno.
           </p>
           <Notice>
             Dane identyfikujące są usuwane przed przekazaniem opisu do modułu AI. Wynik klasyfikacji
@@ -636,54 +799,77 @@ function ReportForm({ state }: { state: string }) {
     </>
   )
 }
+type UrgencyLevel = 'low' | 'normal' | 'high' | 'critical'
+const urgencyLevels: Array<{ value: UrgencyLevel; label: string; position: number }> = [
+  { value: 'low', label: 'niska', position: 0 },
+  { value: 'normal', label: 'zwykła', position: 33 },
+  { value: 'high', label: 'wysoka', position: 66 },
+  { value: 'critical', label: 'krytyczna', position: 100 },
+]
+const normalizeUrgency = (value: string | undefined): UrgencyLevel => {
+  if (value === 'urgent') return 'critical'
+  if (value === 'standard') return 'normal'
+  return urgencyLevels.some((level) => level.value === value) ? (value as UrgencyLevel) : 'normal'
+}
 function Confirmation({ reportId, state }: { reportId: number; state: string }) {
   const storedReport = sessionStorage.getItem(`mbg-report-${reportId}`)
   const storedCandidates = sessionStorage.getItem(`mbg-candidates-${reportId}`)
-  const [report, setReport] = useState<Report | null>(storedReport ? (JSON.parse(storedReport) as Report) : null)
+  const [report, setReport] = useState<Report | null>(
+    storedReport ? (JSON.parse(storedReport) as Report) : null,
+  )
   const [candidates] = useState<ProblemCandidate[]>(
     storedCandidates ? (JSON.parse(storedCandidates) as ProblemCandidate[]) : [],
   )
-  const [categories, setCategories] = useState<string[]>(report?.categories ?? ['Społeczność lokalna'])
-  const [audience, setAudience] = useState(report?.audience ?? '')
-  type UrgencyLevel = 'low' | 'normal' | 'high' | 'critical'
-  const urgencyLevels: Array<{ value: UrgencyLevel; label: string; position: number }> = [
-    { value: 'low', label: 'niska', position: 0 },
-    { value: 'normal', label: 'zwykła', position: 33 },
-    { value: 'high', label: 'wysoka', position: 66 },
-    { value: 'critical', label: 'krytyczna', position: 100 },
-  ]
-  const normalizeUrgency = (value: string | undefined): UrgencyLevel => {
-    if (value === 'urgent') return 'critical'
-    if (value === 'standard') return 'normal'
-    return urgencyLevels.some((level) => level.value === value) ? (value as UrgencyLevel) : 'normal'
-  }
-  const [urgency, setUrgency] = useState<UrgencyLevel>(normalizeUrgency(report?.urgency))
-  const [selected, setSelected] = useState<string>('new')
+  const [categories, setCategories] = useSessionState<string[]>(
+    `mbg-confirm-${reportId}-categories`,
+    report?.categories ?? ['Społeczność lokalna'],
+  )
+  const [audience, setAudience] = useSessionState(
+    `mbg-confirm-${reportId}-audience`,
+    readSession('mbg-draft-audience', report?.audience ?? ''),
+  )
+  const [urgency, setUrgency] = useSessionState<UrgencyLevel>(
+    `mbg-confirm-${reportId}-urgency`,
+    normalizeUrgency(report?.urgency),
+  )
+  const [selected, setSelected] = useSessionState<string>(`mbg-confirm-${reportId}-selected`, 'new')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   useEffect(() => {
     if (report) return
-    api.getReport(reportId).then(setReport).catch((caught: unknown) => {
-      setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszenia.')
-    })
+    api
+      .getReport(reportId)
+      .then(setReport)
+      .catch((caught: unknown) => {
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszenia.')
+      })
   }, [report, reportId])
   useEffect(() => {
     if (!report) return
-    setAudience(report.audience ?? '')
-    setUrgency(normalizeUrgency(report.urgency))
-  }, [report])
+    setAudience(
+      readSession(
+        `mbg-confirm-${reportId}-audience`,
+        readSession('mbg-draft-audience', report.audience ?? ''),
+      ),
+    )
+    setCategories(readSession(`mbg-confirm-${reportId}-categories`, report.categories))
+    setUrgency(readSession(`mbg-confirm-${reportId}-urgency`, normalizeUrgency(report.urgency)))
+  }, [report, reportId, setAudience, setCategories, setUrgency])
   async function confirm() {
     setSaving(true)
     setError('')
     try {
       await api.updateReportCategories(reportId, categories)
       await api.updateReportDetails(reportId, { audience, urgency })
-      const selectedCandidate = candidates.find((candidate) => String(candidate.problem_id) === selected)
+      const selectedCandidate = candidates.find(
+        (candidate) => String(candidate.problem_id) === selected,
+      )
       const problem = await api.confirmGrouping(
         reportId,
         selectedCandidate?.problem_id ?? null,
         !selectedCandidate,
       )
+      clearReportDraft()
       navigate(`/zgloszenia/${problem.id}/wyniki`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Nie udało się potwierdzić powiązania.')
@@ -701,6 +887,7 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
         description="Sprawdź podpowiedzi. Żadne powiązanie nie powstaje bez Twojego potwierdzenia."
         back="/zgloszenia/nowe"
       />
+      <ReportProgress current={3} />
       <div className="detail-layout">
         <div className="stack">
           <Panel>
@@ -708,7 +895,15 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
             <Badge tone="blue">Szacunki AI</Badge>
             <fieldset className="chip-fieldset">
               <legend>Kategorie — możesz wybrać kilka</legend>
-              {[...new Set([...categories, 'Seniorzy', 'Edukacja', 'Dostępność', 'Społeczność lokalna'])].map((c) => (
+              {[
+                ...new Set([
+                  ...categories,
+                  'Seniorzy',
+                  'Edukacja',
+                  'Dostępność',
+                  'Społeczność lokalna',
+                ]),
+              ].map((c) => (
                 <label className={categories.includes(c) ? 'selected' : ''} key={c}>
                   <input
                     type="checkbox"
@@ -729,7 +924,9 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
               <Field label="Odbiorcy · szacunek AI">
                 <input value={audience} onChange={(event) => setAudience(event.target.value)} />
               </Field>
-              <Field label={`Pilność · ${urgencyLevels.find((level) => level.value === urgency)?.label}`}>
+              <Field
+                label={`Pilność · ${urgencyLevels.find((level) => level.value === urgency)?.label}`}
+              >
                 <input
                   type="range"
                   min="0"
@@ -738,9 +935,13 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
                   value={urgencyLevels.find((level) => level.value === urgency)?.position ?? 33}
                   onChange={(event) => {
                     const position = Number(event.target.value)
-                    setUrgency(urgencyLevels.reduce((closest, level) =>
-                      Math.abs(level.position - position) < Math.abs(closest.position - position) ? level : closest,
-                    ).value)
+                    setUrgency(
+                      urgencyLevels.reduce((closest, level) =>
+                        Math.abs(level.position - position) < Math.abs(closest.position - position)
+                          ? level
+                          : closest,
+                      ).value,
+                    )
                   }}
                   aria-label="Pilność zgłoszenia"
                 />
@@ -755,17 +956,32 @@ function Confirmation({ reportId, state }: { reportId: number; state: string }) 
             </Notice>
           )}
           {report?.is_urgent && report.urgent_guidance && (
-            <Notice tone="warning" title="Potencjalnie pilna sprawa.">{report.urgent_guidance}</Notice>
+            <Notice tone="warning" title="Potencjalnie pilna sprawa.">
+              {report.urgent_guidance}
+            </Notice>
           )}
           <Panel>
             <h2>Podobna potrzeba w okolicy</h2>
             {candidates.map((candidate) => (
-              <label className={`candidate ${selected === String(candidate.problem_id) ? 'selected' : ''}`} key={candidate.problem_id}>
-                <input type="radio" name="match" checked={selected === String(candidate.problem_id)} onChange={() => setSelected(String(candidate.problem_id))} />
+              <label
+                className={`candidate ${selected === String(candidate.problem_id) ? 'selected' : ''}`}
+                key={candidate.problem_id}
+              >
+                <input
+                  type="radio"
+                  name="match"
+                  checked={selected === String(candidate.problem_id)}
+                  onChange={() => setSelected(String(candidate.problem_id))}
+                />
                 <div>
-                  <Badge>Do Twojego potwierdzenia · {Math.round(candidate.confidence * 100)}%</Badge>
+                  <Badge>
+                    Do Twojego potwierdzenia · {Math.round(candidate.confidence * 100)}%
+                  </Badge>
                   <h3>{candidate.title}</h3>
-                  <p>To podpowiedź na podstawie opisu i miejsca. Wybierz ją, jeśli opisuje Twoją sprawę.</p>
+                  <p>
+                    To podpowiedź na podstawie opisu i miejsca. Wybierz ją, jeśli opisuje Twoją
+                    sprawę.
+                  </p>
                 </div>
               </label>
             ))}
@@ -813,13 +1029,19 @@ function Results({ problemId }: { problemId: number }) {
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true)
   useEffect(() => {
-    Promise.all([api.getMatches(problemId), api.getProblem(problemId), api.getProblemShortTitle(problemId)])
+    Promise.all([
+      api.getMatches(problemId),
+      api.getProblem(problemId),
+      api.getProblemShortTitle(problemId),
+    ])
       .then(([result, problem, shortTitle]) => {
         setMatches(result.matches)
         setProblemTitle(problem.title)
         setShortProblemTitle(shortTitle.short_title)
       })
-      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać dopasowań.'))
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać dopasowań.'),
+      )
       .finally(() => setLoading(false))
   }, [problemId])
   const starPoints = matches.map((match, index) => {
@@ -827,7 +1049,8 @@ function Results({ problemId }: { problemId: number }) {
     const radius = matches.length === 1 ? 0 : 31
     return { match, left: 50 + Math.cos(angle) * radius, top: 50 + Math.sin(angle) * radius }
   })
-  const displayProblemTitle = shortProblemTitle || problemTitle.trim().split(/\s+/).slice(0, 5).join(' ')
+  const displayProblemTitle =
+    shortProblemTitle || problemTitle.trim().split(/\s+/).slice(0, 5).join(' ')
   if (loading) return <DemoStatus state="ladowanie" />
   return (
     <>
@@ -840,8 +1063,11 @@ function Results({ problemId }: { problemId: number }) {
         description="Zobacz, jakie podobne sprawy zgłosili mieszkańcy i jakie rozwiązania mogą im odpowiadać."
         back="/zgloszenia"
       />
+      <ReportProgress current={4} />
       {error ? (
-        <Notice tone="error" title="Nie udało się pobrać wyników.">{error}</Notice>
+        <Notice tone="error" title="Nie udało się pobrać wyników.">
+          {error}
+        </Notice>
       ) : matches.length === 0 ? (
         <>
           <Notice>
@@ -865,17 +1091,20 @@ function Results({ problemId }: { problemId: number }) {
         </>
       ) : (
         <>
-          <Notice
-            tone="success"
-            title="Potwierdzono powiązanie zgłoszenia."
-          >
+          <Notice tone="success" title="Potwierdzono powiązanie zgłoszenia.">
             Poniższe propozycje pochodzą z backendu. Przed wdrożeniem sprawdź źródło i ograniczenia.
           </Notice>
           <Panel>
             <h2>Najbliższe rozwiązania</h2>
-            <p>Najedź na punkt, aby zobaczyć tytuł. Kliknij punkt, aby otworzyć szczegóły innowacji.</p>
+            <p>
+              Najedź na punkt, aby zobaczyć tytuł. Kliknij punkt, aby otworzyć szczegóły innowacji.
+            </p>
             <div className="innovation-star" role="list" aria-label="Najbliższe rozwiązania">
-              <span className="innovation-star-center" tabIndex={0} aria-label={displayProblemTitle || 'Potrzeba'}>
+              <span
+                className="innovation-star-center"
+                tabIndex={0}
+                aria-label={displayProblemTitle || 'Potrzeba'}
+              >
                 <span className="innovation-star-dot" aria-hidden="true" />
                 <span className="innovation-star-tooltip">{displayProblemTitle || 'Potrzeba'}</span>
               </span>
@@ -896,7 +1125,9 @@ function Results({ problemId }: { problemId: number }) {
                 )
               })}
             </div>
-            <small>{matches.length} {matches.length === 1 ? 'trafne rozwiązanie' : 'trafnych rozwiązań'}</small>
+            <small>
+              {matches.length} {matches.length === 1 ? 'trafne rozwiązanie' : 'trafnych rozwiązań'}
+            </small>
           </Panel>
           <section className="next-action">
             <h2>A jeśli potrzeba jest inna?</h2>
@@ -920,9 +1151,12 @@ function Reports() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   useEffect(() => {
-    api.listMyReports()
+    api
+      .listMyReports()
       .then(setReports)
-      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszeń.'))
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszeń.'),
+      )
       .finally(() => setLoading(false))
   }, [])
   return (
@@ -932,16 +1166,34 @@ function Reports() {
         description="Wróć do sprawy i sprawdź jej dalszy ciąg."
         action={<ButtonLink to="/zgloszenia/nowe">Nowe zgłoszenie</ButtonLink>}
       />
-      {loading ? <DemoStatus state="ladowanie" /> : error ? <Notice tone="error">{error}</Notice> : !reports.length ? (
-        <Empty title="Nie masz jeszcze zgłoszeń." text="Opis pierwszej potrzeby trafi do Twojej prywatnej listy." to="/zgloszenia/nowe" action="Nowe zgłoszenie" />
+      {loading ? (
+        <DemoStatus state="ladowanie" />
+      ) : error ? (
+        <Notice tone="error">{error}</Notice>
+      ) : !reports.length ? (
+        <Empty
+          title="Nie masz jeszcze zgłoszeń."
+          text="Opis pierwszej potrzeby trafi do Twojej prywatnej listy."
+          to="/zgloszenia/nowe"
+          action="Nowe zgłoszenie"
+        />
       ) : (
         <Panel>
           {reports.map((report) => (
             <Link href={`/zgloszenia/${report.id}`} className="activity-row" key={report.id}>
-              <span className="row-icon green"><Icon name="ClipboardText" size={26} /></span>
+              <span className="row-icon green">
+                <Icon name="ClipboardText" size={26} />
+              </span>
               <div>
-                <Badge>{report.status === 'confirmed' ? 'Potrzeba potwierdzona' : 'Czeka na potwierdzenie'}</Badge>
-                <h2>{report.text_raw.slice(0, 90)}{report.text_raw.length > 90 ? '…' : ''}</h2>
+                <Badge>
+                  {report.status === 'confirmed'
+                    ? 'Potrzeba potwierdzona'
+                    : 'Czeka na potwierdzenie'}
+                </Badge>
+                <h2>
+                  {report.text_raw.slice(0, 90)}
+                  {report.text_raw.length > 90 ? '…' : ''}
+                </h2>
                 <p>{report.location_name} · zapisane na Twoim koncie</p>
               </div>
               <Icon name="ArrowRight" />
@@ -956,9 +1208,12 @@ function ReportDetail({ reportId }: { reportId: number }) {
   const [report, setReport] = useState<Report | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
-    api.getReport(reportId).then(setReport).catch((caught: unknown) => {
-      setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszenia.')
-    })
+    api
+      .getReport(reportId)
+      .then(setReport)
+      .catch((caught: unknown) => {
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać zgłoszenia.')
+      })
   }, [reportId])
   if (!report && !error) return <DemoStatus state="ladowanie" />
   if (error) return <Notice tone="error">{error}</Notice>
@@ -990,19 +1245,35 @@ function ReportDetail({ reportId }: { reportId: number }) {
               </li>
               <li>
                 <strong>Potwierdzenie potrzeby</strong>
-                <span>{report?.canonical_problem_id ? 'Powiązanie zostało potwierdzone przez użytkownika.' : 'Zgłoszenie czeka na Twoje potwierdzenie grupowania.'}</span>
+                <span>
+                  {report?.canonical_problem_id
+                    ? 'Powiązanie zostało potwierdzone przez użytkownika.'
+                    : 'Zgłoszenie czeka na Twoje potwierdzenie grupowania.'}
+                </span>
               </li>
               <li>
                 <strong>Rozwiązanie do sprawdzenia</strong>
-                <span>{report?.canonical_problem_id ? 'Dopasowania są dostępne dla potwierdzonej potrzeby.' : 'Dopasowania pojawią się po potwierdzeniu potrzeby.'}</span>
+                <span>
+                  {report?.canonical_problem_id
+                    ? 'Dopasowania są dostępne dla potwierdzonej potrzeby.'
+                    : 'Dopasowania pojawią się po potwierdzeniu potrzeby.'}
+                </span>
               </li>
             </ol>
           </Panel>
         </div>
         <aside className="context-aside">
           <h2>Twoja potrzeba</h2>
-          <p>{report?.canonical_problem_id ? 'Powiązana potrzeba została potwierdzona.' : 'Zgłoszenie czeka na potwierdzenie.'}</p>
-          {report?.canonical_problem_id && <ButtonLink to={`/zgloszenia/${report.canonical_problem_id}/wyniki`}>Zobacz rozwiązania</ButtonLink>}
+          <p>
+            {report?.canonical_problem_id
+              ? 'Powiązana potrzeba została potwierdzona.'
+              : 'Zgłoszenie czeka na potwierdzenie.'}
+          </p>
+          {report?.canonical_problem_id && (
+            <ButtonLink to={`/zgloszenia/${report.canonical_problem_id}/wyniki`}>
+              Zobacz rozwiązania
+            </ButtonLink>
+          )}
           <small>
             Powtórne zgłoszenie przez to samo konto liczy się raz. Decyzje moderacji wymagają
             backendu.
@@ -1032,28 +1303,40 @@ function Catalogue() {
     window.history.replaceState({}, '', `/innowacje${search.size ? '?' + search.toString() : ''}`)
   }
   useEffect(() => {
-    api.searchCatalogue(query, category)
-      .then((results) => {
-        setCatalogue(results)
-        setCatalogueError('')
-      })
-      .catch((caught: unknown) => setCatalogueError(caught instanceof Error ? caught.message : 'Nie udało się pobrać katalogu.'))
-      .finally(() => setCatalogueLoading(false))
+    let active = true
+    const timer = setTimeout(
+      () => {
+        api
+          .searchCatalogue(query, category)
+          .then((results) => {
+            if (active) {
+              setCatalogue(results)
+              setCatalogueError('')
+            }
+          })
+          .catch((caught: unknown) => {
+            if (active)
+              setCatalogueError(
+                caught instanceof Error ? caught.message : 'Nie udało się pobrać katalogu.',
+              )
+          })
+          .finally(() => {
+            if (active) setCatalogueLoading(false)
+          })
+      },
+      query ? 250 : 0,
+    )
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
   }, [category, query])
   return (
     <>
       <Heading
-        title="Nie wszystko trzeba wymyślać od nowa."
+        title="Biblioteka innowacji"
         description="Poznaj istniejące innowacje społeczne. Wybierz rozwiązanie, sprawdź źródło i rozważ lokalną adaptację."
       />
-      <div className="catalogue-intro">
-        <div>
-          <Icon name="Books" size={40} />
-          <h2>Wiedza, od której można zacząć.</h2>
-          <p>Wyniki pochodzą z katalogu innowacji zapisanego w bazie danych.</p>
-        </div>
-        <img src={illustrations.people} alt="Rysunkowa scena wspólnego działania mieszkańców." />
-      </div>
       <div className="toolbar">
         <label className="search">
           <Icon name="MagnifyingGlass" />
@@ -1072,8 +1355,9 @@ function Catalogue() {
           </select>
         </Field>
       </div>
-      <p className="muted">
-        {catalogue.length} wyników · treści z biblioteki ROPS
+      <p className="muted" role="status" aria-live="polite">
+        {catalogueLoading ? 'Wyszukiwanie…' : `${catalogue.length} wyników`} · treści z biblioteki
+        ROPS
       </p>
       {catalogueError && <Notice tone="error">{catalogueError}</Notice>}
       {!catalogueLoading && !catalogueError && !hasResults ? (
@@ -1085,7 +1369,9 @@ function Catalogue() {
         />
       ) : (
         <>
-          {catalogue.map((item) => <ApiInnovationRow item={item} key={`api-${item.id}`} />)}
+          {catalogue.map((item) => (
+            <ApiInnovationRow item={item} key={`api-${item.id}`} />
+          ))}
         </>
       )}
     </>
@@ -1099,16 +1385,38 @@ function ApiInnovationRow({ item }: { item: Innovation }) {
   const title = toReadableInnovationText(item.title)
   return (
     <article className="innovation-row">
-      <div className="innovation-letter blue" aria-hidden="true">{title.slice(0, 1)}</div>
+      <TopicArt
+        topic={
+          /senior|pamięć|demenc/i.test(item.category + title)
+            ? 'memory'
+            : /język|cudzoziem/i.test(item.category + title)
+              ? 'language'
+              : /prac/i.test(item.category + title)
+                ? 'work'
+                : 'neighbors'
+        }
+      />
       <div>
         <Badge>{toReadableInnovationText(item.category)}</Badge>
-        <h2><Link href={apiInnovationHref(item)}>{title}</Link></h2>
+        <h2>
+          <Link href={apiInnovationHref(item)}>{title}</Link>
+        </h2>
         <InnovationPreview description={item.description} />
-        <p><strong>Dla kogo:</strong> {toReadableInnovationText(item.target_audience)}</p>
-        <p><strong>Ograniczenia:</strong> {toReadableInnovationText(item.limitations)}</p>
+        <p>
+          <strong>Dla kogo:</strong> {toReadableInnovationText(item.target_audience)}
+        </p>
+        <p>
+          <strong>Ograniczenia:</strong> {toReadableInnovationText(item.limitations)}
+        </p>
         <div className="row-meta">
-          {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer">Źródło <Icon name="ArrowSquareOut" size={16} /></a>}
-          <Link href={apiInnovationHref(item)}>Poznaj rozwiązanie <Icon name="ArrowRight" size={16} /></Link>
+          {sourceUrl && (
+            <a href={sourceUrl} target="_blank" rel="noreferrer">
+              Źródło <Icon name="ArrowSquareOut" size={16} />
+            </a>
+          )}
+          <Link href={apiInnovationHref(item)}>
+            Poznaj rozwiązanie <Icon name="ArrowRight" size={16} />
+          </Link>
         </div>
       </div>
     </article>
@@ -1120,26 +1428,45 @@ function ApiInnovation({ id }: { id: number }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.getCatalogueItem(id)
+    api
+      .getCatalogueItem(id)
       .then((result) => {
         setItem(result)
         setError('')
       })
-      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać innowacji.'))
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać innowacji.'),
+      )
       .finally(() => setLoading(false))
   }, [id])
 
   if (loading) return <DemoStatus state="ladowanie" />
-  if (error) return <Notice tone="error" title="Nie udało się pobrać innowacji.">{error}</Notice>
+  if (error)
+    return (
+      <Notice tone="error" title="Nie udało się pobrać innowacji.">
+        {error}
+      </Notice>
+    )
   if (!item) {
-    return <Empty title="Nie znaleźliśmy tej innowacji." text="Wróć do katalogu i wybierz pozycję ponownie." to="/innowacje" action="Wróć do katalogu" />
+    return (
+      <Empty
+        title="Nie znaleźliśmy tej innowacji."
+        text="Wróć do katalogu i wybierz pozycję ponownie."
+        to="/innowacje"
+        action="Wróć do katalogu"
+      />
+    )
   }
 
   const sourceUrl = getSafeExternalUrl(item.source_url)
   const readableTitle = toReadableInnovationText(item.title)
   return (
     <>
-      <Heading title={readableTitle} description={getInnovationPreview(item.description)} back="/innowacje" />
+      <Heading
+        title={readableTitle}
+        description={getInnovationPreview(item.description)}
+        back="/innowacje"
+      />
       <div className="detail-layout">
         <div>
           <div className="innovation-feature">
@@ -1164,11 +1491,15 @@ function ApiInnovation({ id }: { id: number }) {
         <aside className="context-aside">
           <h2>Sprawdź przed adaptacją.</h2>
           <p>{toReadableInnovationText(item.limitations)}</p>
-          <ButtonLink to="/pomysly" secondary>Wybierz problem, aby zaproponować pomysł</ButtonLink>
+          <ButtonLink to="/pomysly" secondary>
+            Wybierz problem, aby zaproponować pomysł
+          </ButtonLink>
           <dl>
             <Fact label="Dla kogo">{toReadableInnovationText(item.target_audience)}</Fact>
             <Fact label="Szacowany koszt">{toReadableInnovationText(item.cost_estimate)}</Fact>
-            <Fact label="Pochodzenie">{sourceUrl ? 'Link do źródła jest dostępny powyżej.' : 'Katalog lokalny'}</Fact>
+            <Fact label="Pochodzenie">
+              {sourceUrl ? 'Link do źródła jest dostępny powyżej.' : 'Katalog lokalny'}
+            </Fact>
           </dl>
         </aside>
       </div>
@@ -1210,25 +1541,49 @@ function GeographicMapView({
     <div className="geographic-map" aria-label="Mapa zgłoszeń, potrzeb i innowacji z bazy danych">
       <MapContainer center={center} zoom={11} className="leaflet-map" scrollWheelZoom>
         <MapViewport center={center} zoom={11} />
-          <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_URL} />
-        <Circle center={center} radius={radius * 1000} pathOptions={{ color: '#00834a', fillOpacity: 0.06 }} />
+        <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_TILE_URL} />
+        <Circle
+          center={center}
+          radius={radius * 1000}
+          pathOptions={{ color: '#00834a', fillOpacity: 0.06 }}
+        />
         {data.markers.map((marker) => (
           <Marker
             key={marker.id}
             position={{ lat: marker.lat, lng: marker.lon }}
             icon={geographicMarkerIcon(marker)}
-            {...(marker.entity_type === 'problem' ? {} : { eventHandlers: { click: () => onSelect(marker) } })}
-            opacity={marker.entity_type === 'problem' ? 1 : selectedId && selectedId !== marker.id ? 0.72 : 1}
+            {...(marker.entity_type === 'problem'
+              ? {}
+              : { eventHandlers: { click: () => onSelect(marker) } })}
+            opacity={
+              marker.entity_type === 'problem'
+                ? 1
+                : selectedId && selectedId !== marker.id
+                  ? 0.72
+                  : 1
+            }
           >
             {marker.entity_type === 'problem' ? (
-              <Tooltip direction="top" offset={[0, -8]}>{marker.title}</Tooltip>
+              <Tooltip direction="top" offset={[0, -8]}>
+                {marker.title}
+              </Tooltip>
             ) : (
               <Popup>
                 <strong>{marker.title}</strong>
                 <br />
                 {marker.location_name}
-                {marker.distance_km !== null && <><br />{marker.distance_km.toFixed(1)} km od środka mapy</>}
-                {marker.reporter_count !== null && <><br />{marker.reporter_count} unikalnych zgłaszających</>}
+                {marker.distance_km !== null && (
+                  <>
+                    <br />
+                    {marker.distance_km.toFixed(1)} km od środka mapy
+                  </>
+                )}
+                {marker.reporter_count !== null && (
+                  <>
+                    <br />
+                    {marker.reporter_count} unikalnych zgłaszających
+                  </>
+                )}
               </Popup>
             )}
           </Marker>
@@ -1236,10 +1591,18 @@ function GeographicMapView({
       </MapContainer>
       <p className="map-disclaimer">{data.privacy_note}</p>
       <div className="map-legend" aria-label="Legenda mapy">
-        <span><b>P</b> potrzeba zagregowana</span>
-        <span><b>Z</b> własne zgłoszenie</span>
-        <span><b>I</b> innowacja z rozpoznaną miejscowością</span>
-        <span><b>T</b> pilotaż z zapisaną lokalizacją</span>
+        <span>
+          <b>P</b> potrzeba zagregowana
+        </span>
+        <span>
+          <b>Z</b> własne zgłoszenie
+        </span>
+        <span>
+          <b>I</b> innowacja z rozpoznaną miejscowością
+        </span>
+        <span>
+          <b>T</b> pilotaż z zapisaną lokalizacją
+        </span>
       </div>
     </div>
   )
@@ -1257,14 +1620,16 @@ function Needs({ frequent }: { frequent: boolean }) {
   useEffect(() => {
     let active = true
     setLoading(true)
-    api.getMapMarkers(center.lat, center.lng, radius)
+    api
+      .getMapMarkers(center.lat, center.lng, radius)
       .then((result) => {
         if (!active) return
         setData(result)
         setError('')
       })
       .catch((caught: unknown) => {
-        if (active) setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać danych mapy.')
+        if (active)
+          setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać danych mapy.')
       })
       .finally(() => active && setLoading(false))
     return () => {
@@ -1273,9 +1638,11 @@ function Needs({ frequent }: { frequent: boolean }) {
   }, [center.lat, center.lng, radius])
   const problems = (data?.markers ?? [])
     .filter((marker) => marker.entity_type === 'problem')
-    .sort((left, right) => frequent
-      ? (right.reporter_count ?? 0) - (left.reporter_count ?? 0)
-      : (left.distance_km ?? Infinity) - (right.distance_km ?? Infinity))
+    .sort((left, right) =>
+      frequent
+        ? (right.reporter_count ?? 0) - (left.reporter_count ?? 0)
+        : (left.distance_km ?? Infinity) - (right.distance_km ?? Infinity),
+    )
   function useDeviceLocation() {
     if (!navigator.geolocation) {
       setError('Ta przeglądarka nie udostępnia geolokalizacji. Przesuń mapę do wybranego miejsca.')
@@ -1283,7 +1650,10 @@ function Needs({ frequent }: { frequent: boolean }) {
     }
     navigator.geolocation.getCurrentPosition(
       (position) => setCenter({ lat: position.coords.latitude, lng: position.coords.longitude }),
-      () => setError('Nie udało się pobrać lokalizacji urządzenia. Możesz nadal przeglądać obszar ustawiony na mapie.'),
+      () =>
+        setError(
+          'Nie udało się pobrać lokalizacji urządzenia. Możesz nadal przeglądać obszar ustawiony na mapie.',
+        ),
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
     )
   }
@@ -1338,14 +1708,24 @@ function Needs({ frequent }: { frequent: boolean }) {
       </div>
       <small>Promień służy odkrywaniu. Nie zmienia grupowania zgłoszeń.</small>
       {error && <Notice tone="error">{error}</Notice>}
-      {loading ? <DemoStatus state="ladowanie" /> : !problems.length ? (
+      {loading ? (
+        <DemoStatus state="ladowanie" />
+      ) : !problems.length ? (
         <Empty
           title="W tym obszarze nie ma jeszcze potrzeb."
           text="Zwiększ promień lub opisz pierwszą sprawę w tej okolicy."
         />
       ) : (
         <div className={mode === 'Mapa' ? 'map-layout' : 'needs-list'}>
-          {mode === 'Mapa' && data && <GeographicMapView data={data} center={center} radius={radius} selectedId={selected} onSelect={(marker) => setSelected(marker.id)} />}
+          {mode === 'Mapa' && data && (
+            <GeographicMapView
+              data={data}
+              center={center}
+              radius={radius}
+              selectedId={selected}
+              onSelect={(marker) => setSelected(marker.id)}
+            />
+          )}
           <div>
             {problems.map((problem, i) => (
               <article
@@ -1354,7 +1734,11 @@ function Needs({ frequent }: { frequent: boolean }) {
               >
                 <div className="row-meta">
                   <Badge>{problem.category ?? 'Potrzeba społeczna'}</Badge>
-                  <span>{frequent ? `${i + 1}. miejsce` : `${problem.distance_km?.toFixed(1) ?? '—'} km`}</span>
+                  <span>
+                    {frequent
+                      ? `${i + 1}. miejsce`
+                      : `${problem.distance_km?.toFixed(1) ?? '—'} km`}
+                  </span>
                 </div>
                 <h2>
                   <Link href={`/potrzeby/${problem.entity_id}`}>{problem.title}</Link>
@@ -1363,8 +1747,15 @@ function Needs({ frequent }: { frequent: boolean }) {
                   {problem.location_name} · {problem.reporter_count ?? 0} unikalnych zgłaszających
                 </p>
                 <div className="row-meta">
-                  <span>{problem.precision === 'aggregate' ? 'Obszar zagregowany' : 'Obszar przybliżony'}</span>
-                  <Link href={`/potrzeby/${problem.entity_id}`} aria-label={`Poznaj potrzebę: ${problem.title}`}>
+                  <span>
+                    {problem.precision === 'aggregate'
+                      ? 'Obszar zagregowany'
+                      : 'Obszar przybliżony'}
+                  </span>
+                  <Link
+                    href={`/potrzeby/${problem.entity_id}`}
+                    aria-label={`Poznaj potrzebę: ${problem.title}`}
+                  >
                     <Icon name="ArrowRight" />
                   </Link>
                 </div>
@@ -1387,24 +1778,34 @@ function NeedDetail({ id }: { id: string }) {
         setProblem(loadedProblem)
         setMatches(loadedMatches.matches)
       })
-      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać potrzeby.'))
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać potrzeby.'),
+      )
   }, [problemId])
   if (!problem && !error) return <DemoStatus state="ladowanie" />
   if (error) return <Notice tone="error">{error}</Notice>
   return (
     <>
-      <Heading title={problem?.title ?? 'Potrzeba'} description={problem?.generated_description ?? ''} back="/potrzeby" />
+      <Heading
+        title={problem?.title ?? 'Potrzeba'}
+        description={problem?.generated_description ?? ''}
+        back="/potrzeby"
+      />
       <div className="detail-layout">
         <div className="stack">
           <Panel>
             <Badge>{problem?.status}</Badge>
             <dl className="facts">
-              <Fact label="Obszar">{problem?.location_centroid_lat.toFixed(4)}, {problem?.location_centroid_lon.toFixed(4)}</Fact>
+              <Fact label="Obszar">
+                {problem?.location_centroid_lat.toFixed(4)},{' '}
+                {problem?.location_centroid_lon.toFixed(4)}
+              </Fact>
               <Fact label="Unikalni zgłaszający">{problem?.reporter_count}</Fact>
               <Fact label="Status">{problem?.status}</Fact>
             </dl>
             <p>
-              Opis jest agregatem potrzeby. Nie pokazujemy oryginalnych opisów ani tożsamości innych zgłaszających.
+              Opis jest agregatem potrzeby. Nie pokazujemy oryginalnych opisów ani tożsamości innych
+              zgłaszających.
             </p>
           </Panel>
           <section>
@@ -1424,12 +1825,16 @@ function NeedDetail({ id }: { id: string }) {
               />
             ) : (
               <article className="innovation-row">
-                <div className="innovation-letter blue" aria-hidden="true">{matches[0].title.slice(0, 1)}</div>
+                <div className="innovation-letter blue" aria-hidden="true">
+                  {matches[0].title.slice(0, 1)}
+                </div>
                 <div>
                   <Badge>Najwyżej dopasowana innowacja</Badge>
                   <h3>{matches[0].title}</h3>
                   <InnovationPreview description={matches[0].description} />
-                  <Link href={`/zgloszenia/${problemId}/wyniki`}>Zobacz wszystkie dopasowania <Icon name="ArrowRight" size={16} /></Link>
+                  <Link href={`/zgloszenia/${problemId}/wyniki`}>
+                    Zobacz wszystkie dopasowania <Icon name="ArrowRight" size={16} />
+                  </Link>
                 </div>
               </article>
             )}
@@ -1464,8 +1869,10 @@ function ideaTitle(item: { text_refined: string | null; text_raw: string }): str
   return title.length > 100 ? `${title.slice(0, 97).trimEnd()}…` : title
 }
 function readableIdeaTitle(value: string | null | undefined): string {
-  return toReadableInnovationText(value)
-    .replace(/^lok[áa]l(?:na|ní|ni)\s+odpowiedź\s+dla:\s*/iu, '')
+  return toReadableInnovationText(value).replace(
+    /^lok[áa]l(?:na|ní|ni)\s+odpowiedź\s+dla:\s*/iu,
+    '',
+  )
 }
 function ideaStatusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -1503,9 +1910,26 @@ function IdeaForm({ problemId }: { problemId: number }) {
   const [lastMessage, setLastMessage] = useState('')
   const [draftReady, setDraftReady] = useState(false)
   useEffect(() => {
-    api.getProblem(problemId).then(setProblem).catch((caught: unknown) => setProblemError(caught instanceof Error ? caught.message : 'Nie udało się pobrać problemu.'))
-    api.getMatches(problemId).then((result) => setMatches(result.matches.slice(0, 5))).catch(() => setMatches([]))
-    api.getAiProposal(problemId).then((result) => { setProposal(result.proposal); setProposalSources(result.based_on ?? []) }).catch(() => setProposal('')).finally(() => setProposalLoading(false))
+    api
+      .getProblem(problemId)
+      .then(setProblem)
+      .catch((caught: unknown) =>
+        setProblemError(
+          caught instanceof Error ? caught.message : 'Nie udało się pobrać problemu.',
+        ),
+      )
+    api
+      .getMatches(problemId)
+      .then((result) => setMatches(result.matches.slice(0, 5)))
+      .catch(() => setMatches([]))
+    api
+      .getAiProposal(problemId)
+      .then((result) => {
+        setProposal(result.proposal)
+        setProposalSources(result.based_on ?? [])
+      })
+      .catch(() => setProposal(''))
+      .finally(() => setProposalLoading(false))
   }, [problemId])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1548,37 +1972,140 @@ function IdeaForm({ problemId }: { problemId: number }) {
     <>
       <Heading
         title="Rozmowa z AI o rozwiązaniu"
-        description={problem ? `Rozwijamy rozwiązanie problemu: „${problem.title}”.` : 'Ładowanie wybranego problemu…'}
+        description={
+          problem
+            ? `Rozwijamy rozwiązanie problemu: „${problem.title}”.`
+            : 'Ładowanie wybranego problemu…'
+        }
         back={problem ? `/potrzeby/${problemId}` : '/potrzeby'}
       />
       <div className="detail-layout">
         <Panel>
-          {problemError ? <Notice tone="error">{problemError}</Notice> : <Notice title="Wybrany problem">{problem?.title ?? 'Ładowanie…'}</Notice>}
+          {problemError ? (
+            <Notice tone="error">{problemError}</Notice>
+          ) : (
+            <Notice title="Wybrany problem">{problem?.title ?? 'Ładowanie…'}</Notice>
+          )}
           <form onSubmit={submit}>
             <h2>Asystent AI</h2>
-            <article className="comment ai-message"><div><strong>Doradca AI</strong><p>Najpierw sprawdzę podobne, działające innowacje. Napisz, co chcesz zmienić, a wspólnie dopracujemy rozwiązanie.</p></div></article>
-            {matches.length > 0 && <div className="idea-recommendations"><h3>Najbliższe sprawdzone rozwiązania</h3>{matches.map((match) => <article className="comment" key={match.solution_id}><div><strong>{match.title}</strong><p>{getInnovationPreview(match.description, 280)}</p><small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small><br /><Link href={`/innowacje/api/${match.solution_id}?tytul=${encodeURIComponent(toReadableInnovationText(match.title))}`}>Zobacz stronę innowacji <Icon name="ArrowRight" size={16} /></Link></div></article>)}</div>}
-            {lastMessage && <article className="comment"><div><strong>Ty</strong><p>{lastMessage}</p></div></article>}
-            {proposalLoading ? <LoadingState label="AI układa propozycję rozwiązania…" /> : proposal ? <article className="comment ai-message"><div><strong>Doradca AI — proponowane rozwiązanie</strong><p>{toReadableInnovationText(proposal)}</p>{proposalSources.length > 0 && <small>Na podstawie: {proposalSources.join(', ')}</small>}</div></article> : null}
-            {draftReady && proposal && <article className="comment draft-card"><div><strong>Karta draftu pomysłu</strong><p>{toReadableInnovationText(proposal)}</p><small>Draft nie został jeszcze zapisany.</small><br /><button className="button" type="button" disabled={saving} onClick={() => void saveDraft()}>{saving ? 'Zapisywanie…' : 'Zapisz draft pomysłu'} <Icon name="Check" /></button><button className="button secondary" type="button" disabled={saving} onClick={() => setDraftReady(false)}>Wróć do dyskusji</button></div></article>}
-            <Field label="Twoja wiadomość" hint="Napisz swobodnie. AI dopyta o szczegóły i zaproponuje rozwiązanie.">
-              <textarea name="text_raw" rows={10} required minLength={10} maxLength={5000} autoFocus />
+            <article className="comment ai-message">
+              <div>
+                <strong>Doradca AI</strong>
+                <p>
+                  Najpierw sprawdzę podobne, działające innowacje. Napisz, co chcesz zmienić, a
+                  wspólnie dopracujemy rozwiązanie.
+                </p>
+              </div>
+            </article>
+            {matches.length > 0 && (
+              <div className="idea-recommendations">
+                <h3>Najbliższe sprawdzone rozwiązania</h3>
+                {matches.map((match) => (
+                  <article className="comment" key={match.solution_id}>
+                    <div>
+                      <strong>{match.title}</strong>
+                      <p>{getInnovationPreview(match.description, 280)}</p>
+                      <small>Podobieństwo semantyczne: {Math.round(match.score * 100)}%</small>
+                      <br />
+                      <Link
+                        href={`/innowacje/api/${match.solution_id}?tytul=${encodeURIComponent(toReadableInnovationText(match.title))}`}
+                      >
+                        Zobacz stronę innowacji <Icon name="ArrowRight" size={16} />
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+            {lastMessage && (
+              <article className="comment">
+                <div>
+                  <strong>Ty</strong>
+                  <p>{lastMessage}</p>
+                </div>
+              </article>
+            )}
+            {proposalLoading ? (
+              <LoadingState label="AI układa propozycję rozwiązania…" />
+            ) : proposal ? (
+              <article className="comment ai-message">
+                <div>
+                  <strong>Doradca AI — proponowane rozwiązanie</strong>
+                  <p>{toReadableInnovationText(proposal)}</p>
+                  {proposalSources.length > 0 && (
+                    <small>Na podstawie: {proposalSources.join(', ')}</small>
+                  )}
+                </div>
+              </article>
+            ) : null}
+            {draftReady && proposal && (
+              <article className="comment draft-card">
+                <div>
+                  <strong>Karta draftu pomysłu</strong>
+                  <p>{toReadableInnovationText(proposal)}</p>
+                  <small>Draft nie został jeszcze zapisany.</small>
+                  <br />
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void saveDraft()}
+                  >
+                    {saving ? 'Zapisywanie…' : 'Zapisz draft pomysłu'} <Icon name="Check" />
+                  </button>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    disabled={saving}
+                    onClick={() => setDraftReady(false)}
+                  >
+                    Wróć do dyskusji
+                  </button>
+                </div>
+              </article>
+            )}
+            <Field
+              label="Twoja wiadomość"
+              hint="Napisz swobodnie. AI dopyta o szczegóły i zaproponuje rozwiązanie."
+            >
+              <textarea
+                name="text_raw"
+                rows={10}
+                required
+                minLength={10}
+                maxLength={5000}
+                autoFocus
+              />
             </Field>
             {error && <Notice tone="error">{error}</Notice>}
             {savedIdeaId !== null && (
               <Notice tone="warning" title="Szkic jest bezpiecznie zapisany.">
-                Otwórz jego kartę, aby sprawdzić status przetwarzania i nie tworzyć kolejnego szkicu.
-                <ButtonLink to={`/pomysly/${savedIdeaId}`} secondary>Otwórz zapisany szkic</ButtonLink>
+                Otwórz jego kartę, aby sprawdzić status przetwarzania i nie tworzyć kolejnego
+                szkicu.
+                <ButtonLink to={`/pomysly/${savedIdeaId}`} secondary>
+                  Otwórz zapisany szkic
+                </ButtonLink>
               </Notice>
             )}
-            <button className="button" type="submit" disabled={saving || savedIdeaId !== null || !problem}>
+            <button
+              className="button"
+              type="submit"
+              disabled={saving || savedIdeaId !== null || !problem}
+            >
               {saving ? 'AI odpowiada…' : 'Wyślij wiadomość do AI'}
               <Icon name="ArrowRight" />
             </button>
-            {proposal && !draftReady && <button className="button secondary" type="button" disabled={saving || savedIdeaId !== null} onClick={() => void approveDraft()}>
-              Zgadzam się — otwórz kartę draftu
-              <Icon name="Check" />
-            </button>}
+            {proposal && !draftReady && (
+              <button
+                className="button secondary"
+                type="button"
+                disabled={saving || savedIdeaId !== null}
+                onClick={() => void approveDraft()}
+              >
+                Zgadzam się — otwórz kartę draftu
+                <Icon name="Check" />
+              </button>
+            )}
           </form>
         </Panel>
         <aside className="context-aside">
@@ -1613,22 +2140,24 @@ function Ideas() {
 
   useEffect(() => {
     let active = true
-    Promise.allSettled([api.getPublicIdeas(), api.listMyIdeas()]).then(([publicResult, mineResult]) => {
-      if (!active) return
-      if (publicResult.status === 'fulfilled') {
-        setPublicIdeas(publicResult.value)
-        setPublicError('')
-      } else {
-        setPublicError('Nie udało się pobrać opublikowanych pomysłów.')
-      }
-      if (mineResult.status === 'fulfilled') {
-        setMyIdeas(mineResult.value)
-        setMyError('')
-      } else {
-        setMyError('Nie udało się pobrać Twoich szkiców.')
-      }
-      setLoading(false)
-    })
+    Promise.allSettled([api.getPublicIdeas(), api.listMyIdeas()]).then(
+      ([publicResult, mineResult]) => {
+        if (!active) return
+        if (publicResult.status === 'fulfilled') {
+          setPublicIdeas(publicResult.value)
+          setPublicError('')
+        } else {
+          setPublicError('Nie udało się pobrać opublikowanych pomysłów.')
+        }
+        if (mineResult.status === 'fulfilled') {
+          setMyIdeas(mineResult.value)
+          setMyError('')
+        } else {
+          setMyError('Nie udało się pobrać Twoich szkiców.')
+        }
+        setLoading(false)
+      },
+    )
     return () => {
       active = false
     }
@@ -1644,26 +2173,42 @@ function Ideas() {
         action={<ButtonLink to="/potrzeby">Najpierw wybierz problem</ButtonLink>}
       />
       <div className="segmented section-tabs">
-        <button aria-pressed={tab === 'public'} onClick={() => setTab('public')}>Społeczność</button>
-        <button aria-pressed={tab === 'mine'} onClick={() => setTab('mine')}>Moje szkice</button>
+        <button aria-pressed={tab === 'public'} onClick={() => setTab('public')}>
+          Społeczność
+        </button>
+        <button aria-pressed={tab === 'mine'} onClick={() => setTab('mine')}>
+          Moje szkice
+        </button>
       </div>
       {loading ? (
         <LoadingState label="Ładowanie pomysłów…" />
       ) : activeError ? (
         <Notice tone="error" title="Nie udało się pobrać danych.">
           {activeError}{' '}
-          <button className="text-button" onClick={() => setRefreshKey((value) => value + 1)}>Spróbuj ponownie</button>
+          <button className="text-button" onClick={() => setRefreshKey((value) => value + 1)}>
+            Spróbuj ponownie
+          </button>
         </Notice>
       ) : !activeIdeas.length ? (
         <Empty
-          title={tab === 'public' ? 'Nie ma jeszcze opublikowanych pomysłów.' : 'Nie masz jeszcze szkiców.'}
-          text={tab === 'public' ? 'Nowe propozycje pojawią się po potwierdzeniu autora i decyzji administratora.' : 'Dodaj pierwszy pomysł, aby rozpocząć jego przetwarzanie.'}
+          title={
+            tab === 'public'
+              ? 'Nie ma jeszcze opublikowanych pomysłów.'
+              : 'Nie masz jeszcze szkiców.'
+          }
+          text={
+            tab === 'public'
+              ? 'Nowe propozycje pojawią się po potwierdzeniu autora i decyzji administratora.'
+              : 'Dodaj pierwszy pomysł, aby rozpocząć jego przetwarzanie.'
+          }
           to="/potrzeby"
           action="Wybierz problem"
         />
       ) : tab === 'public' ? (
         <div className="idea-grid">
-          {publicIdeas.map((item) => <IdeaCard key={item.id} item={item} />)}
+          {publicIdeas.map((item) => (
+            <IdeaCard key={item.id} item={item} />
+          ))}
         </div>
       ) : (
         <Panel>
@@ -1673,7 +2218,9 @@ function Ideas() {
               <div>
                 <Badge tone={ideaStatusTone(item.status)}>{ideaStatusLabel(item.status)}</Badge>
                 <h2>{ideaTitle(item)}</h2>
-                <p>{toReadableInnovationText(item.solution || item.text_refined || item.text_raw)}</p>
+                <p>
+                  {toReadableInnovationText(item.solution || item.text_refined || item.text_raw)}
+                </p>
               </div>
               <Icon name="ArrowRight" />
             </Link>
@@ -1691,10 +2238,25 @@ function IdeaCard({ item }: { item: Awaited<ReturnType<typeof api.getPublicIdeas
         <h2>{ideaTitle(item)}</h2>
         <p>{toReadableInnovationText(item.solution || item.text_refined || item.text_raw)}</p>
         <div className="row-meta">
-          <span>{item.beneficiaries ? `Dla: ${toReadableInnovationText(item.beneficiaries)}` : 'Odbiorcy do sprawdzenia'}</span>
-          <span>{item.costs ? `Koszty: ${toReadableInnovationText(item.costs)}` : 'Koszty do sprawdzenia'}</span>
+          <span>
+            {item.beneficiaries
+              ? `Dla: ${toReadableInnovationText(item.beneficiaries)}`
+              : 'Odbiorcy do sprawdzenia'}
+          </span>
+          <span>
+            {item.costs
+              ? `Koszty: ${toReadableInnovationText(item.costs)}`
+              : 'Koszty do sprawdzenia'}
+          </span>
         </div>
-        <div className="vote-counts" aria-label="Głosy społeczności"><span><Icon name="CaretUp" /> {item.support_count}</span><span><Icon name="CaretDown" /> {item.skip_count}</span></div>
+        <div className="vote-counts" aria-label="Głosy społeczności">
+          <span>
+            <Icon name="CaretUp" /> {item.support_count}
+          </span>
+          <span>
+            <Icon name="CaretDown" /> {item.skip_count}
+          </span>
+        </div>
       </div>
     </Link>
   )
@@ -1709,7 +2271,8 @@ function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
 
   useEffect(() => {
     let active = true
-    api.getIdea(ideaId)
+    api
+      .getIdea(ideaId)
       .then((result) => {
         if (!active) return
         setItem(result)
@@ -1748,7 +2311,9 @@ function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
     try {
       const job = await api.submitIdea(item.id)
       if (job.status === 'failed') {
-        setError('Nie udało się przekazać pomysłu do przetworzenia AI. Pomysł nie został opublikowany.')
+        setError(
+          'Nie udało się przekazać pomysłu do przetworzenia AI. Pomysł nie został opublikowany.',
+        )
         return
       }
       setRefreshKey((value) => value + 1)
@@ -1787,18 +2352,34 @@ function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
   }
 
   if (loading) return <LoadingState label="Ładowanie pomysłu…" />
-  if (notFoundIdeaId === ideaId) return <Empty title="Nie znaleźliśmy pomysłu." to="/pomysly" action="Wróć do pomysłów" />
+  if (notFoundIdeaId === ideaId)
+    return <Empty title="Nie znaleźliśmy pomysłu." to="/pomysly" action="Wróć do pomysłów" />
   if (error && !item) {
-    return <Notice tone="error" title="Nie udało się pobrać pomysłu.">{error} <button className="text-button" onClick={retryLoad}>Spróbuj ponownie</button></Notice>
+    return (
+      <Notice tone="error" title="Nie udało się pobrać pomysłu.">
+        {error}{' '}
+        <button className="text-button" onClick={retryLoad}>
+          Spróbuj ponownie
+        </button>
+      </Notice>
+    )
   }
-  if (!item) return <Empty title="Nie znaleźliśmy pomysłu." to="/pomysly" action="Wróć do pomysłów" />
+  if (!item)
+    return <Empty title="Nie znaleźliśmy pomysłu." to="/pomysly" action="Wróć do pomysłów" />
 
   const text = item.text_refined || item.text_raw
   const canConfirm = item.status === 'pending_author'
   return (
     <>
       <Heading title={ideaTitle(item)} back="/pomysly" description={ideaStatusLabel(item.status)} />
-      <div className="vote-counts" aria-label="Głosy społeczności"><span><Icon name="CaretUp" /> {item.support_count}</span><span><Icon name="CaretDown" /> {item.skip_count}</span></div>
+      <div className="vote-counts" aria-label="Głosy społeczności">
+        <span>
+          <Icon name="CaretUp" /> {item.support_count}
+        </span>
+        <span>
+          <Icon name="CaretDown" /> {item.skip_count}
+        </span>
+      </div>
       <div className="detail-layout">
         <div className="stack">
           <Panel>
@@ -1808,13 +2389,27 @@ function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
             <p>{toReadableInnovationText(text)}</p>
             {!canConfirm && (
               <dl className="facts">
-                <Fact label="Potrzeba">{toReadableInnovationText(item.need) || 'Nie określono'}</Fact>
-                <Fact label="Odbiorcy">{toReadableInnovationText(item.beneficiaries) || 'Nie określono'}</Fact>
-                <Fact label="Rozwiązanie">{toReadableInnovationText(item.solution) || 'Nie określono'}</Fact>
-                <Fact label="Partnerzy">{toReadableInnovationText(item.partners) || 'Nie określono'}</Fact>
-                <Fact label="Koszty">{toReadableInnovationText(item.costs) || 'Nie określono'}</Fact>
-                <Fact label="Zasoby">{toReadableInnovationText(item.resources) || 'Nie określono'}</Fact>
-                <Fact label="Etapy">{toReadableInnovationText(item.stages) || 'Nie określono'}</Fact>
+                <Fact label="Potrzeba">
+                  {toReadableInnovationText(item.need) || 'Nie określono'}
+                </Fact>
+                <Fact label="Odbiorcy">
+                  {toReadableInnovationText(item.beneficiaries) || 'Nie określono'}
+                </Fact>
+                <Fact label="Rozwiązanie">
+                  {toReadableInnovationText(item.solution) || 'Nie określono'}
+                </Fact>
+                <Fact label="Partnerzy">
+                  {toReadableInnovationText(item.partners) || 'Nie określono'}
+                </Fact>
+                <Fact label="Koszty">
+                  {toReadableInnovationText(item.costs) || 'Nie określono'}
+                </Fact>
+                <Fact label="Zasoby">
+                  {toReadableInnovationText(item.resources) || 'Nie określono'}
+                </Fact>
+                <Fact label="Etapy">
+                  {toReadableInnovationText(item.stages) || 'Nie określono'}
+                </Fact>
               </dl>
             )}
           </Panel>
@@ -1822,42 +2417,81 @@ function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
             <Panel>
               <h2>Sprawdź i potwierdź redakcję AI</h2>
               <form onSubmit={confirmAuthor}>
-                <Field label="Treść uporządkowana przez AI"><textarea name="text_refined" rows={5} defaultValue={text} required /></Field>
-                <Field label="Potrzeba"><textarea name="need" rows={3} defaultValue={item.need ?? ''} required /></Field>
-                <Field label="Odbiorcy"><textarea name="beneficiaries" rows={2} defaultValue={item.beneficiaries ?? ''} required /></Field>
-                <Field label="Rozwiązanie"><textarea name="solution" rows={3} defaultValue={item.solution ?? ''} required /></Field>
-                <Field label="Partnerzy"><input name="partners" defaultValue={item.partners ?? ''} required /></Field>
-                <Field label="Koszty"><input name="costs" defaultValue={item.costs ?? ''} required /></Field>
-                <Field label="Zasoby"><input name="resources" defaultValue={item.resources ?? ''} required /></Field>
-                <Field label="Etapy"><textarea name="stages" rows={3} defaultValue={item.stages ?? ''} required /></Field>
-                <button className="button" disabled={saving}>{saving ? 'Zapisywanie…' : 'Potwierdzam i przekazuję do oceny'} <Icon name="Check" /></button>
+                <Field label="Treść uporządkowana przez AI">
+                  <textarea name="text_refined" rows={5} defaultValue={text} required />
+                </Field>
+                <Field label="Potrzeba">
+                  <textarea name="need" rows={3} defaultValue={item.need ?? ''} required />
+                </Field>
+                <Field label="Odbiorcy">
+                  <textarea
+                    name="beneficiaries"
+                    rows={2}
+                    defaultValue={item.beneficiaries ?? ''}
+                    required
+                  />
+                </Field>
+                <Field label="Rozwiązanie">
+                  <textarea name="solution" rows={3} defaultValue={item.solution ?? ''} required />
+                </Field>
+                <Field label="Partnerzy">
+                  <input name="partners" defaultValue={item.partners ?? ''} required />
+                </Field>
+                <Field label="Koszty">
+                  <input name="costs" defaultValue={item.costs ?? ''} required />
+                </Field>
+                <Field label="Zasoby">
+                  <input name="resources" defaultValue={item.resources ?? ''} required />
+                </Field>
+                <Field label="Etapy">
+                  <textarea name="stages" rows={3} defaultValue={item.stages ?? ''} required />
+                </Field>
+                <button className="button" disabled={saving}>
+                  {saving ? 'Zapisywanie…' : 'Potwierdzam i przekazuję do oceny'}{' '}
+                  <Icon name="Check" />
+                </button>
               </form>
             </Panel>
           )}
           {item.status === 'private_draft' && (
             <Notice tone="warning" title="Szkic nie został jeszcze przekazany do AI.">
-              <button className="text-button" disabled={saving} onClick={() => void submitForAi()}>Przekaż do przetworzenia AI</button>
+              <button className="text-button" disabled={saving} onClick={() => void submitForAi()}>
+                Przekaż do przetworzenia AI
+              </button>
             </Notice>
           )}
           {item.status === 'queued' && (
             <Notice tone="warning" title="Pomysł oczekuje na wynik przetwarzania AI.">
-              <button className="text-button" onClick={retryLoad}>Odśwież status</button>
+              <button className="text-button" onClick={retryLoad}>
+                Odśwież status
+              </button>
             </Notice>
           )}
-          {item.status === 'pending_admin' && <Notice tone="success" title="Pomysł oczekuje na decyzję administratora.">Publikacja nastąpi wyłącznie po zatwierdzeniu.</Notice>}
+          {item.status === 'pending_admin' && (
+            <Notice tone="success" title="Pomysł oczekuje na decyzję administratora.">
+              Publikacja nastąpi wyłącznie po zatwierdzeniu.
+            </Notice>
+          )}
           {item.status === 'public' && (
             <Panel>
               <h2>Pomysł jest widoczny dla społeczności.</h2>
               <p>Poparcie jest sygnałem zainteresowania, a nie decyzją o rozpoczęciu pilotażu.</p>
               <ButtonLink to="/poparcie">Przejdź do poparcia</ButtonLink>
-              <ButtonLink to={`/pomysly/${item.id}/dyskusja`} secondary>Otwórz dyskusję</ButtonLink>
+              <ButtonLink to={`/pomysly/${item.id}/dyskusja`} secondary>
+                Otwórz dyskusję
+              </ButtonLink>
             </Panel>
           )}
           {item.status !== 'public' && (
             <Panel>
               <h2>Dyskusja o pomyśle</h2>
-              <p>Wątek jest dostępny dla autora, administratora oraz osób uprawnionych do tego pomysłu.</p>
-              <ButtonLink to={`/pomysly/${item.id}/dyskusja`} secondary>Otwórz dyskusję</ButtonLink>
+              <p>
+                Wątek jest dostępny dla autora, administratora oraz osób uprawnionych do tego
+                pomysłu.
+              </p>
+              <ButtonLink to={`/pomysly/${item.id}/dyskusja`} secondary>
+                Otwórz dyskusję
+              </ButtonLink>
             </Panel>
           )}
           {error && <Notice tone="error">{error}</Notice>}
@@ -1865,9 +2499,30 @@ function IdeaDetail({ ideaId, notify }: { ideaId: number; notify: Notify }) {
         <aside className="context-aside">
           <h2>Ścieżka publikacji</h2>
           <ol className="timeline">
-            <li><strong>AI</strong><span>{item.status === 'private_draft' ? 'Przetwarzanie jeszcze nie zostało uruchomione.' : 'Treść jest w procesie lub po redakcji.'}</span></li>
-            <li><strong>Autor</strong><span>{canConfirm ? 'Czeka na Twoje potwierdzenie.' : 'Etap autora został zakończony albo nie jest jeszcze dostępny.'}</span></li>
-            <li><strong>Administrator</strong><span>{item.status === 'public' ? 'Pomysł został opublikowany.' : 'Publikacja wymaga decyzji administratora.'}</span></li>
+            <li>
+              <strong>AI</strong>
+              <span>
+                {item.status === 'private_draft'
+                  ? 'Przetwarzanie jeszcze nie zostało uruchomione.'
+                  : 'Treść jest w procesie lub po redakcji.'}
+              </span>
+            </li>
+            <li>
+              <strong>Autor</strong>
+              <span>
+                {canConfirm
+                  ? 'Czeka na Twoje potwierdzenie.'
+                  : 'Etap autora został zakończony albo nie jest jeszcze dostępny.'}
+              </span>
+            </li>
+            <li>
+              <strong>Administrator</strong>
+              <span>
+                {item.status === 'public'
+                  ? 'Pomysł został opublikowany.'
+                  : 'Publikacja wymaga decyzji administratora.'}
+              </span>
+            </li>
           </ol>
         </aside>
       </div>
@@ -1886,7 +2541,8 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
 
   useEffect(() => {
     let active = true
-    api.getIdeaThread(ideaId)
+    api
+      .getIdeaThread(ideaId)
       .then((result) => {
         if (!active) return
         setThread(result)
@@ -1919,9 +2575,11 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
     setError('')
     try {
       const created = await api.postThreadMessage(thread.id, content)
-      setThread((current) => current && current.id === thread.id
-        ? { ...current, messages: [...current.messages, created] }
-        : current)
+      setThread((current) =>
+        current && current.id === thread.id
+          ? { ...current, messages: [...current.messages, created] }
+          : current,
+      )
       setText('')
       notify('Wiadomość została dodana do dyskusji.')
     } catch (caught) {
@@ -1938,7 +2596,11 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
     setError('')
     try {
       const created = await api.postAIThreadMessage(thread.id, content)
-      setThread((current) => current && current.id === thread.id ? { ...current, messages: [...current.messages, created] } : current)
+      setThread((current) =>
+        current && current.id === thread.id
+          ? { ...current, messages: [...current.messages, created] }
+          : current,
+      )
       setText('')
       notify('Odpowiedź AI została dodana do tego pomysłu.')
     } catch (caught) {
@@ -1956,18 +2618,29 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
   }
 
   const currentThread = thread?.idea_id === ideaId ? thread : null
-  if (notFoundIdeaId === ideaId) return <Empty title="Nie znaleźliśmy dyskusji." to={`/pomysly/${ideaId}`} action="Wróć do pomysłu" />
+  if (notFoundIdeaId === ideaId)
+    return (
+      <Empty title="Nie znaleźliśmy dyskusji." to={`/pomysly/${ideaId}`} action="Wróć do pomysłu" />
+    )
   if (loading || (!currentThread && !error)) return <LoadingState label="Ładowanie dyskusji…" />
   if (error && !currentThread) {
     return (
       <Notice tone="error" title="Nie udało się pobrać dyskusji.">
-        {error} <button className="text-button" onClick={retry}>Spróbuj ponownie</button>
+        {error}{' '}
+        <button className="text-button" onClick={retry}>
+          Spróbuj ponownie
+        </button>
       </Notice>
     )
   }
-  if (!currentThread) return <Empty title="Nie znaleźliśmy dyskusji." to={`/pomysly/${ideaId}`} action="Wróć do pomysłu" />
+  if (!currentThread)
+    return (
+      <Empty title="Nie znaleźliśmy dyskusji." to={`/pomysly/${ideaId}`} action="Wróć do pomysłu" />
+    )
 
-  const threadTitle = toReadableInnovationText(currentThread.title).replace(/^Dyskusja:\s*/u, '') || 'Pomysł społeczności'
+  const threadTitle =
+    toReadableInnovationText(currentThread.title).replace(/^Dyskusja:\s*/u, '') ||
+    'Pomysł społeczności'
   return (
     <>
       <Heading
@@ -1980,25 +2653,39 @@ function Discussion({ ideaId, notify }: { ideaId: number; notify: Notify }) {
           <h2>Rozmowa o pomyśle</h2>
           {currentThread.messages.length === 0 ? (
             <Notice>Wątek nie zawiera jeszcze wiadomości. Możesz rozpocząć rozmowę.</Notice>
-          ) : currentThread.messages.map((message) => (
-            <article className="comment" key={message.id}>
-              <span className="avatar">{message.author_name.slice(0, 1).toLocaleUpperCase('pl-PL')}</span>
-              <div>
-                <strong>{message.author_name}</strong>
-                <p>{toReadableInnovationText(message.content)}</p>
-                <small>{formatDiscussionDate(message.created_at)}</small>
-              </div>
-            </article>
-          ))}
+          ) : (
+            currentThread.messages.map((message) => (
+              <article className="comment" key={message.id}>
+                <span className="avatar">
+                  {message.author_name.slice(0, 1).toLocaleUpperCase('pl-PL')}
+                </span>
+                <div>
+                  <strong>{message.author_name}</strong>
+                  <p>{toReadableInnovationText(message.content)}</p>
+                  <small>{formatDiscussionDate(message.created_at)}</small>
+                </div>
+              </article>
+            ))
+          )}
           <form onSubmit={sendMessage}>
             <Field label="Dodaj komentarz">
-              <textarea rows={3} value={text} onChange={(event) => setText(event.target.value)} required />
+              <textarea
+                rows={3}
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                required
+              />
             </Field>
             <button className="button" disabled={sending || !text.trim()}>
               {sending ? 'Wysyłanie…' : 'Dodaj komentarz'}
               <Icon name="ChatCircle" />
             </button>
-            <button type="button" className="button secondary" disabled={sending || askingAi || !text.trim()} onClick={() => void askAi()}>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={sending || askingAi || !text.trim()}
+              onClick={() => void askAi()}
+            >
               {askingAi ? 'AI analizuje…' : 'Zapytaj AI o ten pomysł'}
               <Icon name="ChatCircle" />
             </button>
@@ -2022,7 +2709,9 @@ function formatDiscussionDate(value: string): string {
   if (Number.isNaN(date.getTime())) return 'Data wiadomości niedostępna'
   return new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 }
-function supportCardKey(card: Pick<Awaited<ReturnType<typeof api.getSupportCards>>[number], 'problem_id' | 'solution_id'>): string {
+function supportCardKey(
+  card: Pick<Awaited<ReturnType<typeof api.getSupportCards>>[number], 'problem_id' | 'solution_id'>,
+): string {
   return `${card.problem_id}:${card.solution_id}`
 }
 function Support({ notify }: { notify: Notify }) {
@@ -2040,21 +2729,34 @@ function Support({ notify }: { notify: Notify }) {
     // Load only problems that have published community ideas. The old flow
     // fetched every map problem and triggered one expensive cards query per
     // marker, even when no card could be shown.
-    api.getPublicIdeas()
+    api
+      .getPublicIdeas()
       .then((ideas) => {
         if (!active) return
-        const problemIds = [...new Set(ideas.map((idea) => idea.canonical_problem_id).filter((id): id is number => typeof id === 'number'))]
+        const problemIds = [
+          ...new Set(
+            ideas
+              .map((idea) => idea.canonical_problem_id)
+              .filter((id): id is number => typeof id === 'number'),
+          ),
+        ]
         return Promise.all(problemIds.map((problemId) => api.getSupportCards(problemId)))
       })
       .then((groups) => {
         if (!active || !groups) return
         const unique = new Map<string, Awaited<ReturnType<typeof api.getSupportCards>>[number]>()
-        groups.flat().filter((card) => !card.my_vote).forEach((card) => unique.set(supportCardKey(card), card))
+        groups
+          .flat()
+          .filter((card) => !card.my_vote)
+          .forEach((card) => unique.set(supportCardKey(card), card))
         setCards([...unique.values()])
         setError('')
       })
       .catch((caught: unknown) => {
-        if (active) setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać kart propozycji.')
+        if (active)
+          setError(
+            caught instanceof Error ? caught.message : 'Nie udało się pobrać kart propozycji.',
+          )
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -2064,7 +2766,10 @@ function Support({ notify }: { notify: Notify }) {
     }
   }, [])
 
-  async function castVote(card: Awaited<ReturnType<typeof api.getSupportCards>>[number], voteType: 'support' | 'skip') {
+  async function castVote(
+    card: Awaited<ReturnType<typeof api.getSupportCards>>[number],
+    voteType: 'support' | 'skip',
+  ) {
     const cardKey = supportCardKey(card)
     setActingOn((current) => ({ ...current, [cardKey]: true }))
     setActionErrors((current) => {
@@ -2078,18 +2783,25 @@ function Support({ notify }: { notify: Notify }) {
         local_problem_id: card.problem_id,
         vote_type: voteType,
       })
-      setCards((current) => current.map((candidate) => {
-        if (candidate.solution_id !== card.solution_id || candidate.problem_id !== card.problem_id) return candidate
-        const countChange = (voteType === 'support' ? 1 : 0) - (candidate.my_vote === 'support' ? 1 : 0)
-        const skipChange = (voteType === 'skip' ? 1 : 0) - (candidate.my_vote === 'skip' ? 1 : 0)
-        return {
-          ...candidate,
-          my_vote: voteType,
-          my_vote_id: vote.id,
-          support_count: Math.max(0, candidate.support_count + countChange),
-          skip_count: Math.max(0, candidate.skip_count + skipChange),
-        }
-      }))
+      setCards((current) =>
+        current.map((candidate) => {
+          if (
+            candidate.solution_id !== card.solution_id ||
+            candidate.problem_id !== card.problem_id
+          )
+            return candidate
+          const countChange =
+            (voteType === 'support' ? 1 : 0) - (candidate.my_vote === 'support' ? 1 : 0)
+          const skipChange = (voteType === 'skip' ? 1 : 0) - (candidate.my_vote === 'skip' ? 1 : 0)
+          return {
+            ...candidate,
+            my_vote: voteType,
+            my_vote_id: vote.id,
+            support_count: Math.max(0, candidate.support_count + countChange),
+            skip_count: Math.max(0, candidate.skip_count + skipChange),
+          }
+        }),
+      )
       notify(voteType === 'support' ? 'Poparcie zapisane.' : 'Głos przeciw zapisany.')
       window.setTimeout(() => {
         setActiveIndex((current) => current + 1)
@@ -2119,12 +2831,16 @@ function Support({ notify }: { notify: Notify }) {
     if (swipeStart.current === null) return
     setSwipeOffset(event.clientX - swipeStart.current)
   }
-  function endSwipe(event: ReactPointerEvent<HTMLElement>, card: Awaited<ReturnType<typeof api.getSupportCards>>[number]) {
+  function endSwipe(
+    event: ReactPointerEvent<HTMLElement>,
+    card: Awaited<ReturnType<typeof api.getSupportCards>>[number],
+  ) {
     const start = swipeStart.current
     swipeStart.current = null
     if (start === null) return
     const delta = event.clientX - start
-    if (Math.abs(delta) >= 110 && !actingOn[supportCardKey(card)]) void castVote(card, delta > 0 ? 'support' : 'skip')
+    if (Math.abs(delta) >= 110 && !actingOn[supportCardKey(card)])
+      void castVote(card, delta > 0 ? 'support' : 'skip')
     else setSwipeOffset(0)
   }
   const card = cards[activeIndex]
@@ -2135,10 +2851,19 @@ function Support({ notify }: { notify: Notify }) {
         title="Co zasługuje na wspólny krok?"
         description="Poparcie dotyczy konkretnych pomysłów rozwiązania przypisanych do problemów. Nie jest decyzją o rozpoczęciu pilotażu."
       />
-      {loading ? <LoadingState label="Ładowanie kart…" /> : error ? (
-        <Notice tone="error" title="Nie udało się pobrać kart.">{error}</Notice>
+      {loading ? (
+        <LoadingState label="Ładowanie kart…" />
+      ) : error ? (
+        <Notice tone="error" title="Nie udało się pobrać kart.">
+          {error}
+        </Notice>
       ) : !card ? (
-        <Empty title="Nie ma jeszcze pomysłów do poparcia." text="Opublikowane propozycje rozwiązań pojawią się tu po zatwierdzeniu przez autora i administratora." to="/pomysly" action="Zobacz pomysły" />
+        <Empty
+          title="Nie ma jeszcze pomysłów do poparcia."
+          text="Opublikowane propozycje rozwiązań pojawią się tu po zatwierdzeniu przez autora i administratora."
+          to="/pomysly"
+          action="Zobacz pomysły"
+        />
       ) : (
         <>
           <div className="support-layout">
@@ -2149,7 +2874,9 @@ function Support({ notify }: { notify: Notify }) {
                   <article
                     className="support-card support-card--swipeable"
                     key={cardKey}
-                    style={{ transform: `translateX(${swipeOffset}px) rotate(${swipeOffset / 18}deg)` }}
+                    style={{
+                      transform: `translateX(${swipeOffset}px) rotate(${swipeOffset / 18}deg)`,
+                    }}
                     onPointerDown={(event) => beginSwipe(event, cardKey)}
                     onPointerMove={moveSwipe}
                     onPointerUp={(event) => endSwipe(event, card)}
@@ -2158,17 +2885,36 @@ function Support({ notify }: { notify: Notify }) {
                     <div>
                       <div className="row-meta">
                         <Badge tone="lavender">{supportBadgeLabel(card.badge)}</Badge>
-                        <span className="vote-counts"><span><Icon name="CaretUp" /> {card.support_count}</span><span><Icon name="CaretDown" /> {card.skip_count}</span></span>
+                        <span className="vote-counts">
+                          <span>
+                            <Icon name="CaretUp" /> {card.support_count}
+                          </span>
+                          <span>
+                            <Icon name="CaretDown" /> {card.skip_count}
+                          </span>
+                        </span>
                       </div>
                       <h2>{readableIdeaTitle(card.title)}</h2>
                       <p>{getInnovationPreview(card.description)}</p>
                       <p className="support-context">Problem: {card.problem_title}</p>
                       <div className="support-links">
-                        {card.idea_id && <Link href={`/pomysly/${card.idea_id}`}>Szczegóły pomysłu <Icon name="ArrowRight" size={16} /></Link>}
-                        <Link href={`/potrzeby/${card.problem_id}`}>Szczegóły problemu <Icon name="ArrowRight" size={16} /></Link>
+                        {card.idea_id && (
+                          <Link href={`/pomysly/${card.idea_id}`}>
+                            Szczegóły pomysłu <Icon name="ArrowRight" size={16} />
+                          </Link>
+                        )}
+                        <Link href={`/potrzeby/${card.problem_id}`}>
+                          Szczegóły problemu <Icon name="ArrowRight" size={16} />
+                        </Link>
                       </div>
-                      <small>{currentVote ? 'Twój wybór został zapisany.' : 'Przesuń kartę w prawo lub lewo, aby oddać głos.'}</small>
-                      {actionErrors[cardKey] && <Notice tone="error">{actionErrors[cardKey]}</Notice>}
+                      <small>
+                        {currentVote
+                          ? 'Twój wybór został zapisany.'
+                          : 'Przesuń kartę w prawo lub lewo, aby oddać głos.'}
+                      </small>
+                      {actionErrors[cardKey] && (
+                        <Notice tone="error">{actionErrors[cardKey]}</Notice>
+                      )}
                     </div>
                   </article>
                 )
@@ -2176,8 +2922,13 @@ function Support({ notify }: { notify: Notify }) {
             </div>
             <aside className="context-aside">
               <h2>Przesuń jak w Tinderze.</h2>
-              <p>Przesuń kartę w prawo, aby zagłosować w górę, albo w lewo, aby zagłosować w dół.</p>
-              <small>Karty są przypisane do problemów w bazie. Po oddaniu głosu pojawi się następna karta.</small>
+              <p>
+                Przesuń kartę w prawo, aby zagłosować w górę, albo w lewo, aby zagłosować w dół.
+              </p>
+              <small>
+                Karty są przypisane do problemów w bazie. Po oddaniu głosu pojawi się następna
+                karta.
+              </small>
             </aside>
           </div>
         </>
@@ -2185,7 +2936,9 @@ function Support({ notify }: { notify: Notify }) {
     </>
   )
 }
-function supportBadgeLabel(badge: Awaited<ReturnType<typeof api.getSupportCards>>[number]['badge']): string {
+function supportBadgeLabel(
+  badge: Awaited<ReturnType<typeof api.getSupportCards>>[number]['badge'],
+): string {
   if (badge === 'proposed_idea') return 'Pomysł użytkownika'
   if (badge === 'being_tested') return 'W trakcie testowania'
   return 'Istniejąca innowacja'
@@ -2193,15 +2946,23 @@ function supportBadgeLabel(badge: Awaited<ReturnType<typeof api.getSupportCards>
 function AdaptForm() {
   const requestedId = Number(new URLSearchParams(window.location.search).get('innowacja'))
   const [catalogue, setCatalogue] = useState<Innovation[]>([])
-  const [selectedId, setSelectedId] = useState(Number.isInteger(requestedId) && requestedId > 0 ? requestedId : 0)
+  const [selectedId, setSelectedId] = useState(
+    Number.isInteger(requestedId) && requestedId > 0 ? requestedId : 0,
+  )
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   useEffect(() => {
-    api.searchCatalogue().then((items) => {
-      setCatalogue(items)
-      setSelectedId((current) => current || items[0]?.id || 0)
-    }).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać katalogu.')).finally(() => setLoading(false))
+    api
+      .searchCatalogue()
+      .then((items) => {
+        setCatalogue(items)
+        setSelectedId((current) => current || items[0]?.id || 0)
+      })
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać katalogu.'),
+      )
+      .finally(() => setLoading(false))
   }, [])
   const item = catalogue.find((candidate) => candidate.id === selectedId) ?? null
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -2229,29 +2990,57 @@ function AdaptForm() {
   if (loading) return <DemoStatus state="ladowanie" />
   return (
     <>
-      <Heading title="Dobre rozwiązanie. Twoje warunki." description="Przygotuj adaptację istniejącej innowacji dla swojej placówki lub organizacji." back="/innowacje" />
+      <Heading
+        title="Dobre rozwiązanie. Twoje warunki."
+        description="Przygotuj adaptację istniejącej innowacji dla swojej placówki lub organizacji."
+        back="/innowacje"
+      />
       <div className="detail-layout">
         <Panel>
           <form onSubmit={(event) => void submit(event)}>
             {error && <Notice tone="error">{error}</Notice>}
             <Field label="Innowacja z katalogu">
-              <select value={selectedId || ''} onChange={(event) => setSelectedId(Number(event.target.value))} required>
-                <option value="" disabled>Wybierz innowację</option>
-                {catalogue.map((candidate) => <option value={candidate.id} key={candidate.id}>{toReadableInnovationText(candidate.title)}</option>)}
+              <select
+                value={selectedId || ''}
+                onChange={(event) => setSelectedId(Number(event.target.value))}
+                required
+              >
+                <option value="" disabled>
+                  Wybierz innowację
+                </option>
+                {catalogue.map((candidate) => (
+                  <option value={candidate.id} key={candidate.id}>
+                    {toReadableInnovationText(candidate.title)}
+                  </option>
+                ))}
               </select>
             </Field>
-            <Field label="Odbiorcy"><textarea name="beneficiaries" rows={3} required /></Field>
-            <Field label="Miejscowość / lokalizacja"><input name="location" required /></Field>
-            <Field label="Deklarowany budżet"><input name="budget" required /></Field>
-            <Field label="Dostępne zasoby"><textarea name="resources" rows={3} required /></Field>
-            <Field label="Ograniczenia"><textarea name="constraints" rows={3} required /></Field>
-            <button className="button" disabled={saving || !item}>{saving ? 'Przygotowywanie…' : 'Przygotuj adaptację'} <Icon name="ArrowRight" /></button>
+            <Field label="Odbiorcy">
+              <textarea name="beneficiaries" rows={3} required />
+            </Field>
+            <Field label="Miejscowość / lokalizacja">
+              <input name="location" required />
+            </Field>
+            <Field label="Deklarowany budżet">
+              <input name="budget" required />
+            </Field>
+            <Field label="Dostępne zasoby">
+              <textarea name="resources" rows={3} required />
+            </Field>
+            <Field label="Ograniczenia">
+              <textarea name="constraints" rows={3} required />
+            </Field>
+            <button className="button" disabled={saving || !item}>
+              {saving ? 'Przygotowywanie…' : 'Przygotuj adaptację'} <Icon name="ArrowRight" />
+            </button>
           </form>
         </Panel>
         <aside className="context-aside">
           <Badge>Źródło z bazy</Badge>
           <h2>{item ? toReadableInnovationText(item.title) : 'Wybierz innowację'}</h2>
-          <p>{item ? getInnovationPreview(item.description) : 'Katalog nie zawiera jeszcze pozycji.'}</p>
+          <p>
+            {item ? getInnovationPreview(item.description) : 'Katalog nie zawiera jeszcze pozycji.'}
+          </p>
         </aside>
       </div>
     </>
@@ -2262,13 +3051,27 @@ function Adaptation() {
   const [item, setItem] = useState<InstitutionAdaptation | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
-    api.getAdaptation(id).then(setItem).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać adaptacji.'))
+    api
+      .getAdaptation(id)
+      .then(setItem)
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać adaptacji.'),
+      )
   }, [id])
-  if (error) return <Notice tone="error" title="Nie udało się pobrać adaptacji.">{error}</Notice>
+  if (error)
+    return (
+      <Notice tone="error" title="Nie udało się pobrać adaptacji.">
+        {error}
+      </Notice>
+    )
   if (!item) return <DemoStatus state="ladowanie" />
   return (
     <>
-      <Heading title={`${item.solution_title ?? 'Innowacja'} w Twojej placówce.`} description="Szkic adaptacji wygenerowany na podstawie zapisanych warunków." back="/innowacje" />
+      <Heading
+        title={`${item.solution_title ?? 'Innowacja'} w Twojej placówce.`}
+        description="Szkic adaptacji wygenerowany na podstawie zapisanych warunków."
+        back="/innowacje"
+      />
       <div className="detail-layout">
         <div className="stack">
           <Panel>
@@ -2286,8 +3089,14 @@ function Adaptation() {
           </Panel>
         </div>
         <aside className="context-aside">
-          {item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">Otwórz źródło <Icon name="ArrowSquareOut" size={16} /></a>}
-          <ButtonLink to={`/adaptacje/nowa?innowacja=${item.solution_id}`} secondary>Zmień warunki</ButtonLink>
+          {item.source_url && (
+            <a href={item.source_url} target="_blank" rel="noreferrer">
+              Otwórz źródło <Icon name="ArrowSquareOut" size={16} />
+            </a>
+          )}
+          <ButtonLink to={`/adaptacje/nowa?innowacja=${item.solution_id}`} secondary>
+            Zmień warunki
+          </ButtonLink>
           <small>Adaptacja pozostaje szkicem. Pilotaż i budżet zatwierdza administrator.</small>
         </aside>
       </div>
@@ -2342,7 +3151,8 @@ function Pilots() {
         if (active) setItems(pilots)
       })
       .catch((caught: unknown) => {
-        if (active) setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać pilotaży.')
+        if (active)
+          setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać pilotaży.')
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -2392,7 +3202,7 @@ function Pilots() {
         <div className="stack">
           {visible.map((pilot) => (
             <article className="pilot-feature" key={pilot.id}>
-              <img src={illustrations.people} alt="" />
+              <TopicArt topic="volunteer" />
               <div>
                 <Badge tone={pilotStatusTone(pilot.status)}>{pilotStatusLabel(pilot.status)}</Badge>
                 <h2>{pilot.title}</h2>
@@ -2461,11 +3271,7 @@ function PilotPage({ path, notify }: Pick<Props, 'path' | 'notify'>) {
   const resourcesHref = `/pilotaze/${pilot.id}/zasoby`
   return (
     <>
-      <Heading
-        title={pilot.title}
-        description={pilotStatusLabel(pilot.status)}
-        back="/pilotaze"
-      />
+      <Heading title={pilot.title} description={pilotStatusLabel(pilot.status)} back="/pilotaze" />
       <Tabs items={pilotTabs(pilot.id)} active={path} />
       {path.endsWith('/zasoby') ? (
         <Resources pilot={pilot} />
@@ -2477,7 +3283,7 @@ function PilotPage({ path, notify }: Pick<Props, 'path' | 'notify'>) {
         <div className="detail-layout">
           <div className="stack">
             <div className="pilot-photo">
-              <img src={illustrations.people} alt="" />
+              <TopicArt topic="volunteer" />
               <Badge tone={pilotStatusTone(pilot.status)}>{pilotStatusLabel(pilot.status)}</Badge>
             </div>
             <Panel>
@@ -2691,7 +3497,7 @@ function Participation({
         )}
       </Panel>
       <aside className="context-aside">
-        <img src={illustrations.people} alt="" />
+        <TopicArt topic="volunteer" />
         <h2>Co dzieje się po zapisie?</h2>
         <p>
           Po rezygnacji system zwalnia miejsce i może skierować ofertę do pierwszej osoby na liście
@@ -2770,7 +3576,11 @@ function Evaluation({ pilot, notify }: { pilot: Pilot; notify: Notify }) {
               <small>1 — bardzo niska · 5 — bardzo wysoka</small>
             </fieldset>
             <Field label="Co było pomocne?">
-              <textarea rows={3} value={comment} onChange={(event) => setComment(event.target.value)} />
+              <textarea
+                rows={3}
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+              />
             </Field>
             <Field label="Co warto poprawić?">
               <textarea
@@ -2788,9 +3598,7 @@ function Evaluation({ pilot, notify }: { pilot: Pilot; notify: Notify }) {
       </Panel>
       <aside className="context-aside">
         <h2>Opinie pomagają wyciągnąć wnioski.</h2>
-        <p>
-          Ocena dotyczy Twojego doświadczenia w tym pilotażu i trafia do danych ewaluacyjnych.
-        </p>
+        <p>Ocena dotyczy Twojego doświadczenia w tym pilotażu i trafia do danych ewaluacyjnych.</p>
       </aside>
     </div>
   )
@@ -2800,7 +3608,13 @@ function Notifications({ notify }: { notify: Notify }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   useEffect(() => {
-    api.listNotifications().then(setItems).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać powiadomień.')).finally(() => setLoading(false))
+    api
+      .listNotifications()
+      .then(setItems)
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać powiadomień.'),
+      )
+      .finally(() => setLoading(false))
   }, [])
   async function markAllRead() {
     const unread = items.filter((item) => !item.is_read)
@@ -2823,21 +3637,38 @@ function Notifications({ notify }: { notify: Notify }) {
           </button>
         }
       />
-      {loading ? <DemoStatus state="ladowanie" /> : error ? <Notice tone="error">{error}</Notice> : !items.length ? <Empty title="Brak powiadomień." text="Ważne informacje pojawią się tutaj po zapisaniu działań." /> : <Panel>
-        {items.map((item) => (
-          <Link className={`notification-row ${item.is_read ? 'read' : ''}`} href={item.link || '/moje-aktywnosci'} key={item.id}>
-            <span className="row-icon">
-              <Icon name="Bell" size={24} />
-            </span>
-            <div>
-              <Badge tone={item.is_read ? 'neutral' : 'green'}>{item.is_read ? 'Przeczytane' : 'Nowe'}</Badge>
-              <h2>{item.title}</h2>
-              <p>{item.message}</p>
-            </div>
-            <Icon name="ArrowRight" />
-          </Link>
-        ))}
-      </Panel>}
+      {loading ? (
+        <DemoStatus state="ladowanie" />
+      ) : error ? (
+        <Notice tone="error">{error}</Notice>
+      ) : !items.length ? (
+        <Empty
+          title="Brak powiadomień."
+          text="Ważne informacje pojawią się tutaj po zapisaniu działań."
+        />
+      ) : (
+        <Panel>
+          {items.map((item) => (
+            <Link
+              className={`notification-row ${item.is_read ? 'read' : ''}`}
+              href={item.link || '/moje-aktywnosci'}
+              key={item.id}
+            >
+              <span className="row-icon">
+                <Icon name="Bell" size={24} />
+              </span>
+              <div>
+                <Badge tone={item.is_read ? 'neutral' : 'green'}>
+                  {item.is_read ? 'Przeczytane' : 'Nowe'}
+                </Badge>
+                <h2>{item.title}</h2>
+                <p>{item.message}</p>
+              </div>
+              <Icon name="ArrowRight" />
+            </Link>
+          ))}
+        </Panel>
+      )}
     </>
   )
 }
@@ -2849,19 +3680,46 @@ function Activities() {
   const [adaptations, setAdaptations] = useState<InstitutionAdaptation[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    Promise.all([api.listMyReports(), api.listMyIdeas(), api.listPilots(), api.listMyAdaptations()]).then(([loadedReports, loadedIdeas, loadedPilots, loadedAdaptations]) => {
-      setReports(loadedReports)
-      setIdeas(loadedIdeas)
-      setPilots(loadedPilots.filter((pilot) => pilot.my_volunteer_status))
-      setAdaptations(loadedAdaptations)
-    }).finally(() => setLoading(false))
+    Promise.all([api.listMyReports(), api.listMyIdeas(), api.listPilots(), api.listMyAdaptations()])
+      .then(([loadedReports, loadedIdeas, loadedPilots, loadedAdaptations]) => {
+        setReports(loadedReports)
+        setIdeas(loadedIdeas)
+        setPilots(loadedPilots.filter((pilot) => pilot.my_volunteer_status))
+        setAdaptations(loadedAdaptations)
+      })
+      .finally(() => setLoading(false))
   }, [])
   const links = [
-    { url: '/zgloszenia', title: 'Twoje zgłoszenia', text: `${reports.length} zapisanych zgłoszeń`, icon: 'ClipboardText' as const },
-    { url: '/pomysly', title: 'Twoje pomysły', text: `${ideas.length} zapisanych pomysłów`, icon: 'Lightbulb' as const },
-    { url: '/poparcie', title: 'Twoje poparcie', text: 'Sprawdź zapisane głosy i możliwość cofnięcia', icon: 'Heart' as const },
-    { url: '/pilotaze', title: 'Twój udział', text: `${pilots.length} pilotaży z zapisanym udziałem`, icon: 'Plant' as const },
-    { url: adaptations[0] ? `/adaptacje/${adaptations[0].id}` : '/adaptacje/nowa', title: 'Twoje adaptacje', text: `${adaptations.length} zapisanych szkiców adaptacji`, icon: 'Books' as const },
+    {
+      url: '/zgloszenia',
+      title: 'Twoje zgłoszenia',
+      text: `${reports.length} zapisanych zgłoszeń`,
+      icon: 'ClipboardText' as const,
+    },
+    {
+      url: '/pomysly',
+      title: 'Twoje pomysły',
+      text: `${ideas.length} zapisanych pomysłów`,
+      icon: 'Lightbulb' as const,
+    },
+    {
+      url: '/poparcie',
+      title: 'Twoje poparcie',
+      text: 'Sprawdź zapisane głosy i możliwość cofnięcia',
+      icon: 'Heart' as const,
+    },
+    {
+      url: '/pilotaze',
+      title: 'Twój udział',
+      text: `${pilots.length} pilotaży z zapisanym udziałem`,
+      icon: 'Plant' as const,
+    },
+    {
+      url: adaptations[0] ? `/adaptacje/${adaptations[0].id}` : '/adaptacje/nowa',
+      title: 'Twoje adaptacje',
+      text: `${adaptations.length} zapisanych szkiców adaptacji`,
+      icon: 'Books' as const,
+    },
   ]
   return (
     <>
@@ -2879,20 +3737,24 @@ function Activities() {
           Zmień profil
         </ButtonLink>
       </div>
-      {loading ? <DemoStatus state="ladowanie" /> : <div className="activity-links">
-        {links.map(({ url, title, text, icon }) => (
-          <Link key={url} href={url} className="activity-row">
-            <span className="row-icon">
-              <Icon name={icon} size={28} />
-            </span>
-            <div>
-              <h2>{title}</h2>
-              <p>{text}</p>
-            </div>
-            <Icon name="ArrowRight" />
-          </Link>
-        ))}
-      </div>}
+      {loading ? (
+        <DemoStatus state="ladowanie" />
+      ) : (
+        <div className="activity-links">
+          {links.map(({ url, title, text, icon }) => (
+            <Link key={url} href={url} className="activity-row">
+              <span className="row-icon">
+                <Icon name={icon} size={28} />
+              </span>
+              <div>
+                <h2>{title}</h2>
+                <p>{text}</p>
+              </div>
+              <Icon name="ArrowRight" />
+            </Link>
+          ))}
+        </div>
+      )}
     </>
   )
 }
