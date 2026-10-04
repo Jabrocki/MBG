@@ -437,8 +437,8 @@ function ReportForm({ state }: { state: string }) {
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (step === 1) {
-      if (text.trim().length < 30) {
-      setError('Opisz sprawę przynajmniej jednym pełnym zdaniem (minimum 30 znaków).')
+      if (text.trim().length < 10) {
+        setError('Opisz krótko, czego dotyczy potrzeba (minimum 10 znaków).')
         requestAnimationFrame(() => errorSummary.current?.focus())
         return
       }

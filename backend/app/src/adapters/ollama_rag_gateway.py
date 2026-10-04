@@ -187,7 +187,11 @@ class OllamaRagGateway:
         data = self._json(
             "Jesteś polskim asystentem zgłoszeń społecznych w Małopolsce. Zwróć wyłącznie JSON z polami: "
             "categories (lista krótkich kategorii), audience, urgency (standard albo urgent), duration, "
-            "is_urgent (boolean), needs_revision (boolean), revision_reason. Nie wymyślaj danych osobowych.\n"
+            "is_urgent (boolean), needs_revision (boolean), revision_reason. "
+            "Nie wymagaj liczby osób, dokładnych parametrów transportu ani kompletnego planu: "
+            "ogólny lub krótki opis potrzeby jest poprawny. needs_revision ustaw na true wyłącznie "
+            "dla obraźliwych/wulgarnych treści, danych wrażliwych, treści jawnie nierealnych albo "
+            "całkowicie niezrozumiałego tekstu. Nie wymyślaj danych osobowych.\n"
             f"ZGŁOSZENIE: {clean}"
         )
         urgency = "urgent" if data.get("urgency") == "urgent" or data.get("is_urgent") is True else "standard"

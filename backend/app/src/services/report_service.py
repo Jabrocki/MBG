@@ -52,7 +52,14 @@ class ReportService:
 
         # 2. AI Classification & Urgency check
         classification = self.ai.classify_report(data.text)
-        if classification.needs_revision:
+        # Keep the intake permissive: missing operational details are refined by
+        # AI later. Only reject reasons covered by the public content policy.
+        revision_reason = (classification.revision_reason or "").lower()
+        allowed_revision = any(
+            marker in revision_reason
+            for marker in ("obraź", "wulg", "przekl", "dane wraż", "wrażliwe", "niereal", "niezrozum")
+        )
+        if classification.needs_revision and allowed_revision:
             raise HTTPException(
                 status_code=422,
                 detail=classification.revision_reason or "Opis wymaga uzupełnienia przed przetworzeniem.",
