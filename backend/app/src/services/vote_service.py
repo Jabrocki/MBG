@@ -118,6 +118,15 @@ class VoteService:
                     )
                 )
             ).scalar() or 0
+            skip_count = self.db.execute(
+                select(func.count(Vote.id)).where(
+                    and_(
+                        Vote.solution_id == sol.id,
+                        Vote.local_problem_id == problem_id,
+                        Vote.vote_type == "skip",
+                    )
+                )
+            ).scalar() or 0
 
             # Sprawdź aktualny głos tego użytkownika
             my_vote_rec = self.db.execute(
@@ -151,6 +160,7 @@ class VoteService:
                     description=sol.description,
                     badge=badge,
                     support_count=support_count,
+                    skip_count=skip_count,
                     my_vote=my_vote_rec.vote_type if my_vote_rec else None,
                     my_vote_id=my_vote_rec.id if my_vote_rec else None,
                 )

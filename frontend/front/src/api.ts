@@ -113,6 +113,7 @@ export type SupportCard = {
   description: string
   badge: 'proposed_idea' | 'being_tested' | 'established_innovation'
   support_count: number
+  skip_count: number
   my_vote: 'support' | 'skip' | null
   my_vote_id?: number | null
 }

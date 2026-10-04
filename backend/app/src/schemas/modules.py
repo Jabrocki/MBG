@@ -75,6 +75,7 @@ class SwipeCardResponse(BaseModel):
     description: str
     badge: str  # "proposed_idea" | "being_tested" | "established_innovation"
     support_count: int
+    skip_count: int
     my_vote: Optional[str] = None
     # The persisted vote ID is needed for an undo action after a page refresh.
     # It is only ever the current authenticated user's own vote.

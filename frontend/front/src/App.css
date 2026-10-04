@@ -1532,6 +1532,18 @@ small,
   background: #f3f5ee;
   border-radius: 8px;
 }
+.vote-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+.vote-counts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.vote-counts > span:first-child { color: var(--green); }
+.vote-counts > span:last-child { color: var(--rust); }
 .support-card > div > a {
   display: flex;
   align-items: center;

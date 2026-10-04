@@ -2016,21 +2016,14 @@ function supportCardKey(card: Pick<Awaited<ReturnType<typeof api.getSupportCards
   return `${card.problem_id}:${card.solution_id}`
 }
 function Support({ notify }: { notify: Notify }) {
-  const queryProblemId = Number(new URLSearchParams(window.location.search).get('problem'))
-  const [problems, setProblems] = useState<GeographicMarker[]>([])
-  const [problemId, setProblemId] = useState<number | null>(Number.isInteger(queryProblemId) && queryProblemId > 0 ? queryProblemId : null)
   const [cards, setCards] = useState<Awaited<ReturnType<typeof api.getSupportCards>>>([])
-  const [voteIds, setVoteIds] = useState<Record<string, number>>({})
-  const [reasons, setReasons] = useState<Record<string, string>>({})
-  const [problemsLoading, setProblemsLoading] = useState(true)
-  const [cardsLoading, setCardsLoading] = useState(true)
-  const [problemsError, setProblemsError] = useState('')
-  const [cardsError, setCardsError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
   const [actingOn, setActingOn] = useState<Record<string, true>>({})
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [swipeOffsets, setSwipeOffsets] = useState<Record<string, number>>({})
-  const swipeStart = useRef<{ key: string; x: number } | null>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const swipeStart = useRef<number | null>(null)
 
   useEffect(() => {
     let active = true
@@ -2038,53 +2031,26 @@ function Support({ notify }: { notify: Notify }) {
       .then((map) => {
         if (!active) return
         const availableProblems = map.markers.filter((marker) => marker.entity_type === 'problem')
-        setProblems(availableProblems)
-        setProblemId((current) =>
-          current !== null && availableProblems.some((problem) => problem.entity_id === current)
-            ? current
-            : availableProblems[0]?.entity_id ?? null,
-        )
-        setProblemsError('')
+        return Promise.all(availableProblems.map((problem) => api.getSupportCards(problem.entity_id)))
+      })
+      .then((groups) => {
+        if (!active || !groups) return
+        const unique = new Map<string, Awaited<ReturnType<typeof api.getSupportCards>>[number]>()
+        groups.flat().forEach((card) => unique.set(supportCardKey(card), card))
+        setCards([...unique.values()])
+        setError('')
       })
       .catch((caught: unknown) => {
-        if (active) setProblemsError(caught instanceof Error ? caught.message : 'Nie udało się pobrać potrzeb.')
+        if (active) setError(caught instanceof Error ? caught.message : 'Nie udało się pobrać kart propozycji.')
       })
       .finally(() => {
-        if (active) setProblemsLoading(false)
+        if (active) setLoading(false)
       })
     return () => {
       active = false
     }
-  }, [refreshKey])
+  }, [])
 
-  useEffect(() => {
-    if (problemId === null) return
-    let active = true
-    api.getSupportCards(problemId)
-      .then((result) => {
-        if (!active) return
-        setCards(result)
-        setCardsError('')
-      })
-      .catch((caught: unknown) => {
-        if (active) setCardsError(caught instanceof Error ? caught.message : 'Nie udało się pobrać kart poparcia.')
-      })
-      .finally(() => {
-        if (active) setCardsLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [problemId, refreshKey])
-
-  function selectProblem(nextProblemId: number) {
-    setProblemId(nextProblemId)
-    setVoteIds({})
-    setReasons({})
-    setCardsLoading(true)
-    setCardsError('')
-    window.history.replaceState({}, '', `/poparcie?problem=${nextProblemId}`)
-  }
   async function castVote(card: Awaited<ReturnType<typeof api.getSupportCards>>[number], voteType: 'support' | 'skip') {
     const cardKey = supportCardKey(card)
     setActingOn((current) => ({ ...current, [cardKey]: true }))
@@ -2098,20 +2064,24 @@ function Support({ notify }: { notify: Notify }) {
         solution_id: card.solution_id,
         local_problem_id: card.problem_id,
         vote_type: voteType,
-        rejection_reason: voteType === 'skip' ? reasons[cardKey]?.trim() || undefined : undefined,
       })
-      setVoteIds((current) => ({ ...current, [cardKey]: vote.id }))
       setCards((current) => current.map((candidate) => {
         if (candidate.solution_id !== card.solution_id || candidate.problem_id !== card.problem_id) return candidate
         const countChange = (voteType === 'support' ? 1 : 0) - (candidate.my_vote === 'support' ? 1 : 0)
+        const skipChange = (voteType === 'skip' ? 1 : 0) - (candidate.my_vote === 'skip' ? 1 : 0)
         return {
           ...candidate,
           my_vote: voteType,
           my_vote_id: vote.id,
           support_count: Math.max(0, candidate.support_count + countChange),
+          skip_count: Math.max(0, candidate.skip_count + skipChange),
         }
       }))
-      notify(voteType === 'support' ? 'Dodano poparcie dla tej propozycji.' : 'Pominięto propozycję.')
+      notify(voteType === 'support' ? 'Poparcie zapisane.' : 'Głos przeciw zapisany.')
+      window.setTimeout(() => {
+        setActiveIndex((current) => current + 1)
+        setSwipeOffset(0)
+      }, 180)
     } catch (caught) {
       setActionErrors((current) => ({
         ...current,
@@ -2128,131 +2098,70 @@ function Support({ notify }: { notify: Notify }) {
 
   function beginSwipe(event: ReactPointerEvent<HTMLElement>, cardKey: string) {
     if (event.pointerType === 'mouse' && event.button !== 0) return
-    swipeStart.current = { key: cardKey, x: event.clientX }
+    if (cardKey !== supportCardKey(cards[activeIndex])) return
+    swipeStart.current = event.clientX
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
-  function moveSwipe(event: ReactPointerEvent<HTMLElement>, cardKey: string) {
-    if (!swipeStart.current || swipeStart.current.key !== cardKey) return
-    setSwipeOffsets((current) => ({ ...current, [cardKey]: event.clientX - swipeStart.current!.x }))
+  function moveSwipe(event: ReactPointerEvent<HTMLElement>) {
+    if (swipeStart.current === null) return
+    setSwipeOffset(event.clientX - swipeStart.current)
   }
   function endSwipe(event: ReactPointerEvent<HTMLElement>, card: Awaited<ReturnType<typeof api.getSupportCards>>[number]) {
     const start = swipeStart.current
     swipeStart.current = null
-    if (!start || start.key !== supportCardKey(card)) return
-    const delta = event.clientX - start.x
-    const key = supportCardKey(card)
-    setSwipeOffsets((current) => ({ ...current, [key]: 0 }))
-    if (Math.abs(delta) >= 110 && !actingOn[key]) void castVote(card, delta > 0 ? 'support' : 'skip')
+    if (start === null) return
+    const delta = event.clientX - start
+    if (Math.abs(delta) >= 110 && !actingOn[supportCardKey(card)]) void castVote(card, delta > 0 ? 'support' : 'skip')
+    else setSwipeOffset(0)
   }
-  async function undoVote(card: Awaited<ReturnType<typeof api.getSupportCards>>[number]) {
-    const cardKey = supportCardKey(card)
-    const voteId = card.my_vote_id ?? voteIds[cardKey]
-    if (!voteId) {
-      setActionErrors((current) => ({ ...current, [cardKey]: 'Brakuje identyfikatora głosu potrzebnego do cofnięcia wyboru.' }))
-      return
-    }
-    setActingOn((current) => ({ ...current, [cardKey]: true }))
-    setActionErrors((current) => {
-      const next = { ...current }
-      delete next[cardKey]
-      return next
-    })
-    try {
-      await api.undoVote(voteId)
-      setVoteIds((current) => {
-        const next = { ...current }
-        delete next[cardKey]
-        return next
-      })
-      setCards((current) => current.map((candidate) => candidate.solution_id === card.solution_id && candidate.problem_id === card.problem_id ? {
-        ...candidate,
-        my_vote: null,
-        my_vote_id: null,
-        support_count: Math.max(0, candidate.support_count - (candidate.my_vote === 'support' ? 1 : 0)),
-      } : candidate))
-      notify('Cofnięto Twój wybór.')
-    } catch (caught) {
-      setActionErrors((current) => ({
-        ...current,
-        [cardKey]: caught instanceof Error ? caught.message : 'Nie udało się cofnąć głosu.',
-      }))
-    } finally {
-      setActingOn((current) => {
-        const next = { ...current }
-        delete next[cardKey]
-        return next
-      })
-    }
-  }
-
-  const selectedProblem = problems.find((problem) => problem.entity_id === problemId)
+  const card = cards[activeIndex]
+  const cardKey = card ? supportCardKey(card) : ''
   return (
     <>
       <Heading
         title="Co zasługuje na wspólny krok?"
         description="Poparcie jest sygnałem zainteresowania konkretną propozycją dla wybranej potrzeby. Nie jest decyzją o rozpoczęciu pilotażu."
       />
-      {problemsLoading ? <LoadingState label="Ładowanie potrzeb…" /> : problemsError ? (
-        <Notice tone="error" title="Nie udało się pobrać potrzeb.">{problemsError} <button className="text-button" onClick={() => { setProblemsLoading(true); setRefreshKey((value) => value + 1) }}>Spróbuj ponownie</button></Notice>
-      ) : !problems.length ? (
+      {loading ? <LoadingState label="Ładowanie kart…" /> : error ? (
+        <Notice tone="error" title="Nie udało się pobrać kart.">{error}</Notice>
+      ) : !card ? (
         <Empty title="Nie ma jeszcze potrzeb, dla których można wyrazić poparcie." text="Po potwierdzeniu potrzeby pojawią się tu dostępne propozycje." to="/zgloszenia/nowe" action="Zgłoś potrzebę" />
       ) : (
         <>
-          <Field label="Wybierz potrzebę">
-            <select value={problemId ?? ''} onChange={(event) => selectProblem(Number(event.target.value))}>
-              {problems.map((problem) => <option value={problem.entity_id} key={problem.id}>{problem.title} · {problem.location_name}</option>)}
-            </select>
-          </Field>
           <div className="support-layout">
             <div className="stack">
-              {cardsLoading ? <LoadingState label="Ładowanie kart poparcia…" /> : cardsError ? (
-                <Notice tone="error" title="Nie udało się pobrać kart poparcia.">{cardsError} <button className="text-button" onClick={() => { setCardsLoading(true); setRefreshKey((value) => value + 1) }}>Spróbuj ponownie</button></Notice>
-              ) : !cards.length ? (
-                <Empty title="Nie ma jeszcze propozycji dla tej potrzeby." text="Gdy pojawią się rozwiązania, będzie można wyrazić poparcie lub je pominąć." />
-              ) : cards.map((card) => {
-                const cardKey = supportCardKey(card)
+              {(() => {
                 const currentVote = card.my_vote
-                const actionInProgress = Boolean(actingOn[cardKey])
                 return (
                   <article
                     className="support-card support-card--swipeable"
                     key={cardKey}
-                    style={{ transform: `translateX(${swipeOffsets[cardKey] ?? 0}px) rotate(${(swipeOffsets[cardKey] ?? 0) / 18}deg)` }}
+                    style={{ transform: `translateX(${swipeOffset}px) rotate(${swipeOffset / 18}deg)` }}
                     onPointerDown={(event) => beginSwipe(event, cardKey)}
-                    onPointerMove={(event) => moveSwipe(event, cardKey)}
+                    onPointerMove={moveSwipe}
                     onPointerUp={(event) => endSwipe(event, card)}
                     onPointerCancel={(event) => endSwipe(event, card)}
                   >
                     <div>
                       <div className="row-meta">
                         <Badge tone="lavender">{supportBadgeLabel(card.badge)}</Badge>
-                        <span><Icon name="Heart" /> {card.support_count} {card.support_count === 1 ? 'poparcie' : 'poparcia'}</span>
+                        <span className="vote-counts"><span><Icon name="CaretUp" /> {card.support_count}</span><span><Icon name="CaretDown" /> {card.skip_count}</span></span>
                       </div>
                       <h2>{toReadableInnovationText(card.title)}</h2>
                       <p>{getInnovationPreview(card.description)}</p>
-                      <p className="support-context">Potrzeba: {selectedProblem?.title ?? `#${card.problem_id}`}</p>
+                      <p className="support-context">Przypisano do problemu #{card.problem_id}</p>
                       <Link href={`/innowacje/api/${card.solution_id}?tytul=${encodeURIComponent(toReadableInnovationText(card.title))}`}>Szczegóły i ograniczenia <Icon name="ArrowRight" size={16} /></Link>
-                      {currentVote === 'skip' && (
-                        <Field label="Powód pominięcia (opcjonalnie)">
-                          <textarea value={reasons[cardKey] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [cardKey]: event.target.value }))} rows={2} />
-                        </Field>
-                      )}
-                      <div className="vote-actions">
-                        <button className="button secondary" disabled={actionInProgress} onClick={() => void castVote(card, 'skip')}><Icon name="X" /> Pomijam</button>
-                        <button className="button" disabled={actionInProgress} onClick={() => void castVote(card, 'support')}><Icon name="Heart" /> Popieram</button>
-                        {currentVote && <button className="button secondary" disabled={actionInProgress} onClick={() => void undoVote(card)}><Icon name="ArrowCounterClockwise" /> Cofnij wybór</button>}
-                      </div>
-                      {currentVote && <small>Twój bieżący wybór: {currentVote === 'support' ? 'Popieram' : 'Pomijam'}.</small>}
+                      <small>{currentVote ? 'Twój wybór został zapisany.' : 'Przesuń kartę w prawo lub lewo, aby oddać głos.'}</small>
                       {actionErrors[cardKey] && <Notice tone="error">{actionErrors[cardKey]}</Notice>}
                     </div>
                   </article>
                 )
-              })}
+              })()}
             </div>
             <aside className="context-aside">
               <h2>Przesuń jak w Tinderze.</h2>
-              <p>Przeciągnij kartę w prawo, aby poprzeć propozycję, albo w lewo, aby ją pominąć. Przyciski pozostają dostępne na każdym urządzeniu.</p>
-              <small>Jedno bieżące poparcie przypada na propozycję w konkretnej potrzebie. Liczby nie opisują satysfakcji ani skuteczności.</small>
+              <p>Przesuń kartę w prawo, aby zagłosować w górę, albo w lewo, aby zagłosować w dół.</p>
+              <small>Karty są przypisane do problemów w bazie. Po oddaniu głosu pojawi się następna karta.</small>
             </aside>
           </div>
         </>
