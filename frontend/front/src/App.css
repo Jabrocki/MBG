@@ -117,6 +117,10 @@ html .demo-banner .prototype-popover label {
 .button.secondary:hover {
   background: var(--sage);
 }
+/* Keep adjacent chat actions readable instead of touching each other. */
+.panel form > .button {
+  margin: 6px 12px 0 0;
+}
 .text-link,
 .text-button {
   display: inline-flex;
