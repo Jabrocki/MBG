@@ -1910,8 +1910,20 @@ function IdeaForm({ problemId }: { problemId: number }) {
   const [proposal, setProposal] = useState('')
   const [proposalSources, setProposalSources] = useState<string[]>([])
   const [proposalLoading, setProposalLoading] = useState(true)
-  const [lastMessage, setLastMessage] = useState('')
+  const [conversation, setConversation] = useState<{ role: 'user' | 'ai'; text: string }[]>([])
   const [draftReady, setDraftReady] = useState(false)
+  const [draftText, setDraftText] = useState('')
+  const draftRef = useRef<HTMLElement>(null)
+  const conversationEndRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (draftReady) {
+      draftRef.current?.focus()
+      draftRef.current?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [draftReady])
+  useEffect(() => {
+    if (conversation.length > 1) conversationEndRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [conversation])
   useEffect(() => {
     api
       .getProblem(problemId)
@@ -1930,6 +1942,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
       .then((result) => {
         setProposal(result.proposal)
         setProposalSources(result.based_on ?? [])
+        setConversation([{ role: 'ai', text: result.proposal }])
       })
       .catch((caught: unknown) => {
         setProposal('')
@@ -1944,15 +1957,18 @@ function IdeaForm({ problemId }: { problemId: number }) {
     const formElement = event.currentTarget
     const form = new FormData(formElement)
     const textRaw = String(form.get('text_raw') ?? '').trim()
+    if (!textRaw || saving || proposalLoading) return
     setSaving(true)
     setError('')
+    setConversation((messages) => [...messages, { role: 'user', text: textRaw }])
     try {
       const result = await api.refineAiProposal(problemId, textRaw, proposal)
-      setLastMessage(textRaw)
+      setConversation((messages) => [...messages, { role: 'ai', text: result.proposal }])
       setProposal(result.proposal)
       setProposalSources(result.based_on ?? [])
       formElement.reset()
     } catch (caught) {
+      setConversation((messages) => messages.slice(0, -1))
       setError(caught instanceof Error ? caught.message : 'Nie udało się uzyskać odpowiedzi AI.')
     } finally {
       setSaving(false)
@@ -1960,6 +1976,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
   }
   async function approveDraft() {
     if (!proposal || !problem || savedIdeaId !== null) return
+    setDraftText(proposal)
     setDraftReady(true)
   }
   async function saveDraft() {
@@ -1967,7 +1984,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
     setSaving(true)
     setError('')
     try {
-      const saved = await api.createIdea({ text_raw: proposal, canonical_problem_id: problemId })
+      const saved = await api.createIdea({ text_raw: draftText.trim(), canonical_problem_id: problemId })
       setSavedIdeaId(saved.id)
       navigate(`/pomysly/${saved.id}`)
     } catch (caught) {
@@ -1994,7 +2011,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
           ) : (
             <Notice title="Wybrany problem">{problem?.title ?? 'Ładowanie…'}</Notice>
           )}
-          <form onSubmit={submit}>
+          <form onSubmit={submit} className="solution-chat">
             <h2>Asystent AI</h2>
             <article className="comment ai-message">
               <div>
@@ -2006,8 +2023,8 @@ function IdeaForm({ problemId }: { problemId: number }) {
               </div>
             </article>
             {matches.length > 0 && (
-              <div className="idea-recommendations">
-                <h3>Najbliższe sprawdzone rozwiązania</h3>
+              <details className="idea-recommendations">
+                <summary>Sprawdzone rozwiązania wykorzystane przez AI ({matches.length})</summary>
                 {matches.map((match) => (
                   <article className="comment" key={match.solution_id}>
                     <div>
@@ -2023,43 +2040,40 @@ function IdeaForm({ problemId }: { problemId: number }) {
                     </div>
                   </article>
                 ))}
-              </div>
+              </details>
             )}
-            {lastMessage && (
-              <article className="comment">
-                <div>
-                  <strong>Ty</strong>
-                  <p>{lastMessage}</p>
-                </div>
-              </article>
-            )}
-            {proposalLoading ? (
-              <LoadingState label="AI układa propozycję rozwiązania…" />
-            ) : proposal ? (
-              <article className="comment ai-message">
-                <div>
-                  <strong>Doradca AI — proponowane rozwiązanie</strong>
-                  <p>{toReadableInnovationText(proposal)}</p>
-                  {proposalSources.length > 0 && (
-                    <small>Na podstawie: {proposalSources.join(', ')}</small>
-                  )}
-                </div>
-              </article>
-            ) : null}
+            <div className="solution-conversation" role="log" aria-label="Historia rozmowy z AI" aria-live="polite">
+              {conversation.map((message, index) => (
+                <article className={`comment ${message.role === 'ai' ? 'ai-message' : 'user-message'}`} key={index}>
+                  <div>
+                    <strong>{message.role === 'ai' ? 'Doradca AI' : 'Ty'}</strong>
+                    <p>{toReadableInnovationText(message.text)}</p>
+                    {message.role === 'ai' && index === conversation.length - 1 && proposalSources.length > 0 && (
+                      <small>Na podstawie: {proposalSources.join(', ')}</small>
+                    )}
+                  </div>
+                </article>
+              ))}
+              {proposalLoading && <LoadingState label="AI układa propozycję rozwiązania…" />}
+              {saving && !draftReady && <LoadingState label="AI odpowiada na Twoją wiadomość…" />}
+              <div ref={conversationEndRef} />
+            </div>
             {draftReady && proposal && (
-              <article className="comment draft-card">
+              <article className="comment draft-card" ref={draftRef} tabIndex={-1} aria-label="Podgląd szkicu pomysłu">
                 <div>
-                  <strong>Karta draftu pomysłu</strong>
-                  <p>{toReadableInnovationText(proposal)}</p>
-                  <small>Draft nie został jeszcze zapisany.</small>
-                  <br />
+                  <h3>Sprawdź i zapisz szkic</h3>
+                  <p>Możesz poprawić treść przed zapisem. Szkic nie jest jeszcze zapisany ani opublikowany.</p>
+                  <Field label="Treść szkicu">
+                    <textarea rows={6} value={draftText} onChange={(event) => setDraftText(event.target.value)} maxLength={5000} />
+                  </Field>
+                  <p>Po zapisie AI uporządkuje pomysł. Następnie sprawdzisz jego kartę przed przekazaniem do administratora.</p>
                   <button
                     className="button"
                     type="button"
-                    disabled={saving}
+                    disabled={saving || draftText.trim().length < 10 || draftText.length > 5000}
                     onClick={() => void saveDraft()}
                   >
-                    {saving ? 'Zapisywanie…' : 'Zapisz draft pomysłu'} <Icon name="Check" />
+                    {saving ? 'Zapisywanie…' : 'Zapisz szkic pomysłu'} <Icon name="Check" />
                   </button>
                   <button
                     className="button secondary"
@@ -2072,19 +2086,22 @@ function IdeaForm({ problemId }: { problemId: number }) {
                 </div>
               </article>
             )}
+            {!draftReady && <>
             <Field
               label="Twoja wiadomość"
-              hint="Napisz swobodnie. AI dopyta o szczegóły i zaproponuje rozwiązanie."
+              hint="Dopytaj lub opisz, co zmienić w propozycji. Minimum 10 znaków. Rozmowa trwa do opuszczenia tej strony."
             >
               <textarea
                 name="text_raw"
-                rows={10}
+                rows={4}
                 required
                 minLength={10}
                 maxLength={5000}
+                disabled={saving || proposalLoading}
                 autoFocus
               />
             </Field>
+            </>}
             {error && <Notice tone="error">{error}</Notice>}
             {savedIdeaId !== null && (
               <Notice tone="warning" title="Szkic jest bezpiecznie zapisany.">
@@ -2095,14 +2112,14 @@ function IdeaForm({ problemId }: { problemId: number }) {
                 </ButtonLink>
               </Notice>
             )}
-            <button
+            {!draftReady && <button
               className="button"
               type="submit"
               disabled={saving || proposalLoading || savedIdeaId !== null || !problem}
             >
               {saving ? 'AI odpowiada…' : 'Wyślij wiadomość do AI'}
               <Icon name="ArrowRight" />
-            </button>
+            </button>}
             {proposal && !draftReady && (
               <button
                 className="button secondary"
@@ -2110,7 +2127,7 @@ function IdeaForm({ problemId }: { problemId: number }) {
                 disabled={saving || savedIdeaId !== null}
                 onClick={() => void approveDraft()}
               >
-                Zgadzam się — otwórz kartę draftu
+                Akceptuję propozycję — przejdź do szkicu
                 <Icon name="Check" />
               </button>
             )}

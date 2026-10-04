@@ -573,6 +573,40 @@
   }
 }
 /* Intrinsic sizing must not expand grid columns on narrow innovation details. */
+.solution-chat .idea-recommendations {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.solution-chat summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.solution-conversation {
+  max-height: 480px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  overflow-wrap: anywhere;
+}
+.solution-chat .user-message {
+  padding: 16px;
+  background: var(--sage, #e0f3df);
+  border-radius: 12px;
+}
+.solution-chat > .button,
+.solution-chat .draft-card .button {
+  margin: 8px 8px 0 0;
+  white-space: normal;
+}
+.solution-chat .draft-card > div {
+  width: 100%;
+  min-width: 0;
+}
+.solution-chat .draft-card:focus {
+  outline: 2px solid var(--focus, #1e40af);
+  outline-offset: 4px;
+}
 .detail-layout > * {
   min-width: 0;
 }
