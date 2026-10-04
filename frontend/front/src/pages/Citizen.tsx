@@ -919,8 +919,8 @@ function Results({ problemId, state }: { problemId: number; state: string }) {
                     <h2><Link href={apiInnovationHref({ id: match.solution_id })}>{title}</Link></h2>
                     <InnovationPreview description={match.description} />
                     <div className="match-explanation">
-                      <strong>Dlaczego może pasować</strong><p>{toReadableInnovationText(match.explanation)}</p>
-                      <strong>Co trzeba sprawdzić</strong><p>{toReadableInnovationText(match.limitations)}</p>
+                      <strong>Dlaczego może pasować</strong><p>{getInnovationPreview(match.explanation, 260)}</p>
+                      <strong>Co trzeba sprawdzić</strong><p>{getInnovationPreview(match.limitations, 260)}</p>
                     </div>
                     {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer">Źródło innowacji <Icon name="ArrowSquareOut" size={16} /></a>}
                   </div>

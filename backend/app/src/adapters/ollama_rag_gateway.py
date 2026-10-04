@@ -225,6 +225,30 @@ class OllamaRagGateway:
         retrieved = self._nearest(description, limit=10)
         if not retrieved:
             return []
+        # Vector proximity is only a candidate generator. Ask the chat model
+        # for a stricter relevance gate so a shared word such as “opieka” or
+        # “niepełnosprawność” cannot make an unrelated solution look suitable.
+        candidate_text = "\n".join(
+            f"ID={row['solution_id']} | TYTUŁ={row['title']} | OPIS={row['content'][:500]}"
+            for _, row in retrieved
+        )
+        try:
+            gate = self._json(
+                "Oceń ścisłą zgodność rozwiązań z konkretną potrzebą. Zwróć wyłącznie JSON "
+                "{\"relevant_solution_ids\":[liczby]}. Wybierz tylko rozwiązania, które "
+                "bezpośrednio odpowiadają na ten sam rodzaj problemu i grupę odbiorców; "
+                "odrzuć luźne skojarzenia, nawet gdy mają wspólne słowa. Jeśli żadne nie pasuje, "
+                "zwróć pustą listę.\n"
+                f"POTRZEBA: {description}\nKANDYDACI:\n{candidate_text}"
+            )
+            relevant_ids = {int(value) for value in gate.get("relevant_solution_ids", [])}
+            retrieved = [(score, row) for score, row in retrieved if row["solution_id"] in relevant_ids]
+        except (RuntimeError, TypeError, ValueError):
+            # Keep deterministic fallback behaviour when the chat model is
+            # temporarily unavailable; the score threshold still applies.
+            retrieved = [(score, row) for score, row in retrieved if score >= 0.78]
+        if not retrieved:
+            return []
         guidance = self._json(
             "Na podstawie poniższych źródeł wyjaśnij ostrożnie, dlaczego mogą pomóc w opisanej potrzebie. "
             "Zwróć JSON {\"explanation\": \"...\", \"limitations\": \"...\"}. Nie twierdź, że rozwiązanie jest wdrożone lokalnie.\n"
