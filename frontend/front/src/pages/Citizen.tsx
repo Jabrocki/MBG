@@ -1260,13 +1260,13 @@ function GeographicMapView({
           </Marker>
         ))}
       </MapContainer>
+      <p className="map-disclaimer">{data.privacy_note}</p>
       <div className="map-legend" aria-label="Legenda mapy">
         <span><b>P</b> potrzeba zagregowana</span>
         <span><b>Z</b> własne zgłoszenie</span>
         <span><b>I</b> innowacja z rozpoznaną miejscowością</span>
         <span><b>T</b> pilotaż z zapisaną lokalizacją</span>
       </div>
-      <p className="map-disclaimer">{data.privacy_note}</p>
     </div>
   )
 }
