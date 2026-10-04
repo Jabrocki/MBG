@@ -33,6 +33,7 @@ def search_localities(query: str = Query(..., min_length=2, max_length=100)):
     except Exception:
         return []
     results: list[LocalitySearchResult] = []
+    seen: set[tuple[str, int, int]] = set()
     for row in (rows.get("candidates") or []):
         try:
             lat, lon = float(row["location"]["y"]), float(row["location"]["x"])
@@ -40,11 +41,19 @@ def search_localities(query: str = Query(..., min_length=2, max_length=100)):
             continue
         if not (49.0 <= lat <= 50.7 and 18.7 <= lon <= 22.0):
             continue
+        name = row.get("address", query)
+        display_name = row.get("address", query)
+        # ArcGIS can return the same locality several times with identical
+        # labels and coordinates. Keep one canonical suggestion per place.
+        key = (" ".join(display_name.lower().split()), round(lat * 10000), round(lon * 10000))
+        if key in seen:
+            continue
+        seen.add(key)
         results.append(LocalitySearchResult(
-            name=row.get("address", query),
+            name=name,
             latitude=lat,
             longitude=lon,
-            display_name=row.get("address", query),
+            display_name=display_name,
         ))
     return results
 

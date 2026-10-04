@@ -93,7 +93,11 @@ function LocationPicker({
       return
     }
     const timer = window.setTimeout(() => {
-      api.searchLocalities(query).then(setLocalities).catch(() => setLocalities([]))
+      api.searchLocalities(query).then((items) => {
+        const unique = new Map<string, (typeof items)[number]>()
+        items.forEach((item) => unique.set(`${item.display_name.trim().toLocaleLowerCase()}|${item.latitude.toFixed(4)}|${item.longitude.toFixed(4)}`, item))
+        setLocalities([...unique.values()])
+      }).catch(() => setLocalities([]))
     }, 350)
     return () => window.clearTimeout(timer)
   }, [localityQuery])
