@@ -1,4 +1,5 @@
 # Małopolska bez granic (MBG)
+<img width="1536" height="1024" alt="mbg-spotkanie-sasiedzkie" src="https://github.com/user-attachments/assets/120200e1-4da6-4bbe-ab9d-306288150f39" />
 
 MBG, wcześniej HUBMI, to polskojęzyczny projekt hackathonowy łączący potrzeby mieszkańców Małopolski z istniejącymi innowacjami społecznymi. Użytkownik opisuje problem, potwierdza jego przypisanie do potrzeby i otrzymuje propozycje rozwiązań ze źródłami. Może również zgłosić pomysł, poprzeć propozycję lub uczestniczyć w pilotażu.
 
